@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useTelegram } from '../../context/TelegramContext';
 import { loginController, AuthTokensHelper, UserConfig, NotificationCenter } from '../../core/messenger';
+import { SecureSessionStorage } from '../../utils/secureSessionStorage';
 import { COUNTRIES, Country, searchCountries, detectCountryFromPhone } from '../../data/countries';
 
 interface TelegramAuthScreenProps {
@@ -177,10 +178,26 @@ export const TelegramAuthScreen: React.FC<TelegramAuthScreenProps> = ({
 
       if (result.success && result.user) {
         const u = result.user;
-        login({
-          name: [u.firstName, u.lastName].filter(Boolean).join(' ') || (firstName.trim() ? `${firstName.trim()} ${lastName.trim()}`.trim() : 'مستخدم تيليجرام'),
+        const displayName = [u.firstName, u.lastName].filter(Boolean).join(' ') || (firstName.trim() ? `${firstName.trim()} ${lastName.trim()}`.trim() : 'مستخدم تيليجرام');
+        const finalUsername = u.username || username.trim() || undefined;
+        const registeredUserMeta = {
+          id: u.id ? String(u.id) : `user_${fullPhone.replace(/\D/g, '')}`,
+          name: displayName,
           phone: fullPhone,
-          username: u.username || username.trim() || undefined,
+          username: finalUsername,
+          avatar: u.avatar || '',
+          sessionString: result.sessionString || '',
+          authScreenVerifiedAt: Date.now(),
+        };
+
+        SecureSessionStorage.setItem('tg_auth_screen_registered_user', registeredUserMeta);
+        SecureSessionStorage.setItem('tg_auth_session_active', 'true');
+        SecureSessionStorage.removeItem('tg_explicitly_logged_out');
+
+        login({
+          name: displayName,
+          phone: fullPhone,
+          username: finalUsername,
           avatar: u.avatar || '',
           bio: 'Telegram Official Client (Native MTProto 2.0 Layer 184)',
           sessionString: result.sessionString,
@@ -252,10 +269,26 @@ export const TelegramAuthScreen: React.FC<TelegramAuthScreenProps> = ({
 
       if (result.success && result.user) {
         const u = result.user;
-        login({
-          name: [u.firstName, u.lastName].filter(Boolean).join(' ') || (firstName.trim() ? `${firstName.trim()} ${lastName.trim()}`.trim() : 'مستخدم تيليجرام'),
+        const displayName = [u.firstName, u.lastName].filter(Boolean).join(' ') || (firstName.trim() ? `${firstName.trim()} ${lastName.trim()}`.trim() : 'مستخدم تيليجرام');
+        const finalUsername = u.username || username.trim() || undefined;
+        const registeredUserMeta = {
+          id: u.id ? String(u.id) : `user_${fullPhone.replace(/\D/g, '')}`,
+          name: displayName,
           phone: fullPhone,
-          username: u.username || username.trim() || undefined,
+          username: finalUsername,
+          avatar: u.avatar || '',
+          sessionString: result.sessionString || '',
+          authScreenVerifiedAt: Date.now(),
+        };
+
+        SecureSessionStorage.setItem('tg_auth_screen_registered_user', registeredUserMeta);
+        SecureSessionStorage.setItem('tg_auth_session_active', 'true');
+        SecureSessionStorage.removeItem('tg_explicitly_logged_out');
+
+        login({
+          name: displayName,
+          phone: fullPhone,
+          username: finalUsername,
           avatar: u.avatar || '',
           bio: 'Telegram Official Client (Native MTProto 2.0 Layer 184)',
           sessionString: result.sessionString,
@@ -294,10 +327,26 @@ export const TelegramAuthScreen: React.FC<TelegramAuthScreenProps> = ({
 
       if (result.success && result.user) {
         const u = result.user;
-        login({
-          name: `${firstName.trim()} ${lastName.trim()}`.trim() || 'مستخدم تيليجرام',
+        const displayName = `${firstName.trim()} ${lastName.trim()}`.trim() || 'مستخدم تيليجرام';
+        const finalUsername = username.trim() || undefined;
+        const registeredUserMeta = {
+          id: u.id ? String(u.id) : `user_${fullPhone.replace(/\D/g, '')}`,
+          name: displayName,
           phone: fullPhone,
-          username: username.trim() || undefined,
+          username: finalUsername,
+          avatar: u.avatar || '',
+          sessionString: result.sessionString || '',
+          authScreenVerifiedAt: Date.now(),
+        };
+
+        SecureSessionStorage.setItem('tg_auth_screen_registered_user', registeredUserMeta);
+        SecureSessionStorage.setItem('tg_auth_session_active', 'true');
+        SecureSessionStorage.removeItem('tg_explicitly_logged_out');
+
+        login({
+          name: displayName,
+          phone: fullPhone,
+          username: finalUsername,
           avatar: u.avatar || '',
           bio: 'Telegram Official Client (Native MTProto 2.0 Layer 184)',
           sessionString: result.sessionString,

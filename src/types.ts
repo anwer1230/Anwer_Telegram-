@@ -297,6 +297,7 @@ export interface Message {
 
 export interface Chat {
   id: string;
+  accountNum?: number;
   type: ChatType;
   title: string;
   name?: string;

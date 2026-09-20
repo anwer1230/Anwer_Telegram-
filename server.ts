@@ -177,10 +177,10 @@ async function startServer() {
   interface ActiveTelegramSession {
     client?: TelegramClient;
     phone: string;
-    phoneCodeHash: string;
-    deliveryType: string;
-    apiId: number;
-    apiHash: string;
+    phoneCodeHash?: string;
+    deliveryType?: string;
+    apiId?: number;
+    apiHash?: string;
     createdAt: number;
   }
   const realTelegramSessions = new Map<string, ActiveTelegramSession>();
@@ -343,81 +343,185 @@ async function startServer() {
     return Boolean(result);
   };
 
+  // =========================================================================
+  // Disk Persistent Session Store for Authentic MTProto Sessions
+  // =========================================================================
+  const SESSIONS_STORAGE_FILE = path.join(process.cwd(), '.telegram_sessions.json');
+
+  interface TelegramPersistedSession {
+    phone: string;
+    sessionString: string;
+    userId?: string;
+    firstName?: string;
+    lastName?: string;
+    username?: string;
+    savedAt: number;
+  }
+
+  function loadPersistedSessions(): Record<string, TelegramPersistedSession> {
+    try {
+      if (fs.existsSync(SESSIONS_STORAGE_FILE)) {
+        const raw = fs.readFileSync(SESSIONS_STORAGE_FILE, 'utf-8');
+        if (raw && raw.trim()) {
+          return JSON.parse(raw);
+        }
+      }
+    } catch (err: any) {
+      console.warn('[SessionStore] Error reading persisted sessions:', err?.message || err);
+    }
+    return {};
+  }
+
+  function persistTelegramSession(phone: string, sessionString: string, userMeta?: any) {
+    try {
+      if (!sessionString || !sessionString.trim()) return;
+      const cleanSession = sessionString.trim();
+      if (!isValidGramJsSession(cleanSession)) return;
+
+      const all = loadPersistedSessions();
+      const cleanPhone = formatE164Phone(phone) || phone.trim();
+      const existing: Partial<TelegramPersistedSession> = all[cleanPhone] || {};
+
+      all[cleanPhone] = {
+        phone: cleanPhone,
+        sessionString: cleanSession,
+        userId: userMeta?.id ? String(userMeta.id) : existing.userId,
+        firstName: userMeta?.firstName || userMeta?.first_name || existing.firstName,
+        lastName: userMeta?.lastName || userMeta?.last_name || existing.lastName,
+        username: userMeta?.username || existing.username,
+        savedAt: Date.now(),
+      };
+
+      fs.writeFileSync(SESSIONS_STORAGE_FILE, JSON.stringify(all, null, 2), 'utf-8');
+      console.log(`[SessionStore] ✅ Persisted authentic MTProto session for ${cleanPhone} to disk.`);
+    } catch (err: any) {
+      console.warn('[SessionStore] Failed to persist session to disk:', err?.message || err);
+    }
+  }
+
+  function removePersistedTelegramSession(phone?: string, sessionString?: string) {
+    try {
+      const all = loadPersistedSessions();
+      let modified = false;
+      if (phone) {
+        const cleanPhone = formatE164Phone(phone) || phone.trim();
+        if (all[cleanPhone]) {
+          delete all[cleanPhone];
+          modified = true;
+        }
+      }
+      if (sessionString && sessionString.trim()) {
+        const targetStr = sessionString.trim();
+        for (const [key, sess] of Object.entries(all)) {
+          if (sess.sessionString === targetStr) {
+            delete all[key];
+            modified = true;
+          }
+        }
+      }
+      if (modified) {
+        fs.writeFileSync(SESSIONS_STORAGE_FILE, JSON.stringify(all, null, 2), 'utf-8');
+        console.log(`[SessionStore] Removed session from disk.`);
+      }
+    } catch (err: any) {
+      console.warn('[SessionStore] Error removing session from disk:', err?.message || err);
+    }
+  }
+
+  // Warm up persisted sessions proactively on server boot
+  async function warmupPersistedSessions() {
+    try {
+      const all = loadPersistedSessions();
+      const entries = Object.values(all);
+      if (entries.length === 0) {
+        console.log('[SessionStore] No saved sessions found on disk.');
+        return;
+      }
+      console.log(`[SessionStore] Found ${entries.length} persisted session(s). Warming up MTProto connections in background...`);
+      for (const sess of entries) {
+        if (sess.sessionString && isValidGramJsSession(sess.sessionString)) {
+          getClientForSession(sess.sessionString, sess.phone).then((client) => {
+            if (client && client.connected) {
+              console.log(`[SessionStore] Proactive MTProto connection ready for ${sess.phone}`);
+            }
+          }).catch((err) => {
+            console.warn(`[SessionStore] Background warmup notice for ${sess.phone}:`, err?.message || err);
+          });
+        }
+      }
+    } catch (err: any) {
+      console.warn('[SessionStore] Warmup caught:', err?.message || err);
+    }
+  }
+
   // Helper to obtain or reconnect live TelegramClient for an authenticated user session
   const getClientForSession = async (sessionString?: string, phone?: string): Promise<TelegramClient | null> => {
-    // 1. Check if we have an active session for the phone
-    if (phone) {
-      const formatted = formatE164Phone(phone);
-      if (formatted) {
-        const existing = realTelegramSessions.get(formatted);
-        if (existing && existing.client) {
-          try {
-            if (!existing.client.connected) {
-              const ok = await connectWithTimeout(existing.client, 2000);
-              if (!ok) return null;
-            }
-            const isAuth = await existing.client.checkAuthorization().catch((e: any) => {
-              const msg = e?.message || e?.errorMessage || String(e);
-              if (msg.includes('AUTH_BYTES_INVALID') || msg.includes('SESSION_REVOKED') || msg.includes('AUTH_KEY_UNREGISTERED')) {
-                console.warn('[MTProto] Phone session auth key invalidated:', msg);
-              }
-              return false;
-            });
-            if (isAuth) {
-              return existing.client;
-            } else {
-              console.warn('[MTProto] Active phone session no longer authorized.');
-              try { await existing.client.disconnect().catch(() => {}); } catch (_) {}
-              realTelegramSessions.delete(formatted);
-            }
-          } catch (e: any) {
-            console.warn('[MTProto] Active session reconnect notice:', e?.message || e);
+    const cleanPhone = phone ? (formatE164Phone(phone) || phone.trim()) : '';
+    let targetSessionStr = (sessionString && isValidGramJsSession(sessionString)) ? sessionString.trim() : '';
+
+    // 1. If no sessionString provided, check persisted disk store for this phone
+    if (!targetSessionStr && cleanPhone) {
+      const diskSessions = loadPersistedSessions();
+      if (diskSessions[cleanPhone]?.sessionString && isValidGramJsSession(diskSessions[cleanPhone].sessionString)) {
+        targetSessionStr = diskSessions[cleanPhone].sessionString.trim();
+      }
+    }
+
+    // 2. If still no sessionString and no phone specified, check if there's any single persisted session on disk
+    if (!targetSessionStr) {
+      const diskSessions = loadPersistedSessions();
+      const firstEntry = Object.values(diskSessions)[0];
+      if (firstEntry?.sessionString && isValidGramJsSession(firstEntry.sessionString)) {
+        targetSessionStr = firstEntry.sessionString.trim();
+      }
+    }
+
+    // 3. Check memory map for cached and connected client
+    if (targetSessionStr && authenticatedTelegramClients.has(targetSessionStr)) {
+      const cachedClient = authenticatedTelegramClients.get(targetSessionStr)!;
+      try {
+        if (!cachedClient.connected) {
+          const ok = await connectWithTimeout(cachedClient, 8000);
+          if (!ok) {
+            authenticatedTelegramClients.delete(targetSessionStr);
+          } else {
+            return cachedClient;
           }
+        } else {
+          return cachedClient;
+        }
+      } catch (e: any) {
+        console.warn('[MTProto] Cached client reconnect check notice:', e?.message || e);
+        authenticatedTelegramClients.delete(targetSessionStr);
+      }
+    }
+
+    // 4. Check active phone session in memory
+    if (cleanPhone) {
+      const existing = realTelegramSessions.get(cleanPhone);
+      if (existing && existing.client) {
+        try {
+          if (!existing.client.connected) {
+            const ok = await connectWithTimeout(existing.client, 8000);
+            if (ok) return existing.client;
+          } else {
+            return existing.client;
+          }
+        } catch (e: any) {
+          console.warn('[MTProto] Active phone session reconnect notice:', e?.message || e);
         }
       }
     }
 
-    // 2. Check if we have a saved string session
-    if (sessionString && isValidGramJsSession(sessionString)) {
-      const cleanSessionStr = sessionString.trim();
-      if (authenticatedTelegramClients.has(cleanSessionStr)) {
-        const cachedClient = authenticatedTelegramClients.get(cleanSessionStr)!;
-        try {
-          if (!cachedClient.connected) {
-            const ok = await connectWithTimeout(cachedClient, 2000);
-            if (!ok) {
-              authenticatedTelegramClients.delete(cleanSessionStr);
-              return null;
-            }
-          }
-          const isAuth = await cachedClient.checkAuthorization().catch((e: any) => {
-            const msg = e?.message || e?.errorMessage || String(e);
-            if (msg.includes('AUTH_BYTES_INVALID') || msg.includes('SESSION_REVOKED') || msg.includes('AUTH_KEY_UNREGISTERED') || msg.includes('401')) {
-              console.warn('[MTProto] Cached client authorization revoked/invalidated.');
-              return false;
-            }
-            return false;
-          });
-          if (isAuth) {
-            return cachedClient;
-          } else {
-            console.warn('[MTProto] Cached client is no longer authorized (revoked or expired), clearing.');
-            try { await cachedClient.disconnect().catch(() => {}); } catch (_) {}
-            authenticatedTelegramClients.delete(cleanSessionStr);
-          }
-        } catch (e: any) {
-          console.warn('[MTProto] Cached client connect notice:', e?.message || e);
-          authenticatedTelegramClients.delete(cleanSessionStr);
-        }
-      }
-
+    // 5. Connect fresh client from targetSessionStr
+    if (targetSessionStr && isValidGramJsSession(targetSessionStr)) {
       try {
-        console.log('[MTProto] Initializing client from string session...');
-        const strSess = new sessions.StringSession(cleanSessionStr);
+        console.log('[MTProto] Connecting client from string session (TCP)...');
+        const strSess = new sessions.StringSession(targetSessionStr);
         const client = new TelegramClient(strSess, Number(TELEGRAM_API_ID), TELEGRAM_API_HASH, {
-          connectionRetries: 1,
-          requestRetries: 1,
-          timeout: 2,
+          connectionRetries: 3,
+          requestRetries: 3,
+          timeout: 12,
           useWSS: false,
           deviceModel: 'Telegram Android MTProto',
           systemVersion: 'Android 14',
@@ -425,7 +529,7 @@ async function startServer() {
           langCode: 'ar',
           systemLangCode: 'ar',
         });
-        const ok = await connectWithTimeout(client, 2000);
+        const ok = await connectWithTimeout(client, 8000);
         if (ok) {
           const isAuth = await client.checkAuthorization().catch((e: any) => {
             const msg = e?.message || e?.errorMessage || String(e);
@@ -433,26 +537,30 @@ async function startServer() {
             return false;
           });
           if (isAuth) {
-            authenticatedTelegramClients.set(cleanSessionStr, client);
+            authenticatedTelegramClients.set(targetSessionStr, client);
+            if (cleanPhone) {
+              realTelegramSessions.set(cleanPhone, { client, phone: cleanPhone, createdAt: Date.now() });
+              persistTelegramSession(cleanPhone, targetSessionStr);
+            }
             return client;
           } else {
             console.warn('[MTProto] String session checkAuthorization returned false (revoked/expired).');
             try { await client.disconnect().catch(() => {}); } catch (_) {}
-            authenticatedTelegramClients.delete(cleanSessionStr);
+            authenticatedTelegramClients.delete(targetSessionStr);
+            removePersistedTelegramSession(cleanPhone, targetSessionStr);
             return null;
           }
         } else {
           try { await client.disconnect().catch(() => {}); } catch (_) {}
-          authenticatedTelegramClients.delete(cleanSessionStr);
         }
       } catch (tcpErr: any) {
         console.warn('[MTProto] TCP session connect failed, trying WSS fallback...', tcpErr?.message || tcpErr);
         try {
-          const strSess = new sessions.StringSession(cleanSessionStr);
+          const strSess = new sessions.StringSession(targetSessionStr);
           const client = new TelegramClient(strSess, Number(TELEGRAM_API_ID), TELEGRAM_API_HASH, {
-            connectionRetries: 1,
-            requestRetries: 1,
-            timeout: 2,
+            connectionRetries: 3,
+            requestRetries: 3,
+            timeout: 12,
             useWSS: true,
             deviceModel: 'Telegram Web/Android',
             systemVersion: 'Android 14',
@@ -460,32 +568,32 @@ async function startServer() {
             langCode: 'ar',
             systemLangCode: 'ar',
           });
-          const ok = await connectWithTimeout(client, 2000);
+          const ok = await connectWithTimeout(client, 8000);
           if (ok) {
-            const isAuth = await client.checkAuthorization().catch((e: any) => {
-              console.warn('[MTProto] WSS checkAuthorization error:', e?.message || e);
-              return false;
-            });
+            const isAuth = await client.checkAuthorization().catch(() => false);
             if (isAuth) {
-              authenticatedTelegramClients.set(cleanSessionStr, client);
+              authenticatedTelegramClients.set(targetSessionStr, client);
+              if (cleanPhone) {
+                realTelegramSessions.set(cleanPhone, { client, phone: cleanPhone, createdAt: Date.now() });
+                persistTelegramSession(cleanPhone, targetSessionStr);
+              }
               return client;
             } else {
               try { await client.disconnect().catch(() => {}); } catch (_) {}
-              authenticatedTelegramClients.delete(cleanSessionStr);
+              authenticatedTelegramClients.delete(targetSessionStr);
+              removePersistedTelegramSession(cleanPhone, targetSessionStr);
               return null;
             }
           } else {
             try { await client.disconnect().catch(() => {}); } catch (_) {}
-            authenticatedTelegramClients.delete(cleanSessionStr);
           }
         } catch (wssErr: any) {
-          console.warn('[MTProto] Failed to restore Telegram client session:', wssErr?.message || wssErr);
-          authenticatedTelegramClients.delete(cleanSessionStr);
+          console.warn('[MTProto] Failed to restore Telegram client session via WSS:', wssErr?.message || wssErr);
         }
       }
     }
 
-    // 3. Fallback to any active authenticated client in memory if only 1 exists
+    // 6. Memory fallback if exactly 1 client exists and is authorized
     if (authenticatedTelegramClients.size === 1) {
       const singleClient = authenticatedTelegramClients.values().next().value;
       if (singleClient && singleClient.connected) {
@@ -1435,9 +1543,10 @@ async function startServer() {
       const savedSessionString = sessionData.client.session.save() as unknown as string;
       const sessionId = `tg_sess_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
 
-      // Save client in active authenticated clients map
+      // Save client in active authenticated clients map & disk store
       if (savedSessionString) {
         authenticatedTelegramClients.set(savedSessionString, sessionData.client);
+        persistTelegramSession(formattedPhone, savedSessionString, authorizedUser);
       }
 
       // Download user's real avatar immediately with strict timeout
@@ -1512,27 +1621,10 @@ async function startServer() {
         });
       }
       if (errMsg.includes('TIMEOUT') || errMsg.includes('ETIMEDOUT') || errMsg.includes('timeout')) {
-        const authorizedUser = {
-          id: Date.now(),
-          firstName: 'مستخدم تيليجرام',
-          username: `user_${formattedPhone.replace(/\D/g, '').slice(-4)}`,
-          phone: formattedPhone,
-        };
-        return res.json({
-          success: true,
-          token: `mtproto_token_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`,
-          sessionString: '',
-          user: {
-            id: authorizedUser.id,
-            firstName: authorizedUser.firstName,
-            lastName: '',
-            username: authorizedUser.username,
-            phone: formattedPhone,
-            avatar: null,
-            isVerified: false,
-            isPremium: false,
-          },
-          message: 'تم التحقق بنجاح من خوادم تيليجرام وتوثيق الجلسة.',
+        return res.status(408).json({
+          success: false,
+          error: 'TIMEOUT',
+          message: 'انتهت مهلة استجابة خادم تيليجرام أثناء توثيق الرمز، يرجى المحاولة مرة أخرى.',
         });
       }
 
@@ -1574,6 +1666,62 @@ async function startServer() {
       loginCodeHint: generatedCode,
       message: `Authentication code sent via Telegram MTProto Layer 184 using API_ID ${TELEGRAM_API_ID}`,
     });
+  });
+
+  // 4.1 Telegram Auth Logout Endpoint
+  app.post('/api/telegram/auth/logout', async (req, res) => {
+    const { phone, sessionString } = req.body;
+    console.log(`[MTProto] Logging out session (phone: ${phone || 'unknown'})...`);
+
+    if (sessionString) {
+      const cleanStr = sessionString.trim();
+      const client = authenticatedTelegramClients.get(cleanStr);
+      if (client) {
+        try {
+          await client.disconnect().catch(() => {});
+        } catch (_) {}
+        authenticatedTelegramClients.delete(cleanStr);
+      }
+    }
+
+    if (phone) {
+      const formatted = formatE164Phone(phone);
+      if (formatted) {
+        const phoneSess = realTelegramSessions.get(formatted);
+        if (phoneSess && phoneSess.client) {
+          try {
+            await phoneSess.client.disconnect().catch(() => {});
+          } catch (_) {}
+        }
+        realTelegramSessions.delete(formatted);
+      }
+    }
+
+    removePersistedTelegramSession(phone, sessionString);
+
+    res.json({
+      success: true,
+      message: 'Logged out successfully from Telegram MTProto session.',
+    });
+  });
+
+  // 4.2 Telegram Auth Status Check
+  app.all('/api/telegram/auth/status', async (req, res) => {
+    const phone = req.body?.phone || (req.query?.phone as string);
+    const sessionString = req.body?.sessionString || (req.query?.sessionString as string);
+
+    try {
+      const client = await getClientForSession(sessionString, phone);
+      if (client && client.connected) {
+        const isAuth = await client.checkAuthorization().catch(() => false);
+        if (isAuth) {
+          return res.json({ success: true, authorized: true, isConnected: true });
+        }
+      }
+    } catch (err) {
+      // ignore
+    }
+    return res.json({ success: false, authorized: false, isConnected: false });
   });
 
   // 5. Send Message Dispatcher (Real messages.sendMessage RPC)
@@ -1952,11 +2100,23 @@ async function startServer() {
 
     console.log(`[MTProto] Synchronizing account data from Telegram cloud (phone: ${phone || 'any'})...`);
 
+    if (sessionString && phone) {
+      persistTelegramSession(phone, sessionString);
+    }
+
     try {
       const client = await getClientForSession(sessionString, phone);
       if (client && client.connected) {
         const realData = await fetchRealTelegramData(client, phone);
         console.log(`[MTProto] Real sync completed! Retrieved ${realData.chats.length} chats and ${realData.users?.length || 0} users.`);
+
+        if (realData.user && realData.user.phone) {
+          const sessStr = sessionString || (client.session?.save ? (client.session.save() as unknown as string) : '');
+          if (sessStr) {
+            persistTelegramSession(realData.user.phone, sessStr, realData.user);
+          }
+        }
+
         return res.json({
           success: true,
           isRealTelegramMTProto: true,
@@ -1977,6 +2137,7 @@ async function startServer() {
           const formatted = formatE164Phone(phone);
           if (formatted) realTelegramSessions.delete(formatted);
         }
+        removePersistedTelegramSession(phone, sessionString);
         return res.json({
           success: false,
           sessionRevoked: true,
@@ -1986,168 +2147,16 @@ async function startServer() {
       }
     }
 
-    // Default robust catalogue fallback if no active live MTProto session
-    const fallbackUser = {
-      id: 'user_me',
-      name: 'أنور فؤاد',
-      username: 'anwar_fouad',
-      phone: phone || '+967 770 000 000',
-      avatar: '',
-      isPremium: true,
-      isVerified: false,
-    };
-
-    const defaultChats = [
-      {
-        id: 'chat_saved_messages',
-        peerId: 'user_me',
-        type: 'saved',
-        title: 'الرسائل المحفوظة',
-        avatar: '',
-        isPinned: true,
-        unreadCount: 0,
-        description: 'مساحتك السحابية الخاصة لحفظ الرسائل والملفات والملاحظات.',
-        lastMessage: {
-          id: 'm_saved_1',
-          senderName: 'You',
-          text: '📌 مرحباً بك في مساحتك السحابية المشفرة (Saved Messages).',
-          timestamp: '12:00 PM',
-          isOutgoing: true,
-          status: 'read',
-        },
-      },
-      {
-        id: 'chat_telegram_service',
-        peerId: '777000',
-        type: 'private',
-        title: 'Telegram Notifications',
-        username: 'service_notifications',
-        avatar: 'https://images.unsplash.com/photo-1614680376593-902f749f7ffc?w=150&auto=format&fit=crop&q=80',
-        isVerified: true,
-        isPinned: true,
-        unreadCount: 0,
-        description: 'Official Telegram Service Notifications channel.',
-        lastMessage: {
-          id: 'm_tg_service_1',
-          senderName: 'Telegram',
-          text: 'Login code: 777000. Do not give this code to anyone!',
-          timestamp: '11:45 AM',
-          isOutgoing: false,
-          status: 'read',
-        },
-      },
-      {
-        id: 'chat_telegram_news',
-        peerId: 'telegram_news',
-        type: 'channel',
-        title: 'Telegram News',
-        username: 'telegram',
-        avatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
-        isVerified: true,
-        isPinned: false,
-        unreadCount: 1,
-        memberCount: 9400000,
-        description: 'The official channel for Telegram updates and announcements.',
-        lastMessage: {
-          id: 'm_news_1',
-          senderName: 'Telegram News',
-          text: '⚡ Telegram MTProto 2.0 Layer 184 is now live with enhanced cloud sync.',
-          timestamp: '10:30 AM',
-          isOutgoing: false,
-          status: 'read',
-        },
-      },
-      {
-        id: 'chat_botfather',
-        peerId: 'botfather',
-        type: 'bot',
-        title: 'BotFather',
-        username: 'botfather',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-        isVerified: true,
-        isPinned: false,
-        unreadCount: 0,
-        description: 'BotFather is the one bot to rule them all.',
-        lastMessage: {
-          id: 'm_bf_1',
-          senderName: 'BotFather',
-          text: 'I can help you create and manage Telegram bots. Send /help to get started.',
-          timestamp: 'Yesterday',
-          isOutgoing: false,
-          status: 'read',
-        },
-      },
-    ];
-
-    const defaultMessages: Record<string, any[]> = {
-      chat_saved_messages: [
-        {
-          id: 'm_saved_1',
-          chatId: 'chat_saved_messages',
-          senderId: 'user_me',
-          senderName: 'You',
-          text: '📌 مرحباً بك في مساحتك السحابية المشفرة (Saved Messages).\n\nيمكنك هنا:\n• كتابة الملاحظات والأفكار والمذكرات\n• حفظ ومشاركة الروابط والملفات والمستندات\n• إعادة توجيه الرسائل من القنوات والمحادثات للرجوع إليها لاحقاً\n• إرسال الرسائل الصوتية والصور بجودة كاملة',
-          timestamp: '12:00 PM',
-          date: new Date().toISOString().split('T')[0],
-          isOutgoing: true,
-          status: 'read',
-          isPinned: true,
-        },
-      ],
-      chat_telegram_service: [
-        {
-          id: 'm_tg_service_1',
-          chatId: 'chat_telegram_service',
-          senderId: 'sys_telegram',
-          senderName: 'Telegram',
-          text: '🔒 Official Security Notification:\n\nYour Telegram account was successfully authenticated via MTProto 2.0 (Layer 184).',
-          timestamp: '11:45 AM',
-          date: new Date().toISOString().split('T')[0],
-          isOutgoing: false,
-          status: 'read',
-        },
-      ],
-      chat_telegram_news: [
-        {
-          id: 'm_news_1',
-          chatId: 'chat_telegram_news',
-          senderId: 'sys_news',
-          senderName: 'Telegram News',
-          text: '⚡ Telegram MTProto 2.0 Layer 184 is now live with enhanced cloud sync.',
-          timestamp: '10:30 AM',
-          date: new Date().toISOString().split('T')[0],
-          isOutgoing: false,
-          status: 'read',
-        },
-      ],
-      chat_botfather: [
-        {
-          id: 'm_bf_1',
-          chatId: 'chat_botfather',
-          senderId: 'botfather',
-          senderName: 'BotFather',
-          text: 'I can help you create and manage Telegram bots. Send /help to get started.',
-          timestamp: 'Yesterday',
-          date: new Date().toISOString().split('T')[0],
-          isOutgoing: false,
-          status: 'read',
-        },
-      ],
-    };
-
-    res.json({
-      success: true,
+    // Authentic Telegram Protocol Behavior: If MTProto client is still connecting or connecting to DC,
+    // NEVER inject mock or synthetic chats! Return connecting status so client preserves its real cached dialogs.
+    return res.json({
+      success: false,
+      connecting: true,
       syncTimestamp: new Date().toISOString(),
-      serverPts: Math.floor(100000 + Math.random() * 50000),
-      serverQts: Math.floor(20000 + Math.random() * 10000),
-      serverDate: Math.floor(Date.now() / 1000),
-      serverSeq: Math.floor(1000 + Math.random() * 500),
-      user: fallbackUser,
-      users: [fallbackUser],
-      chats: defaultChats,
-      messages: defaultMessages,
-      apiId: TELEGRAM_API_ID,
-      layer: 184,
+      message: 'جاري الاتصال بسحابة تيليجرام MTProto... المحادثات الحقيقية محفوظة ومحمية.',
+      chats: [],
+      messages: {},
+      users: [],
     });
   });
 
@@ -4136,6 +4145,9 @@ async function startServer() {
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`Telegram Fullstack Server running on http://0.0.0.0:${PORT}`);
     console.log(`Telegram API_ID: ${TELEGRAM_API_ID} | MTProto 2.0 Layer 184`);
+    warmupPersistedSessions().catch((err) => {
+      console.warn('[SessionStore] Initial sessions warmup caught:', err?.message || err);
+    });
   });
 
   const shutdown = () => {

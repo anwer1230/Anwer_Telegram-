@@ -390,20 +390,20 @@ export const TelegramProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
 
   // Current active account lookup
-  const initialActiveAcc = accounts.find((a) => a.id === activeAccountId) || accounts[0] || DEFAULT_ACCOUNTS[0] || null;
+  const initialActiveAcc = accounts.find((a) => a.id === activeAccountId) || accounts[0] || null;
 
   const [currentUser, setCurrentUser] = useState<User>(() => initialActiveAcc?.user || CURRENT_USER);
   const [chats, setChats] = useState<Chat[]>(() => {
-    const raw = initialActiveAcc?.chats && initialActiveAcc.chats.length > 0 ? initialActiveAcc.chats : INITIAL_CHATS;
+    const raw = initialActiveAcc?.chats && initialActiveAcc.chats.length > 0 ? initialActiveAcc.chats : [];
     return raw.map(sanitizeChat);
   });
-  const [messages, setMessages] = useState<Record<string, Message[]>>(() => (initialActiveAcc?.messages && Object.keys(initialActiveAcc.messages).length > 0 ? initialActiveAcc.messages : INITIAL_MESSAGES));
+  const [messages, setMessages] = useState<Record<string, Message[]>>(() => (initialActiveAcc?.messages && Object.keys(initialActiveAcc.messages).length > 0 ? initialActiveAcc.messages : {}));
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [activeChatId, setActiveChatId] = useState<string | null>(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       return null;
     }
-    return initialActiveAcc?.chats?.[0]?.id || INITIAL_CHATS[0]?.id || 'chat_saved_messages';
+    return initialActiveAcc?.chats?.[0]?.id || 'chat_saved_messages';
   });
 
   // Authentic Telegram Typing & Presence Engine
@@ -1223,6 +1223,18 @@ export const TelegramProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const accIdToRemove = targetAccountId || activeAccountId;
     const accIndex = accounts.findIndex((a) => a.id === accIdToRemove);
     const targetIndex = accIndex >= 0 ? accIndex : 0;
+    const targetAcc = accounts.find((a) => a.id === accIdToRemove);
+
+    if (targetAcc) {
+      fetch('/api/telegram/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: targetAcc.user?.phone,
+          sessionString: targetAcc.sessionString,
+        }),
+      }).catch(() => {});
+    }
 
     // DrKLO Storage & Configuration purge
     UserConfig.getInstance(targetIndex).clearConfig(true);
@@ -1891,8 +1903,17 @@ export const TelegramProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const syncInitializationRoutine = async (phoneOverride?: string, sessionStringOverride?: string) => {
     setIsSyncing(true);
     try {
-      const activeSessionStr = sessionStringOverride || SecureSessionStorage.getItem<string>('tg_session_string') || '';
-      const activePhone = phoneOverride || currentUser.phone || '';
+      const currentAcc = accounts.find((a) => a.id === activeAccountId) || accounts[0];
+      const activeSessionStr =
+        sessionStringOverride ||
+        currentAcc?.sessionString ||
+        SecureSessionStorage.getItem<string>('tg_session_string') ||
+        '';
+      const activePhone = phoneOverride || currentAcc?.user?.phone || currentUser.phone || '';
+
+      if (activeSessionStr) {
+        SecureSessionStorage.setItem('tg_session_string', activeSessionStr);
+      }
 
       console.log(`[MTProto Sync] Invoking messages.getDialogs & users.getUsers for phone: ${activePhone}`);
 
@@ -1920,7 +1941,12 @@ export const TelegramProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             : 'Telegram session expired or revoked. Please log in again.',
           '⚠️'
         );
-        setChats((prev) => (prev && prev.length > 0 ? prev : INITIAL_CHATS));
+        return;
+      }
+
+      // If server returned connecting or pending, DO NOT OVERWRITE LOCAL CHATS!
+      if (!data.success) {
+        console.log('[MTProto Sync] Cloud sync pending or connecting. Preserving local chats.');
         return;
       }
 
@@ -1939,53 +1965,80 @@ export const TelegramProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         setCurrentUser(updatedUser);
 
-        // Map Dialogs from MTProto messages.getDialogs
-        let finalChats: Chat[] = [];
+        // Map Dialogs from MTProto messages.getDialogs only if real chats returned
         if (data.chats && Array.isArray(data.chats) && data.chats.length > 0) {
-          finalChats = data.chats;
-        } else {
-          finalChats = INITIAL_CHATS;
-        }
+          let finalChats: Chat[] = [...data.chats];
 
-        // Guarantee Saved Messages exists and has user avatar
-        const savedChatIdx = finalChats.findIndex((c) => c.id === 'chat_saved_messages' || c.type === 'saved');
-        if (savedChatIdx >= 0) {
-          finalChats[savedChatIdx] = {
-            ...finalChats[savedChatIdx],
-            avatar: updatedUser.avatar || finalChats[savedChatIdx].avatar,
-          };
-        } else {
-          finalChats.unshift({
-            id: 'chat_saved_messages',
-            type: 'saved',
-            title: 'الرسائل المحفوظة',
-            avatar: updatedUser.avatar || '',
-            isPinned: true,
-            unreadCount: 0,
-            description: 'سحابة التخزين الشخصية الرسمية من تيليجرام.',
-            lastMessage: {
-              id: `m_saved_${Date.now()}`,
-              senderName: 'You',
-              text: 'مرحباً بك في مساحتك السحابية الآمنة لحفظ الرسائل والملفات.',
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              isOutgoing: true,
-              status: 'read',
-            },
+          // Guarantee Saved Messages exists and has user avatar
+          const savedChatIdx = finalChats.findIndex((c) => c.id === 'chat_saved_messages' || c.type === 'saved');
+          if (savedChatIdx >= 0) {
+            finalChats[savedChatIdx] = {
+              ...finalChats[savedChatIdx],
+              avatar: updatedUser.avatar || finalChats[savedChatIdx].avatar,
+            };
+          } else {
+            finalChats.unshift({
+              id: 'chat_saved_messages',
+              type: 'saved',
+              title: 'الرسائل المحفوظة',
+              avatar: updatedUser.avatar || '',
+              isPinned: true,
+              unreadCount: 0,
+              description: 'سحابة التخزين الشخصية الرسمية من تيليجرام.',
+              lastMessage: {
+                id: `m_saved_${Date.now()}`,
+                senderName: 'You',
+                text: 'مرحباً بك في مساحتك السحابية الآمنة لحفظ الرسائل والملفات.',
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                isOutgoing: true,
+                status: 'read',
+              },
+            });
+          }
+
+          const sanitizedChats = finalChats.map(sanitizeChat);
+          setChats(sanitizedChats);
+
+          // Auto-select active chat if desktop and no chat is selected, but preserve null on mobile
+          setActiveChatId((prev) => {
+            if (prev && sanitizedChats.some((c) => c.id === prev)) {
+              return prev;
+            }
+            if (typeof window !== 'undefined' && window.innerWidth < 768) {
+              return null; // Keep chat list on mobile!
+            }
+            return prev || sanitizedChats[0]?.id || 'chat_saved_messages';
           });
+
+          // Update multi-account store with real chats
+          setAccounts((prev) =>
+            prev.map((acc) =>
+              acc.id === activeAccountId
+                ? {
+                    ...acc,
+                    user: updatedUser,
+                    chats: sanitizedChats,
+                    messages: {
+                      ...acc.messages,
+                      ...(data.messages || {}),
+                    },
+                  }
+                : acc
+            )
+          );
+        } else {
+          // Update user in account store while keeping existing chats intact
+          setAccounts((prev) =>
+            prev.map((acc) =>
+              acc.id === activeAccountId
+                ? {
+                    ...acc,
+                    user: updatedUser,
+                  }
+                : acc
+            )
+          );
         }
-
-        setChats(finalChats.map(sanitizeChat));
-
-        // Auto-select active chat if desktop and no chat is selected, but preserve null on mobile
-        setActiveChatId((prev) => {
-          if (prev && finalChats.some((c) => c.id === prev)) {
-            return prev;
-          }
-          if (typeof window !== 'undefined' && window.innerWidth < 768) {
-            return null; // Keep chat list on mobile!
-          }
-          return prev || finalChats[0]?.id || 'chat_saved_messages';
-        });
 
         // Map Messages from MTProto
         if (data.messages && typeof data.messages === 'object' && Object.keys(data.messages).length > 0) {
@@ -1993,38 +2046,15 @@ export const TelegramProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             ...prev,
             ...data.messages,
           }));
-        } else {
-          setMessages((prev) => ({
-            ...INITIAL_MESSAGES,
-            ...prev,
-          }));
         }
 
         if (data.sessionString) {
           SecureSessionStorage.setItem('tg_session_string', data.sessionString);
         }
-
-        // Update multi-account store
-        setAccounts((prev) =>
-          prev.map((acc) =>
-            acc.id === activeAccountId
-              ? {
-                  ...acc,
-                  user: updatedUser,
-                  chats: finalChats,
-                  messages: {
-                    ...acc.messages,
-                    ...(data.messages || {}),
-                  },
-                }
-              : acc
-          )
-        );
       }
     } catch (err) {
       console.warn('[Sync] Cloud sync error:', err);
-      // Guarantee chat store is never empty
-      setChats((prev) => (prev && prev.length > 0 ? prev : INITIAL_CHATS));
+      // Guarantee chat store is never wiped on network error
     } finally {
       setIsSyncing(false);
     }

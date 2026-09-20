@@ -14,6 +14,7 @@ import { TLRPC } from './TLRPC';
 import { ChatObject, AnyChat } from './ChatObject';
 import { LocaleController } from './LocaleController';
 import { NotificationCenter } from './NotificationCenter';
+import { MessagesController } from './MessagesController';
 
 export enum BottomPanelMode {
   ENTER_VIEW = 'ENTER_VIEW', // Normal input bar (textarea, attachment, voice, send)
@@ -55,6 +56,9 @@ export class ChatActivity {
   public setChat(chat: AnyChat | null): void {
     this.currentChat = chat;
     this.notifyStateChanged();
+    if (chat && chat.id) {
+      MessagesController.getInstance(this.currentAccount).loadChatInfo(chat.id).catch(() => {});
+    }
   }
 
   public getCurrentChat(): AnyChat | null {
