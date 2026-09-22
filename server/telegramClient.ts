@@ -422,6 +422,7 @@ export async function getTelegramMessages(sessionString: string, peerId: string,
       mediaInfo,
       replyToMsgId,
       reactions,
+      editDate: m.editDate || null,
       views: m.views || null,
       forwards: m.forwards || null,
     };
@@ -646,6 +647,88 @@ export async function sendTelegramReaction(
   );
 
   return { success: true, messageId, emoji: emoji || null };
+}
+
+/**
+ * Edit the text of a sent Telegram message
+ */
+export async function editTelegramMessage(
+  sessionString: string,
+  peerId: string,
+  messageId: number,
+  newText: string
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetPeer: any = peerId;
+  if (session.entityCache.has(peerId)) {
+    targetPeer = session.entityCache.get(peerId);
+  } else {
+    try {
+      targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+    } catch (_) {
+      try {
+        targetPeer = await client.getEntity(bigInt(peerId));
+      } catch (e) {
+        targetPeer = peerId;
+      }
+    }
+  }
+
+  const edited: any = await client.editMessage(targetPeer, {
+    message: Number(messageId),
+    text: newText,
+  });
+
+  return {
+    id: Number(messageId),
+    text: edited?.message || newText,
+    date: edited?.date || Math.floor(Date.now() / 1000),
+    editDate: edited?.editDate || Math.floor(Date.now() / 1000),
+  };
+}
+
+/**
+ * Delete messages from a chat (either for everyone or for the current user only)
+ */
+export async function deleteTelegramMessages(
+  sessionString: string,
+  peerId: string,
+  messageIds: number[],
+  revoke: boolean = true
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetPeer: any = peerId;
+  if (session.entityCache.has(peerId)) {
+    targetPeer = session.entityCache.get(peerId);
+  } else {
+    try {
+      targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+    } catch (_) {
+      try {
+        targetPeer = await client.getEntity(bigInt(peerId));
+      } catch (e) {
+        targetPeer = peerId;
+      }
+    }
+  }
+
+  await client.deleteMessages(
+    targetPeer,
+    messageIds.map((id) => Number(id)),
+    {
+      revoke: !!revoke,
+    }
+  );
+
+  return {
+    success: true,
+    deletedIds: messageIds,
+    revoke: !!revoke,
+  };
 }
 
 /**

@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Reply,
   Smile,
+  Pencil,
 } from 'lucide-react';
 import { TelegramDialog, TelegramMessage } from '../types';
 import { telegramApi } from '../api/telegramApi';
@@ -43,6 +44,10 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
   const [pendingFile, setPendingFile] = useState<PendingAttachment | null>(null);
   const [replyingTo, setReplyingTo] = useState<TelegramMessage | null>(null);
   const [activeReactionPickerMsgId, setActiveReactionPickerMsgId] = useState<number | null>(null);
+  const [editingMessage, setEditingMessage] = useState<TelegramMessage | null>(null);
+  const [messageToDelete, setMessageToDelete] = useState<TelegramMessage | null>(null);
+  const [deleteRevoke, setDeleteRevoke] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -51,6 +56,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<any>(null);
@@ -185,9 +191,82 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
     }
   };
 
+  const handleStartEdit = (msg: TelegramMessage) => {
+    setEditingMessage(msg);
+    setInputText(msg.text || '');
+    setReplyingTo(null);
+    setPendingFile(null);
+    setTimeout(() => {
+      textInputRef.current?.focus();
+    }, 50);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessage(null);
+    setInputText('');
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!messageToDelete || !chat || deleting) return;
+    const targetId = messageToDelete.id;
+    const revoke = deleteRevoke;
+    setDeleting(true);
+
+    // Optimistic removal from message list
+    setMessages((prev) => prev.filter((m) => m.id !== targetId));
+    setMessageToDelete(null);
+
+    try {
+      await telegramApi.deleteMessages(chat.id, [targetId], revoke);
+      onMessageSent();
+    } catch (err: any) {
+      alert(`فشل حذف الرسالة في تليجرام: ${err.message || 'خطأ'}`);
+      // Re-fetch to restore state if deletion failed
+      try {
+        const msgs = await telegramApi.getMessages(chat.id, 50);
+        setMessages([...msgs].reverse());
+      } catch (_) {}
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chat || sending) return;
+
+    // 0. Handle Editing an existing message
+    if (editingMessage) {
+      const newText = inputText.trim();
+      if (!newText) return;
+      const editMsgId = editingMessage.id;
+      setSending(true);
+      setEditingMessage(null);
+      setInputText('');
+
+      // Optimistic update
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === editMsgId
+            ? { ...m, text: newText, editDate: Math.floor(Date.now() / 1000) }
+            : m
+        )
+      );
+
+      try {
+        await telegramApi.editMessage(chat.id, editMsgId, newText);
+        onMessageSent();
+      } catch (err: any) {
+        alert(`فشل تعديل الرسالة: ${err.message || 'خطأ'}`);
+        try {
+          const msgs = await telegramApi.getMessages(chat.id, 50);
+          setMessages([...msgs].reverse());
+        } catch (_) {}
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
 
     const replyToId = replyingTo?.id;
     setReplyingTo(null);
@@ -641,12 +720,17 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
                       isOut ? 'text-slate-300 justify-end' : 'text-slate-400 justify-start'
                     }`}
                   >
+                    {msg.editDate && (
+                      <span className="text-[9px] text-slate-300/80 mr-0.5 font-sans select-none">
+                        معدلة
+                      </span>
+                    )}
                     <span>{formatMsgTime(msg.date)}</span>
                     {isOut && <CheckCheck className="w-3.5 h-3.5 text-[#54a9eb]" />}
                   </div>
                 </div>
 
-                {/* Message Hover Actions (Reply & Reaction) */}
+                {/* Message Hover Actions (Reply, Reaction, Edit, Delete) */}
                 <div
                   className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 self-center shrink-0 pb-1`}
                 >
@@ -662,13 +746,42 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
                   >
                     <Smile className="w-3.5 h-3.5" />
                   </button>
+
                   <button
                     type="button"
-                    onClick={() => setReplyingTo(msg)}
+                    onClick={() => {
+                      setReplyingTo(msg);
+                      setEditingMessage(null);
+                    }}
                     className="p-1.5 rounded-full bg-[#1e2c3a] hover:bg-[#2b5278] text-slate-400 hover:text-white border border-[#2c3e50] shadow cursor-pointer transition-transform hover:scale-110"
                     title="رد على الرسالة"
                   >
                     <Reply className="w-3.5 h-3.5 -scale-x-100" />
+                  </button>
+
+                  {/* Edit Button (Only for own messages with text) */}
+                  {isOut && msg.text && (
+                    <button
+                      type="button"
+                      onClick={() => handleStartEdit(msg)}
+                      className="p-1.5 rounded-full bg-[#1e2c3a] hover:bg-[#2b5278] text-slate-400 hover:text-amber-400 border border-[#2c3e50] shadow cursor-pointer transition-transform hover:scale-110"
+                      title="تعديل الرسالة"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+
+                  {/* Delete Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMessageToDelete(msg);
+                      setDeleteRevoke(true);
+                    }}
+                    className="p-1.5 rounded-full bg-[#1e2c3a] hover:bg-rose-900/50 text-slate-400 hover:text-rose-300 border border-[#2c3e50] shadow cursor-pointer transition-transform hover:scale-110"
+                    title="حذف الرسالة"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -718,6 +831,33 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
             onClick={() => setReplyingTo(null)}
             className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
             title="إلغاء الرد"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Edit Preview Tray (if editing a message) */}
+      {editingMessage && (
+        <div className="bg-[#1e2c3a] border-t border-[#2c3e50] px-4 py-2 flex items-center justify-between gap-3 z-10 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-1 h-9 bg-amber-400 rounded-full shrink-0" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400">
+                <Pencil className="w-3.5 h-3.5" />
+                <span>تعديل الرسالة</span>
+              </div>
+              <p className="text-[11px] text-slate-300 truncate max-w-[260px] md:max-w-md">
+                {editingMessage.text}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleCancelEdit}
+            className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+            title="إلغاء التعديل"
           >
             <X className="w-4 h-4" />
           </button>
@@ -803,29 +943,56 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
         ) : (
           /* Standard Input Bar with File Upload & Mic */
           <form onSubmit={handleSendMessage} className="flex items-center gap-2 max-w-4xl mx-auto">
-            {/* Attachment Button */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={sending}
-              title="إرفاق صورة أو ملف أو فيديو"
-              className="p-2.5 text-slate-400 hover:text-[#54a9eb] hover:bg-[#242f3d] rounded-full transition-colors cursor-pointer shrink-0 disabled:opacity-40"
-            >
-              <Paperclip className="w-5 h-5" />
-            </button>
+            {/* Attachment Button (Disabled during edit) */}
+            {!editingMessage && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={sending}
+                title="إرفاق صورة أو ملف أو فيديو"
+                className="p-2.5 text-slate-400 hover:text-[#54a9eb] hover:bg-[#242f3d] rounded-full transition-colors cursor-pointer shrink-0 disabled:opacity-40"
+              >
+                <Paperclip className="w-5 h-5" />
+              </button>
+            )}
 
             {/* Text / Caption Input */}
             <input
+              ref={textInputRef}
               type="text"
-              placeholder={pendingFile ? 'أضف تعليقاً على المرفق (اختياري)...' : 'اكتب رسالة...'}
+              placeholder={
+                editingMessage
+                  ? 'تعديل نص الرسالة...'
+                  : pendingFile
+                  ? 'أضف تعليقاً على المرفق (اختياري)...'
+                  : 'اكتب رسالة...'
+              }
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               disabled={sending}
-              className="flex-1 bg-[#242f3d] border border-transparent focus:border-[#54a9eb] rounded-2xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-400 focus:outline-none transition-all"
+              className={`flex-1 bg-[#242f3d] border rounded-2xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-400 focus:outline-none transition-all ${
+                editingMessage
+                  ? 'border-amber-400/50 focus:border-amber-400'
+                  : 'border-transparent focus:border-[#54a9eb]'
+              }`}
             />
 
-            {/* Mic Button (Voice Note) */}
-            {!inputText.trim() && !pendingFile ? (
+            {/* Editing Save Button */}
+            {editingMessage ? (
+              <button
+                type="submit"
+                disabled={sending || !inputText.trim()}
+                title="حفظ التعديل"
+                className="w-10 h-10 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold flex items-center justify-center transition-all disabled:opacity-40 shadow cursor-pointer shrink-0"
+              >
+                {sending ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                ) : (
+                  <Check className="w-4 h-4 text-slate-950 stroke-[3]" />
+                )}
+              </button>
+            ) : !inputText.trim() && !pendingFile ? (
+              /* Mic Button (Voice Note) */
               <button
                 type="button"
                 onClick={startRecording}
@@ -853,6 +1020,74 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
           </form>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {messageToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-[#1e2c3a] border border-[#2c3e50] rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4">
+            <div className="flex items-center gap-2.5 text-rose-400">
+              <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-semibold text-white">حذف الرسالة</h3>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              هل أنت متأكد من رغبتك في حذف هذه الرسالة من المحادثة؟
+            </p>
+
+            {/* Message snippet preview */}
+            <div className="p-2.5 rounded-xl bg-black/30 border border-white/5 text-xs text-slate-300 truncate max-w-full">
+              {messageToDelete.text ||
+                (messageToDelete.mediaType === 'photo'
+                  ? '📷 صورة'
+                  : messageToDelete.mediaType === 'voice'
+                  ? '🎤 تسجيل صوتي'
+                  : messageToDelete.mediaType === 'video'
+                  ? '🎬 فيديو'
+                  : messageToDelete.mediaType === 'document'
+                  ? '📄 مستند'
+                  : 'مرفق وسائط')}
+            </div>
+
+            {/* Revoke options: Delete for everyone vs For me only */}
+            {messageToDelete.out && (
+              <label className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#17212b] border border-white/5 cursor-pointer hover:border-white/10 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={deleteRevoke}
+                  onChange={(e) => setDeleteRevoke(e.target.checked)}
+                  className="w-4 h-4 accent-[#54a9eb] rounded cursor-pointer"
+                />
+                <span className="text-xs text-slate-200">
+                  الحذف لدى الجميع ({chat?.title || chat?.name || 'الطرف الآخر'})
+                </span>
+              </label>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => setMessageToDelete(null)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="px-4 py-2 rounded-xl text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white flex items-center gap-1.5 shadow transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>حذف</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

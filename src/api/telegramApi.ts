@@ -206,6 +206,48 @@ export const telegramApi = {
     return data;
   },
 
+  async editMessage(
+    peerId: string,
+    messageId: number,
+    text: string
+  ): Promise<{ id: number; text: string; date: number; editDate: number }> {
+    const res = await fetch('/api/telegram/edit-message', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({
+        peerId,
+        messageId,
+        text,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل تعديل الرسالة');
+    }
+    return data.message;
+  },
+
+  async deleteMessages(
+    peerId: string,
+    messageIds: number[],
+    revoke = true
+  ): Promise<{ success: boolean; deletedIds: number[]; revoke: boolean }> {
+    const res = await fetch('/api/telegram/delete-messages', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({
+        peerId,
+        messageIds,
+        revoke,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل حذف الرسائل');
+    }
+    return data;
+  },
+
   getMediaUrl(peerId: string, messageId: number, download = false): string {
     const session = this.getSession() || '';
     const params = new URLSearchParams();

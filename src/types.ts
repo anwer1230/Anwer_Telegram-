@@ -60,6 +60,7 @@ export interface TelegramMessage {
   mediaInfo?: TelegramMessageMediaInfo | null;
   replyToMsgId?: number | null;
   reactions?: TelegramReaction[];
+  editDate?: number | null;
   views: number | null;
   forwards: number | null;
 }

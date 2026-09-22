@@ -15,6 +15,8 @@ import {
   sendTelegramMessage,
   sendTelegramFile,
   sendTelegramReaction,
+  editTelegramMessage,
+  deleteTelegramMessages,
   logoutTelegramSession,
   getTelegramMe,
 } from './server/telegramClient.js';
@@ -334,6 +336,68 @@ async function startServer() {
       res.status(500).json({
         success: false,
         error: err.errorMessage || err.message || 'فشل إرسال التفاعل',
+      });
+    }
+  });
+
+  // Edit Message Text
+  app.post('/api/telegram/edit-message', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, messageId, text } = req.body;
+      if (!peerId || !messageId || typeof text !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: 'المعرف ورقم الرسالة والنص الجديد مطلوبة للتعديل',
+        });
+      }
+
+      const result = await editTelegramMessage(
+        sessionString,
+        peerId,
+        Number(messageId),
+        text
+      );
+      res.json({ success: true, message: result });
+    } catch (err: any) {
+      console.error('Error editing message:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل تعديل الرسالة',
+      });
+    }
+  });
+
+  // Delete Messages (For everyone or for current user)
+  app.post('/api/telegram/delete-messages', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, messageIds, revoke } = req.body;
+      if (!peerId || !Array.isArray(messageIds) || messageIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'المعرف وأرقام الرسائل مطلوبة للحذف',
+        });
+      }
+
+      const result = await deleteTelegramMessages(
+        sessionString,
+        peerId,
+        messageIds.map((id) => Number(id)),
+        revoke !== false
+      );
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error deleting messages:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل حذف الرسائل في تليجرام',
       });
     }
   });
