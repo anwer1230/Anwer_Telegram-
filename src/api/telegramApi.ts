@@ -266,4 +266,59 @@ export const telegramApi = {
     } catch (_) {}
     this.clearSession();
   },
+
+  /**
+   * Subscribe to real-time live Telegram events via SSE (NewMessage, EditMessage, DeleteMessages)
+   */
+  subscribeToEvents(handlers: {
+    onNewMessage?: (data: { chatId: string; message: TelegramMessage }) => void;
+    onEditMessage?: (data: { chatId: string; message: TelegramMessage }) => void;
+    onDeleteMessages?: (data: { channelId?: string; messageIds: number[] }) => void;
+  }): () => void {
+    const session = this.getSession();
+    if (!session) return () => {};
+
+    const url = `/api/telegram/events?session=${encodeURIComponent(session)}`;
+    let eventSource: EventSource | null = new EventSource(url);
+
+    if (handlers.onNewMessage) {
+      eventSource.addEventListener('new_message', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          handlers.onNewMessage!(data);
+        } catch (err) {
+          console.error('Error parsing new_message event:', err);
+        }
+      });
+    }
+
+    if (handlers.onEditMessage) {
+      eventSource.addEventListener('edit_message', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          handlers.onEditMessage!(data);
+        } catch (err) {
+          console.error('Error parsing edit_message event:', err);
+        }
+      });
+    }
+
+    if (handlers.onDeleteMessages) {
+      eventSource.addEventListener('delete_messages', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          handlers.onDeleteMessages!(data);
+        } catch (err) {
+          console.error('Error parsing delete_messages event:', err);
+        }
+      });
+    }
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+    };
+  },
 };

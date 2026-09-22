@@ -84,21 +84,68 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
 
     fetchMessages();
 
-    // Auto-refresh chat messages every 6 seconds for live sync
-    const interval = setInterval(async () => {
+    // 1. Instant Real-time Live Events Subscription via SSE (NewMessage, Edit, Delete)
+    const unsubscribeEvents = telegramApi.subscribeToEvents({
+      onNewMessage: (data) => {
+        // Match chatId: data.chatId could be "12345", chat.id could be "12345" or "-10012345"
+        const cleanDataChatId = data.chatId.replace(/^-100/, '').replace(/^-/, '');
+        const cleanCurrentChatId = chat.id.replace(/^-100/, '').replace(/^-/, '');
+        const isMatch = data.chatId === chat.id || cleanDataChatId === cleanCurrentChatId;
+
+        if (isMatch && isMounted) {
+          setMessages((prev) => {
+            // Idempotency: avoid adding duplicate messages if already present
+            if (prev.some((m) => m.id === data.message.id)) {
+              return prev.map((m) => (m.id === data.message.id ? data.message : m));
+            }
+            return [...prev, data.message];
+          });
+          onMessageSent();
+        }
+      },
+      onEditMessage: (data) => {
+        const cleanDataChatId = data.chatId.replace(/^-100/, '').replace(/^-/, '');
+        const cleanCurrentChatId = chat.id.replace(/^-100/, '').replace(/^-/, '');
+        const isMatch = data.chatId === chat.id || cleanDataChatId === cleanCurrentChatId;
+
+        if (isMatch && isMounted) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === data.message.id
+                ? {
+                    ...m,
+                    text: data.message.text,
+                    editDate: data.message.editDate || Math.floor(Date.now() / 1000),
+                    reactions: data.message.reactions || m.reactions,
+                  }
+                : m
+            )
+          );
+        }
+      },
+      onDeleteMessages: (data) => {
+        if (!isMounted) return;
+        const targetIds = new Set(data.messageIds);
+        setMessages((prev) => prev.filter((m) => !targetIds.has(m.id)));
+      },
+    });
+
+    // 2. Gentle background fallback sync every 30 seconds
+    const fallbackInterval = setInterval(async () => {
       try {
         const msgs = await telegramApi.getMessages(chat.id, 50);
         if (isMounted) {
           setMessages([...msgs].reverse());
         }
       } catch (_) {}
-    }, 6000);
+    }, 30000);
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      unsubscribeEvents();
+      clearInterval(fallbackInterval);
     };
-  }, [chat?.id]);
+  }, [chat?.id, onMessageSent]);
 
   // Scroll to bottom on new messages
   useEffect(() => {

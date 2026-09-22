@@ -19,6 +19,7 @@ import {
   deleteTelegramMessages,
   logoutTelegramSession,
   getTelegramMe,
+  subscribeToTelegramEvents,
 } from './server/telegramClient.js';
 
 async function startServer() {
@@ -413,6 +414,62 @@ async function startServer() {
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
+  });
+
+  // Real-time Telegram Live Events Stream (Server-Sent Events: SSE)
+  // Powered by client.addEventHandler(handler, new NewMessage({}))
+  app.get('/api/telegram/events', async (req, res) => {
+    const sessionString =
+      (req.query.session as string) ||
+      (req.headers['x-telegram-session'] as string);
+
+    if (!sessionString) {
+      return res.status(401).json({ success: false, error: 'غير مصرح: يلزم توفير رمز الجلسة' });
+    }
+
+    // Set standard SSE Headers
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+
+    if (res.flushHeaders) {
+      res.flushHeaders();
+    }
+
+    // Send initial connected handshake
+    res.write(`event: connected\ndata: ${JSON.stringify({ status: 'connected', time: Date.now() })}\n\n`);
+
+    let unsubscribe: (() => void) | null = null;
+    let keepAliveTimer: NodeJS.Timeout | null = null;
+
+    try {
+      unsubscribe = await subscribeToTelegramEvents(sessionString, ({ event, payload }) => {
+        try {
+          res.write(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`);
+        } catch (writeErr) {
+          console.error('Error writing SSE event:', writeErr);
+        }
+      });
+
+      // Keepalive heartbeat every 15 seconds to prevent timeout in reverse proxies
+      keepAliveTimer = setInterval(() => {
+        try {
+          res.write(': keepalive\n\n');
+        } catch (_) {}
+      }, 15000);
+    } catch (err: any) {
+      console.error('Failed to initialize Telegram event stream:', err);
+      res.write(`event: error\ndata: ${JSON.stringify({ error: err.message || 'فشل الاتصال بالأحداث الحية' })}\n\n`);
+    }
+
+    req.on('close', () => {
+      if (keepAliveTimer) clearInterval(keepAliveTimer);
+      if (unsubscribe) unsubscribe();
+      res.end();
+    });
   });
 
   // Vite middleware for development

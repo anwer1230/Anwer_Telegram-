@@ -1,6 +1,8 @@
 import { TelegramClient, Api, password as tgPassword } from 'telegram';
 import { StringSession } from 'telegram/sessions/index.js';
 import { CustomFile } from 'telegram/client/uploads.js';
+import { NewMessage, Raw } from 'telegram/events/index.js';
+import { getPeerId } from 'telegram/Utils.js';
 import bigInt from 'big-integer';
 
 // Official Telegram API Credentials provided by user
@@ -15,6 +17,9 @@ interface ActiveSession {
   phoneCodeHash?: string;
   lastActive: number;
   entityCache: Map<string, any>;
+  me?: any;
+  eventListenersAttached?: boolean;
+  eventSubscribers: Set<(data: { event: string; payload: any }) => void>;
 }
 
 const activeSessions = new Map<string, ActiveSession>();
@@ -42,6 +47,7 @@ export async function getClientForSession(sessionString: string): Promise<Active
     if (!existing.client.connected) {
       await existing.client.connect();
     }
+    attachTelegramEventHandlers(existing);
     return existing;
   }
 
@@ -58,7 +64,14 @@ export async function getClientForSession(sessionString: string): Promise<Active
     sessionString: cleanKey,
     lastActive: Date.now(),
     entityCache: new Map(),
+    eventSubscribers: new Set(),
   };
+
+  try {
+    sessionObj.me = await client.getMe();
+  } catch (_) {}
+
+  attachTelegramEventHandlers(sessionObj);
 
   activeSessions.set(cleanKey, sessionObj);
   return sessionObj;
@@ -142,13 +155,17 @@ export async function signInWithTelegramCode(phoneNumber: string, code: string, 
     const me = await client.getMe();
 
     // Cache as active session
-    activeSessions.set(sessionString, {
+    const sessionObj: ActiveSession = {
       client,
       sessionString,
       phone: cleanPhone,
       lastActive: Date.now(),
       entityCache: new Map(),
-    });
+      me,
+      eventSubscribers: new Set(),
+    };
+    attachTelegramEventHandlers(sessionObj);
+    activeSessions.set(sessionString, sessionObj);
 
     pendingAuth.delete(cleanPhone);
 
@@ -196,13 +213,17 @@ export async function checkTwoFactorPassword(phoneNumber: string, passwordInput:
   const sessionString = client.session.save() as unknown as string;
   const me = await client.getMe();
 
-  activeSessions.set(sessionString, {
+  const sessionObj: ActiveSession = {
     client,
     sessionString,
     phone: cleanPhone,
     lastActive: Date.now(),
     entityCache: new Map(),
-  });
+    me,
+    eventSubscribers: new Set(),
+  };
+  attachTelegramEventHandlers(sessionObj);
+  activeSessions.set(sessionString, sessionObj);
 
   pendingAuth.delete(cleanPhone);
 
@@ -232,12 +253,16 @@ export async function signInWithBotToken(botToken: string) {
   const sessionString = client.session.save() as unknown as string;
   const me = await client.getMe();
 
-  activeSessions.set(sessionString, {
+  const sessionObj: ActiveSession = {
     client,
     sessionString,
     lastActive: Date.now(),
     entityCache: new Map(),
-  });
+    me,
+    eventSubscribers: new Set(),
+  };
+  attachTelegramEventHandlers(sessionObj);
+  activeSessions.set(sessionString, sessionObj);
 
   return {
     success: true,
@@ -318,6 +343,228 @@ export async function getTelegramDialogs(sessionString: string, limit = 40) {
 }
 
 /**
+ * Format a Telegram message into our standard application model
+ */
+export function formatTelegramMessage(m: any) {
+  let mediaType: string | null = null;
+  let mediaInfo: any = null;
+
+  if (m.media) {
+    const className = m.media.className || m.media.constructor?.name || '';
+    if (className.includes('Photo')) {
+      mediaType = 'photo';
+      mediaInfo = {
+        type: 'photo',
+        mimeType: 'image/jpeg',
+        hasMedia: true,
+      };
+    } else if (className.includes('Document')) {
+      const doc = m.media.document;
+      const mime = doc?.mimeType || 'application/octet-stream';
+      let fileName = 'file';
+      let width = 0;
+      let height = 0;
+      let duration = 0;
+
+      if (doc?.attributes && Array.isArray(doc.attributes)) {
+        for (const attr of doc.attributes) {
+          if (attr.fileName) fileName = attr.fileName;
+          if (attr.w && attr.h) {
+            width = attr.w;
+            height = attr.h;
+          }
+          if (attr.duration) duration = attr.duration;
+        }
+      }
+
+      if (mime.includes('audio') || mime.includes('ogg')) {
+        mediaType = 'voice';
+      } else if (mime.includes('video')) {
+        mediaType = 'video';
+      } else if (mime.includes('image')) {
+        mediaType = 'photo';
+      } else {
+        mediaType = 'document';
+      }
+
+      mediaInfo = {
+        type: mediaType,
+        mimeType: mime,
+        fileName,
+        size: doc?.size ? Number(doc.size) : undefined,
+        width: width || undefined,
+        height: height || undefined,
+        duration: duration || undefined,
+        hasMedia: true,
+      };
+    } else if (className.includes('WebPage')) {
+      mediaType = 'webpage';
+    } else {
+      mediaType = 'media';
+      mediaInfo = { type: 'media', hasMedia: true };
+    }
+  }
+
+  const replyToMsgId = m.replyTo?.replyToMsgId || m.replyToMsgId || null;
+  const reactions =
+    m.reactions?.results
+      ?.map((r: any) => ({
+        emoticon: r.reaction?.emoticon || '',
+        count: r.count || 0,
+        chosen: r.chosenOrder !== undefined && r.chosenOrder !== null,
+      }))
+      .filter((r: any) => !!r.emoticon) || [];
+
+  return {
+    id: m.id,
+    text: m.message || '',
+    date: m.date || 0,
+    out: !!m.out,
+    senderId: m.senderId?.toString?.() || '',
+    mediaType,
+    mediaInfo,
+    replyToMsgId,
+    reactions,
+    editDate: m.editDate || null,
+    views: m.views || null,
+    forwards: m.forwards || null,
+  };
+}
+
+/**
+ * Extract consistent chat/dialog ID for incoming and outgoing messages
+ */
+export function extractChatId(m: any, currentUserId?: string): string {
+  if (m.chatId) {
+    const cid = m.chatId.toString();
+    if (currentUserId && cid === currentUserId && m.senderId) {
+      return m.senderId.toString();
+    }
+    return cid;
+  }
+  if (m.peerId) {
+    const pid = getPeerId(m.peerId).toString();
+    if (currentUserId && pid === currentUserId && m.fromId) {
+      return getPeerId(m.fromId).toString();
+    }
+    return pid;
+  }
+  return '';
+}
+
+/**
+ * Attach real-time Telegram event handlers:
+ * client.addEventHandler(handler, new NewMessage({}))
+ */
+export function attachTelegramEventHandlers(sessionObj: ActiveSession) {
+  if (sessionObj.eventListenersAttached) return;
+  sessionObj.eventListenersAttached = true;
+
+  const client = sessionObj.client;
+
+  // 1. Live New Message Event (client.addEventHandler with new NewMessage({}))
+  client.addEventHandler(async (event: any) => {
+    try {
+      const m = event.message;
+      if (!m) return;
+      const formatted = formatTelegramMessage(m);
+
+      let myId: string | undefined = sessionObj.me?.id?.toString();
+      if (!myId) {
+        try {
+          const me: any = await client.getMe();
+          sessionObj.me = me;
+          myId = me?.id?.toString();
+        } catch (_) {}
+      }
+
+      const chatId = extractChatId(m, myId);
+
+      const payload = {
+        chatId,
+        message: formatted,
+      };
+
+      for (const subscriber of sessionObj.eventSubscribers) {
+        try {
+          subscriber({ event: 'new_message', payload });
+        } catch (err) {
+          console.error('Error dispatching new_message event:', err);
+        }
+      }
+    } catch (err) {
+      console.error('Error in Telegram NewMessage handler:', err);
+    }
+  }, new NewMessage({}));
+
+  // 2. Real-time updates for message editing and message deletion
+  try {
+    client.addEventHandler(async (update: any) => {
+      try {
+        if (
+          update instanceof Api.UpdateEditMessage ||
+          update instanceof Api.UpdateEditChannelMessage
+        ) {
+          const m = update.message;
+          if (m) {
+            const formatted = formatTelegramMessage(m);
+            const myId = sessionObj.me?.id?.toString();
+            const chatId = extractChatId(m, myId);
+            for (const subscriber of sessionObj.eventSubscribers) {
+              try {
+                subscriber({
+                  event: 'edit_message',
+                  payload: { chatId, message: formatted },
+                });
+              } catch (_) {}
+            }
+          }
+        } else if (update instanceof Api.UpdateDeleteMessages) {
+          const ids = update.messages || [];
+          for (const subscriber of sessionObj.eventSubscribers) {
+            try {
+              subscriber({
+                event: 'delete_messages',
+                payload: { messageIds: ids },
+              });
+            } catch (_) {}
+          }
+        } else if (update instanceof Api.UpdateDeleteChannelMessages) {
+          const ids = update.messages || [];
+          const channelId = update.channelId ? `-100${update.channelId}` : undefined;
+          for (const subscriber of sessionObj.eventSubscribers) {
+            try {
+              subscriber({
+                event: 'delete_messages',
+                payload: { channelId, messageIds: ids },
+              });
+            } catch (_) {}
+          }
+        }
+      } catch (_) {}
+    }, new Raw({}));
+  } catch (err) {
+    console.warn('Could not attach Raw handler:', err);
+  }
+}
+
+/**
+ * Subscribe to real-time events for a Telegram session
+ */
+export async function subscribeToTelegramEvents(
+  sessionString: string,
+  subscriber: (data: { event: string; payload: any }) => void
+): Promise<() => void> {
+  const session = await getClientForSession(sessionString);
+  attachTelegramEventHandlers(session);
+  session.eventSubscribers.add(subscriber);
+
+  return () => {
+    session.eventSubscribers.delete(subscriber);
+  };
+}
+
+/**
  * Get messages from a chat / peer
  */
 export async function getTelegramMessages(sessionString: string, peerId: string, limit = 50) {
@@ -342,91 +589,7 @@ export async function getTelegramMessages(sessionString: string, peerId: string,
 
   const messages = await client.getMessages(targetPeer, { limit });
 
-  return messages.map((m: any) => {
-    let mediaType: string | null = null;
-    let mediaInfo: any = null;
-
-    if (m.media) {
-      const className = m.media.className || m.media.constructor?.name || '';
-      if (className.includes('Photo')) {
-        mediaType = 'photo';
-        mediaInfo = {
-          type: 'photo',
-          mimeType: 'image/jpeg',
-          hasMedia: true,
-        };
-      } else if (className.includes('Document')) {
-        const doc = m.media.document;
-        const mime = doc?.mimeType || 'application/octet-stream';
-        let fileName = 'file';
-        let width = 0;
-        let height = 0;
-        let duration = 0;
-
-        if (doc?.attributes && Array.isArray(doc.attributes)) {
-          for (const attr of doc.attributes) {
-            if (attr.fileName) fileName = attr.fileName;
-            if (attr.w && attr.h) {
-              width = attr.w;
-              height = attr.h;
-            }
-            if (attr.duration) duration = attr.duration;
-          }
-        }
-
-        if (mime.includes('audio') || mime.includes('ogg')) {
-          mediaType = 'voice';
-        } else if (mime.includes('video')) {
-          mediaType = 'video';
-        } else if (mime.includes('image')) {
-          mediaType = 'photo';
-        } else {
-          mediaType = 'document';
-        }
-
-        mediaInfo = {
-          type: mediaType,
-          mimeType: mime,
-          fileName,
-          size: doc?.size ? Number(doc.size) : undefined,
-          width: width || undefined,
-          height: height || undefined,
-          duration: duration || undefined,
-          hasMedia: true,
-        };
-      } else if (className.includes('WebPage')) {
-        mediaType = 'webpage';
-      } else {
-        mediaType = 'media';
-        mediaInfo = { type: 'media', hasMedia: true };
-      }
-    }
-
-    const replyToMsgId = m.replyTo?.replyToMsgId || m.replyToMsgId || null;
-    const reactions =
-      m.reactions?.results
-        ?.map((r: any) => ({
-          emoticon: r.reaction?.emoticon || '',
-          count: r.count || 0,
-          chosen: r.chosenOrder !== undefined && r.chosenOrder !== null,
-        }))
-        .filter((r: any) => !!r.emoticon) || [];
-
-    return {
-      id: m.id,
-      text: m.message || '',
-      date: m.date || 0,
-      out: !!m.out,
-      senderId: m.senderId?.toString?.() || '',
-      mediaType,
-      mediaInfo,
-      replyToMsgId,
-      reactions,
-      editDate: m.editDate || null,
-      views: m.views || null,
-      forwards: m.forwards || null,
-    };
-  });
+  return messages.map((m: any) => formatTelegramMessage(m));
 }
 
 /**

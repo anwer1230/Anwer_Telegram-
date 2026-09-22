@@ -70,14 +70,60 @@ export default function App() {
     checkAuthAndInit();
   }, [checkAuthAndInit]);
 
-  // Periodic Cloud Sync every 15 seconds
+  // Periodic Cloud Sync every 45 seconds as a fallback
   useEffect(() => {
     if (!isAuth) return;
     const syncInterval = setInterval(() => {
       loadDialogs(true);
-    }, 15000);
+    }, 45000);
     return () => clearInterval(syncInterval);
   }, [isAuth, loadDialogs]);
+
+  // Real-time live events subscription for instant dialogs list updates
+  useEffect(() => {
+    if (!isAuth) return;
+
+    const unsubscribe = telegramApi.subscribeToEvents({
+      onNewMessage: (data) => {
+        setDialogs((prev) => {
+          const cleanDataChatId = data.chatId.replace(/^-100/, '').replace(/^-/, '');
+          const matchIdx = prev.findIndex((d) => {
+            const cleanDId = d.id.replace(/^-100/, '').replace(/^-/, '');
+            return d.id === data.chatId || cleanDId === cleanDataChatId;
+          });
+
+          if (matchIdx !== -1) {
+            const existing = prev[matchIdx];
+            const updatedDialog: TelegramDialog = {
+              ...existing,
+              lastMessage: {
+                text: data.message.text || (data.message.mediaType ? 'مرفق وسائط' : ''),
+                date: data.message.date,
+                out: data.message.out,
+                senderId: data.message.senderId,
+              },
+              date: data.message.date,
+              unreadCount:
+                !data.message.out && selectedChat?.id !== existing.id
+                  ? (existing.unreadCount || 0) + 1
+                  : existing.unreadCount,
+            };
+            const copy = [...prev];
+            copy.splice(matchIdx, 1);
+            return [updatedDialog, ...copy];
+          }
+
+          // If conversation isn't in current list, load dialogs to include it
+          loadDialogs(true);
+          return prev;
+        });
+      },
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [isAuth, selectedChat?.id, loadDialogs]);
 
   // Handle Authentication Success
   const handleAuthSuccess = async () => {
