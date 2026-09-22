@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, Phone, Lock, KeyRound, CheckCircle2, AlertCircle, ArrowLeft, Shield, Terminal, Bot } from 'lucide-react';
+import { Send, Phone, Lock, KeyRound, CheckCircle2, AlertCircle, ArrowLeft, Terminal, Bot } from 'lucide-react';
 import { AuthMode, AuthState } from '../types';
 import { telegramApi } from '../api/telegramApi';
 
@@ -166,24 +166,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
           <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xs">
             اتصال حقيقي ومباشر بسحابة تليجرام الرسمية عبر بروتوكول MTProto v2.0
           </p>
-        </div>
-
-        {/* API ID & Hash Transparency Notice */}
-        <div className="mb-6 p-3 bg-[#1e2c3a]/70 border border-[#2c3e50] rounded-xl text-[11px] text-slate-300">
-          <div className="flex items-center gap-1.5 text-[#54a9eb] font-semibold mb-1">
-            <Shield className="w-3.5 h-3.5" />
-            <span>بيانات الاعتماد الرسمية المعتمدة (MTProto Official)</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-slate-400 font-mono text-[10px] mt-1.5">
-            <div className="bg-[#17212b] p-1.5 rounded border border-slate-700/50">
-              <span className="text-slate-500 block">API_ID:</span>
-              <span className="text-white font-bold">22043994</span>
-            </div>
-            <div className="bg-[#17212b] p-1.5 rounded border border-slate-700/50">
-              <span className="text-slate-500 block">API_HASH:</span>
-              <span className="text-white font-bold truncate block">56f64582b36...</span>
-            </div>
-          </div>
         </div>
 
         {/* Mode Switcher Tabs */}
