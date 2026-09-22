@@ -1,155 +1,171 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
+import React, { useState, useEffect, useCallback } from 'react';
+import { Header } from './components/Header';
+import { AuthView } from './components/AuthView';
+import { ChatList } from './components/ChatList';
+import { ChatView } from './components/ChatView';
+import { OfficialInfoModal } from './components/OfficialInfoModal';
+import { TelegramDialog, TelegramServerStatus, TelegramUser } from './types';
+import { telegramApi } from './api/telegramApi';
 
-import React from 'react';
-import { TelegramProvider, useTelegram } from './context/TelegramContext';
-import { GlobalErrorBoundary } from './components/Common/GlobalErrorBoundary';
-import { Sidebar } from './components/Sidebar/Sidebar';
-import { ChatView } from './components/Chat/ChatView';
-import { ChatInfoPanel } from './components/RightPanel/ChatInfoPanel';
-import { NavigationDrawer } from './components/Sidebar/NavigationDrawer';
-import { ApiConfigModal } from './components/Modals/ApiConfigModal';
-import { SettingsModal } from './components/Modals/SettingsModal';
-import { CallModal } from './components/Modals/CallModal';
-import { MediaViewerModal } from './components/Modals/MediaViewerModal';
-import { NewChatModal } from './components/Modals/NewChatModal';
-import { AddAccountModal } from './components/Modals/AddAccountModal';
-import { JoinInviteModal } from './components/Modals/JoinInviteModal';
-import { ApkInstallerModal } from './components/Modals/ApkInstallerModal';
-import { MiniAppsModal } from './components/Modals/MiniAppsModal';
-import { ThemeEditorModal } from './components/Modals/ThemeEditorModal';
-import { ExportChatModal } from './components/Modals/ExportChatModal';
-import { ContactsModal } from './components/Modals/ContactsModal';
-import { LinkMonitorModal } from './components/Modals/LinkMonitorModal';
-import { SendOnlyModal } from './components/Modals/SendOnlyModal';
-import { PremiumModal } from './components/Modals/PremiumModal';
-import { SecretChatInfoModal } from './components/Modals/SecretChatInfoModal';
-import { GroupAdminModal } from './components/Modals/GroupAdminModal';
-import { ForumTopicsModal } from './components/Modals/ForumTopicsModal';
-import { SenderModal } from './components/Modals/SenderModal';
-import { MonitorModal } from './components/Modals/MonitorModal';
-import { MyMessagesModal } from './components/Modals/MyMessagesModal';
-import { AutoJoinerModal } from './components/Modals/AutoJoinerModal';
-import { AutoResponderModal } from './components/Modals/AutoResponderModal';
-import { SmartAiLearnModal } from './components/Modals/SmartAiLearnModal';
-import { LiveLinkDiscoverModal } from './components/Modals/LiveLinkDiscoverModal';
-import { UserProfileModal } from './components/Modals/UserProfileModal';
-import { UrlConfirmModal } from './components/Modals/UrlConfirmModal';
-import { ForwardModal } from './components/Interactions/ForwardModal';
-import { ChatContextMenuView } from './components/Interactions/ChatContextMenu';
-import { MessageContextMenuView } from './components/Interactions/MessageContextMenu';
-import { ToastContainer } from './components/Interactions/ToastContainer';
-import { InAppNotificationBanner } from './components/Notifications/InAppNotificationBanner';
-import { TelegramAuthScreen } from './components/Auth/TelegramAuthScreen';
-import { useMobileNavigation } from './hooks/useMobileNavigation';
+export default function App() {
+  const [status, setStatus] = useState<TelegramServerStatus | null>(null);
+  const [user, setUser] = useState<TelegramUser | null>(null);
+  const [dialogs, setDialogs] = useState<TelegramDialog[]>([]);
+  const [selectedChat, setSelectedChat] = useState<TelegramDialog | null>(null);
+  const [isAuth, setIsAuth] = useState<boolean>(false);
+  const [loadingInitial, setLoadingInitial] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState<boolean>(false);
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
 
-const TelegramAppContent: React.FC = () => {
-  const { isAuthenticated, inAppNotifications, dismissNotification, activeModal, setActiveModal } = useTelegram();
+  // Load Dialogs from Telegram Cloud
+  const loadDialogs = useCallback(async (quiet = false) => {
+    if (!quiet) setIsRefreshing(true);
+    try {
+      const chatList = await telegramApi.getDialogs(50);
+      setDialogs(chatList);
+      // Update selected chat reference if active
+      if (selectedChat) {
+        const updated = chatList.find((d) => d.id === selectedChat.id);
+        if (updated) setSelectedChat(updated);
+      }
+    } catch (err) {
+      console.error('Failed to load dialogs from Telegram:', err);
+    } finally {
+      if (!quiet) setIsRefreshing(false);
+    }
+  }, [selectedChat]);
 
-  // Activate mobile hardware back button, touch navigation & popstate stack
-  useMobileNavigation();
+  // Initial Check
+  const checkAuthAndInit = useCallback(async () => {
+    setLoadingInitial(true);
+    try {
+      const serverStatus = await telegramApi.getStatus();
+      setStatus(serverStatus);
 
-  if (!isAuthenticated) {
+      const hasSession = !!telegramApi.getSession();
+      if (hasSession) {
+        try {
+          const currentUser = await telegramApi.getMe();
+          setUser(currentUser);
+          setIsAuth(true);
+          await loadDialogs(true);
+        } catch (err) {
+          console.warn('Session expired or unauthorized:', err);
+          telegramApi.clearSession();
+          setIsAuth(false);
+          setUser(null);
+        }
+      } else {
+        setIsAuth(false);
+      }
+    } catch (err) {
+      console.error('Failed to get status:', err);
+    } finally {
+      setLoadingInitial(false);
+    }
+  }, [loadDialogs]);
+
+  useEffect(() => {
+    checkAuthAndInit();
+  }, [checkAuthAndInit]);
+
+  // Periodic Cloud Sync every 15 seconds
+  useEffect(() => {
+    if (!isAuth) return;
+    const syncInterval = setInterval(() => {
+      loadDialogs(true);
+    }, 15000);
+    return () => clearInterval(syncInterval);
+  }, [isAuth, loadDialogs]);
+
+  // Handle Authentication Success
+  const handleAuthSuccess = async () => {
+    setLoadingInitial(true);
+    try {
+      const currentUser = await telegramApi.getMe();
+      setUser(currentUser);
+      setIsAuth(true);
+      await loadDialogs();
+    } catch (err) {
+      console.error('Post-auth fetch failed:', err);
+    } finally {
+      setLoadingInitial(false);
+    }
+  };
+
+  // Handle Logout
+  const handleLogout = async () => {
+    if (window.confirm('هل أنت متأكد من تسجيل الخروج من جلسة تليجرام؟')) {
+      await telegramApi.logout();
+      setIsAuth(false);
+      setUser(null);
+      setDialogs([]);
+      setSelectedChat(null);
+    }
+  };
+
+  // Handle selecting chat
+  const handleSelectChat = (dialog: TelegramDialog) => {
+    setSelectedChat(dialog);
+    setMobileView('chat');
+  };
+
+  if (loadingInitial) {
     return (
-      <div id="tg-auth-wrapper" className="w-screen h-screen min-h-screen bg-[#0e1621] text-white overflow-hidden relative select-none">
-        <TelegramAuthScreen />
-        <ToastContainer />
+      <div className="h-screen w-screen bg-[#0e1621] flex flex-col items-center justify-center text-white select-none">
+        <div className="w-12 h-12 border-3 border-[#54a9eb] border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-sm font-medium text-slate-300">جاري الاتصال بسحابة تليجرام الرسمية...</p>
+        <span className="text-xs text-slate-500 mt-1 font-mono">MTProto API: 22043994</span>
       </div>
     );
   }
 
   return (
-    <div
-      id="tg-app-root"
-      className="fixed inset-0 w-full h-full h-[100dvh] flex overflow-hidden font-sans select-none"
-      style={{
-        backgroundColor: 'var(--tg-theme-bg)',
-      }}
-    >
-      {/* Left Sidebar (Chats, Folders, Search) */}
-      <Sidebar />
-
-      {/* Center Chat Feed / Message View */}
-      <ChatView />
-
-      {/* Right Shared Media & Details Info Panel */}
-      <ChatInfoPanel />
-
-      {/* Drawer Slide-out Menu */}
-      <NavigationDrawer />
-
-      {/* Dialogs & Overlays */}
-      <ApiConfigModal />
-      <SettingsModal />
-      <CallModal />
-      <MediaViewerModal />
-      <NewChatModal />
-      <AddAccountModal />
-      <JoinInviteModal />
-      <ApkInstallerModal />
-      <MiniAppsModal
-        isOpen={activeModal === 'mini-apps'}
-        onClose={() => setActiveModal('none')}
-      />
-      <ThemeEditorModal
-        isOpen={activeModal === 'theme-editor'}
-        onClose={() => setActiveModal('none')}
-      />
-      <ExportChatModal
-        isOpen={activeModal === 'export-chat'}
-        onClose={() => setActiveModal('none')}
-      />
-      <ContactsModal
-        isOpen={activeModal === 'contacts'}
-        onClose={() => setActiveModal('none')}
-      />
-      <LinkMonitorModal
-        isOpen={activeModal === 'link-monitor'}
-        onClose={() => setActiveModal('none')}
-      />
-      <SendOnlyModal />
-      <PremiumModal />
-      <SecretChatInfoModal />
-      <GroupAdminModal />
-      <ForumTopicsModal />
-      
-      {/* 7 Core Telegram Functions (Activities) */}
-      <SenderModal />
-      <MonitorModal />
-      <MyMessagesModal />
-      <AutoJoinerModal />
-      <AutoResponderModal />
-      <SmartAiLearnModal />
-      <LiveLinkDiscoverModal />
-      <UserProfileModal />
-      <UrlConfirmModal />
-
-      <ForwardModal />
-
-      {/* Dynamic Context Menus */}
-      <ChatContextMenuView />
-      <MessageContextMenuView />
-
-      {/* In-App Floating Heads-up Notification Banner */}
-      <InAppNotificationBanner
-        notifications={inAppNotifications}
-        onDismiss={dismissNotification}
+    <div className="h-screen w-screen flex flex-col bg-[#0e1621] text-slate-100 overflow-hidden font-['Tajawal','Plus_Jakarta_Sans',system-ui,sans-serif]" dir="rtl">
+      {/* Top Header */}
+      <Header
+        status={status}
+        user={user}
+        onOpenInfo={() => setIsInfoModalOpen(true)}
+        onLogout={handleLogout}
+        onRefresh={() => loadDialogs(false)}
+        isRefreshing={isRefreshing}
       />
 
-      {/* Floating Toast Notifications */}
-      <ToastContainer />
+      {/* Main Container */}
+      {!isAuth ? (
+        <AuthView onAuthSuccess={handleAuthSuccess} />
+      ) : (
+        <div className="flex-1 flex overflow-hidden">
+          {/* Chat List Column (hidden on mobile if in chat view) */}
+          <div className={`${mobileView === 'chat' ? 'hidden md:flex' : 'flex'} w-full md:w-auto h-full`}>
+            <ChatList
+              dialogs={dialogs}
+              selectedChatId={selectedChat?.id || null}
+              onSelectChat={handleSelectChat}
+              isLoading={isRefreshing}
+            />
+          </div>
+
+          {/* Chat Conversation Column (hidden on mobile if in list view) */}
+          <div className={`${mobileView === 'list' ? 'hidden md:flex' : 'flex'} flex-1 h-full`}>
+            <ChatView
+              chat={selectedChat}
+              onBackMobile={() => setMobileView('list')}
+              onMessageSent={() => loadDialogs(true)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Official MTProto Information Modal */}
+      <OfficialInfoModal
+        isOpen={isInfoModalOpen}
+        onClose={() => setIsInfoModalOpen(false)}
+        status={status}
+        user={user}
+      />
     </div>
-  );
-};
-
-export default function App() {
-  return (
-    <GlobalErrorBoundary>
-      <TelegramProvider>
-        <TelegramAppContent />
-      </TelegramProvider>
-    </GlobalErrorBoundary>
   );
 }

@@ -1,6 +1,6 @@
 {
-  "name": "Telegram (DrKLO Official Build)",
-  "description": "Telegram Official DrKLO Release Build - Telegram_Anwer",
-  "requestFramePermissions": ["microphone", "camera"],
+  "name": "Telegram Web",
+  "description": "تطبيق تليجرام رسمي وحقيقي مرتبط بسحابة تليجرام الرسمية ومزامنة الرسائل والمحادثات عبر MTProto",
+  "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
