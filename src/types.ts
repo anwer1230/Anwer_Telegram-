@@ -44,6 +44,12 @@ export interface TelegramMessageMediaInfo {
   hasMedia: boolean;
 }
 
+export interface TelegramReaction {
+  emoticon: string;
+  count: number;
+  chosen?: boolean;
+}
+
 export interface TelegramMessage {
   id: number;
   text: string;
@@ -52,6 +58,8 @@ export interface TelegramMessage {
   senderId: string;
   mediaType: string | null;
   mediaInfo?: TelegramMessageMediaInfo | null;
+  replyToMsgId?: number | null;
+  reactions?: TelegramReaction[];
   views: number | null;
   forwards: number | null;
 }

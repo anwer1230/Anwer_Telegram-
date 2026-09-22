@@ -12,6 +12,8 @@ import {
   Trash2,
   Loader2,
   AlertCircle,
+  Reply,
+  Smile,
 } from 'lucide-react';
 import { TelegramDialog, TelegramMessage } from '../types';
 import { telegramApi } from '../api/telegramApi';
@@ -31,12 +33,16 @@ interface PendingAttachment {
   type: string;
 }
 
+const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉', '👏', '😂', '😮', '😢'];
+
 export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessageSent }) => {
   const [messages, setMessages] = useState<TelegramMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [pendingFile, setPendingFile] = useState<PendingAttachment | null>(null);
+  const [replyingTo, setReplyingTo] = useState<TelegramMessage | null>(null);
+  const [activeReactionPickerMsgId, setActiveReactionPickerMsgId] = useState<number | null>(null);
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -132,9 +138,59 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
     setPendingFile(null);
   };
 
+  const handleReaction = async (messageId: number, emoji: string) => {
+    setActiveReactionPickerMsgId(null);
+    const targetMsg = messages.find((m) => m.id === messageId);
+    if (!targetMsg || !chat) return;
+
+    const existingChosen = targetMsg.reactions?.find((r) => r.chosen);
+    const isSameEmoji = existingChosen?.emoticon === emoji;
+    const newEmoji = isSameEmoji ? null : emoji;
+
+    // Optimistic UI update
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== messageId) return m;
+        let nextReactions = [...(m.reactions || [])];
+
+        if (existingChosen) {
+          nextReactions = nextReactions
+            .map((r) =>
+              r.emoticon === existingChosen.emoticon
+                ? { ...r, count: Math.max(0, r.count - 1), chosen: false }
+                : r
+            )
+            .filter((r) => r.count > 0);
+        }
+
+        if (newEmoji) {
+          const found = nextReactions.find((r) => r.emoticon === newEmoji);
+          if (found) {
+            nextReactions = nextReactions.map((r) =>
+              r.emoticon === newEmoji ? { ...r, count: r.count + 1, chosen: true } : r
+            );
+          } else {
+            nextReactions.push({ emoticon: newEmoji, count: 1, chosen: true });
+          }
+        }
+
+        return { ...m, reactions: nextReactions };
+      })
+    );
+
+    try {
+      await telegramApi.sendReaction(chat.id, messageId, newEmoji);
+    } catch (err: any) {
+      console.error('Failed to send reaction to Telegram:', err);
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chat || sending) return;
+
+    const replyToId = replyingTo?.id;
+    setReplyingTo(null);
 
     // 1. Send file attachment if present
     if (pendingFile) {
@@ -158,6 +214,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
           size: fileToSend.size,
           hasMedia: true,
         },
+        replyToMsgId: replyToId,
         views: null,
         forwards: null,
       };
@@ -173,6 +230,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
           fileName: fileToSend.name,
           caption: captionToSend,
           mimeType: fileToSend.type,
+          replyTo: replyToId,
         });
 
         setMessages((prev) =>
@@ -203,6 +261,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
       out: true,
       senderId: 'me',
       mediaType: null,
+      replyToMsgId: replyToId,
       views: null,
       forwards: null,
     };
@@ -210,7 +269,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
     setMessages((prev) => [...prev, optimisticMsg]);
 
     try {
-      const sent = await telegramApi.sendMessage(chat.id, textToSend);
+      const sent = await telegramApi.sendMessage(chat.id, textToSend, replyToId);
       setMessages((prev) =>
         prev.map((m) => (m.id === tempId ? { ...m, id: sent.id, date: sent.date } : m))
       );
@@ -293,6 +352,8 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
     const recorder = mediaRecorderRef.current;
     const tracks = streamRef.current?.getTracks();
 
+    const replyToId = replyingTo?.id;
+    setReplyingTo(null);
     setIsRecording(false);
     setSending(true);
 
@@ -329,6 +390,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
             size: audioBlob.size,
             hasMedia: true,
           },
+          replyToMsgId: replyToId,
           views: null,
           forwards: null,
         };
@@ -340,6 +402,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
           fileName: `voice_${tempId}.ogg`,
           voiceNote: true,
           mimeType: 'audio/ogg',
+          replyTo: replyToId,
         });
 
         setMessages((prev) =>
@@ -461,18 +524,83 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
         ) : (
           messages.map((msg) => {
             const isOut = msg.out;
+            const parentMsg = msg.replyToMsgId
+              ? messages.find((m) => m.id === msg.replyToMsgId)
+              : null;
+
             return (
               <div
                 key={msg.id}
-                className={`flex ${isOut ? 'justify-start' : 'justify-end'}`}
+                id={`msg-${msg.id}`}
+                className={`group flex items-end gap-1.5 transition-all ${
+                  isOut ? 'justify-start flex-row' : 'justify-end flex-row-reverse'
+                }`}
               >
+                {/* Message Bubble */}
                 <div
-                  className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3.5 py-2 shadow-md relative break-words text-sm ${
+                  className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3.5 py-2 shadow-md relative break-words text-sm transition-all ${
                     isOut
                       ? 'bg-[#2b5278] text-white rounded-br-xs'
                       : 'bg-[#182533] text-slate-100 rounded-bl-xs border border-[#242f3d]/60'
                   }`}
                 >
+                  {/* Floating Quick Reaction Picker */}
+                  {activeReactionPickerMsgId === msg.id && (
+                    <div
+                      className={`absolute -top-11 ${
+                        isOut ? 'right-0' : 'left-0'
+                      } bg-[#1e2c3a] border border-[#2c3e50] rounded-full px-2 py-1 shadow-2xl flex items-center gap-1 z-30 animate-in fade-in zoom-in-95`}
+                    >
+                      {QUICK_REACTIONS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => handleReaction(msg.id, emoji)}
+                          className="w-7 h-7 flex items-center justify-center hover:scale-130 rounded-full transition-transform text-base cursor-pointer"
+                          title={`تفاعل بـ ${emoji}`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Quoted Reply Banner */}
+                  {msg.replyToMsgId && (
+                    <div
+                      onClick={() => {
+                        const el = document.getElementById(`msg-${msg.replyToMsgId}`);
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          el.classList.add('ring-2', 'ring-[#54a9eb]');
+                          setTimeout(() => el.classList.remove('ring-2', 'ring-[#54a9eb]'), 1500);
+                        }
+                      }}
+                      className="mb-1.5 px-2.5 py-1 rounded bg-black/25 border-r-2 border-[#54a9eb] text-xs cursor-pointer hover:bg-black/35 transition-colors"
+                    >
+                      <div className="font-semibold text-[11px] text-[#54a9eb] flex items-center gap-1">
+                        <Reply className="w-3 h-3 -scale-x-100" />
+                        <span>
+                          {parentMsg ? (parentMsg.out ? 'أنت' : chatTitle) : `رسالة #${msg.replyToMsgId}`}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 truncate max-w-[240px]">
+                        {parentMsg
+                          ? parentMsg.text ||
+                            (parentMsg.mediaType === 'photo'
+                              ? '📷 صورة'
+                              : parentMsg.mediaType === 'voice'
+                              ? '🎤 تسجيل صوتي'
+                              : parentMsg.mediaType === 'video'
+                              ? '🎬 فيديو'
+                              : parentMsg.mediaType === 'document'
+                              ? '📄 ملف'
+                              : 'مرفق وسائط')
+                          : 'انقر لعرض الرسالة الأصلية'}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Media Content with live preview and download */}
                   {msg.mediaType && (
                     <MediaRenderer message={msg} peerId={chat.id} />
@@ -485,6 +613,28 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
                     </p>
                   )}
 
+                  {/* Emoji Reactions List */}
+                  {msg.reactions && msg.reactions.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5 pt-1 border-t border-white/10">
+                      {msg.reactions.map((r) => (
+                        <button
+                          key={r.emoticon}
+                          type="button"
+                          onClick={() => handleReaction(msg.id, r.emoticon)}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all cursor-pointer select-none ${
+                            r.chosen
+                              ? 'bg-[#54a9eb]/30 border border-[#54a9eb] text-white shadow-sm font-semibold'
+                              : 'bg-black/30 hover:bg-black/50 border border-white/10 text-slate-200'
+                          }`}
+                          title={`تفاعل: ${r.emoticon} (${r.count})`}
+                        >
+                          <span className="text-sm leading-none">{r.emoticon}</span>
+                          <span className="text-[11px] font-mono">{r.count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Time & Sent status */}
                   <div
                     className={`flex items-center gap-1 text-[10px] mt-1 select-none ${
@@ -494,6 +644,32 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
                     <span>{formatMsgTime(msg.date)}</span>
                     {isOut && <CheckCheck className="w-3.5 h-3.5 text-[#54a9eb]" />}
                   </div>
+                </div>
+
+                {/* Message Hover Actions (Reply & Reaction) */}
+                <div
+                  className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 self-center shrink-0 pb-1`}
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveReactionPickerMsgId(
+                        activeReactionPickerMsgId === msg.id ? null : msg.id
+                      )
+                    }
+                    className="p-1.5 rounded-full bg-[#1e2c3a] hover:bg-[#2b5278] text-slate-400 hover:text-white border border-[#2c3e50] shadow cursor-pointer transition-transform hover:scale-110"
+                    title="تفاعل بالرموز التعبيرية"
+                  >
+                    <Smile className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReplyingTo(msg)}
+                    className="p-1.5 rounded-full bg-[#1e2c3a] hover:bg-[#2b5278] text-slate-400 hover:text-white border border-[#2c3e50] shadow cursor-pointer transition-transform hover:scale-110"
+                    title="رد على الرسالة"
+                  >
+                    <Reply className="w-3.5 h-3.5 -scale-x-100" />
+                  </button>
                 </div>
               </div>
             );
@@ -507,6 +683,44 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
         <div className="bg-rose-900/90 border-t border-rose-700/50 px-4 py-2 flex items-center gap-2 text-xs text-rose-200 shrink-0">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{micError}</span>
+        </div>
+      )}
+
+      {/* Reply Preview Tray (if replying to a message) */}
+      {replyingTo && (
+        <div className="bg-[#1e2c3a] border-t border-[#2c3e50] px-4 py-2 flex items-center justify-between gap-3 z-10 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-1 h-9 bg-[#54a9eb] rounded-full shrink-0" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#54a9eb]">
+                <Reply className="w-3.5 h-3.5 -scale-x-100" />
+                <span>
+                  الرد على {replyingTo.out ? 'رسالتك' : (chat.title || chat.name || 'المستخدم')}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 truncate max-w-[260px] md:max-w-md">
+                {replyingTo.text ||
+                  (replyingTo.mediaType === 'photo'
+                    ? '📷 صورة'
+                    : replyingTo.mediaType === 'voice'
+                    ? '🎤 تسجيل صوتي'
+                    : replyingTo.mediaType === 'video'
+                    ? '🎬 فيديو'
+                    : replyingTo.mediaType === 'document'
+                    ? '📄 مستند'
+                    : 'مرفق وسائط')}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setReplyingTo(null)}
+            className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+            title="إلغاء الرد"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 

@@ -402,6 +402,16 @@ export async function getTelegramMessages(sessionString: string, peerId: string,
       }
     }
 
+    const replyToMsgId = m.replyTo?.replyToMsgId || m.replyToMsgId || null;
+    const reactions =
+      m.reactions?.results
+        ?.map((r: any) => ({
+          emoticon: r.reaction?.emoticon || '',
+          count: r.count || 0,
+          chosen: r.chosenOrder !== undefined && r.chosenOrder !== null,
+        }))
+        .filter((r: any) => !!r.emoticon) || [];
+
     return {
       id: m.id,
       text: m.message || '',
@@ -410,6 +420,8 @@ export async function getTelegramMessages(sessionString: string, peerId: string,
       senderId: m.senderId?.toString?.() || '',
       mediaType,
       mediaInfo,
+      replyToMsgId,
+      reactions,
       views: m.views || null,
       forwards: m.forwards || null,
     };
@@ -494,7 +506,12 @@ export async function downloadTelegramMedia(
 /**
  * Send a message to a chat / peer
  */
-export async function sendTelegramMessage(sessionString: string, peerId: string, text: string) {
+export async function sendTelegramMessage(
+  sessionString: string,
+  peerId: string,
+  text: string,
+  replyTo?: number
+) {
   const session = await getClientForSession(sessionString);
   const client = session.client;
 
@@ -509,13 +526,17 @@ export async function sendTelegramMessage(sessionString: string, peerId: string,
     }
   }
 
-  const sentMessage: any = await client.sendMessage(targetPeer, { message: text });
+  const sentMessage: any = await client.sendMessage(targetPeer, {
+    message: text,
+    replyTo: replyTo ? Number(replyTo) : undefined,
+  });
 
   return {
     id: sentMessage.id,
     text: sentMessage.message || text,
     date: sentMessage.date || Math.floor(Date.now() / 1000),
     out: true,
+    replyToMsgId: replyTo ? Number(replyTo) : undefined,
   };
 }
 
@@ -531,6 +552,7 @@ export async function sendTelegramFile(
     caption?: string;
     voiceNote?: boolean;
     mimeType?: string;
+    replyTo?: number;
   }
 ) {
   const session = await getClientForSession(sessionString);
@@ -566,6 +588,7 @@ export async function sendTelegramFile(
     caption: fileData.caption || '',
     voiceNote: isVoice,
     forceDocument: !isVoice && !isImage,
+    replyTo: fileData.replyTo ? Number(fileData.replyTo) : undefined,
   });
 
   return {
@@ -573,6 +596,7 @@ export async function sendTelegramFile(
     text: sentMessage.message || fileData.caption || '',
     date: sentMessage.date || Math.floor(Date.now() / 1000),
     out: true,
+    replyToMsgId: fileData.replyTo ? Number(fileData.replyTo) : undefined,
     mediaType: isVoice ? 'voice' : isImage ? 'photo' : 'document',
     mediaInfo: {
       type: isVoice ? 'voice' : isImage ? 'photo' : 'document',
@@ -582,6 +606,46 @@ export async function sendTelegramFile(
       hasMedia: true,
     },
   };
+}
+
+/**
+ * Send or toggle a reaction (👍, ❤️, 🔥, etc.) on a message
+ */
+export async function sendTelegramReaction(
+  sessionString: string,
+  peerId: string,
+  messageId: number,
+  emoji?: string | null
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetPeer: any = peerId;
+  if (session.entityCache.has(peerId)) {
+    targetPeer = session.entityCache.get(peerId);
+  } else {
+    try {
+      targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+    } catch (_) {
+      try {
+        targetPeer = await client.getEntity(bigInt(peerId));
+      } catch (e) {
+        targetPeer = peerId;
+      }
+    }
+  }
+
+  const reaction = emoji ? [new Api.ReactionEmoji({ emoticon: emoji })] : [];
+
+  await client.invoke(
+    new Api.messages.SendReaction({
+      peer: targetPeer,
+      msgId: Number(messageId),
+      reaction,
+    })
+  );
+
+  return { success: true, messageId, emoji: emoji || null };
 }
 
 /**

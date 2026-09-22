@@ -142,11 +142,15 @@ export const telegramApi = {
     return data.messages;
   },
 
-  async sendMessage(peerId: string, message: string): Promise<{ id: number; text: string; date: number; out: boolean }> {
+  async sendMessage(
+    peerId: string,
+    message: string,
+    replyTo?: number
+  ): Promise<{ id: number; text: string; date: number; out: boolean; replyToMsgId?: number }> {
     const res = await fetch('/api/telegram/send-message', {
       method: 'POST',
       headers: this.getHeaders(),
-      body: JSON.stringify({ peerId, message }),
+      body: JSON.stringify({ peerId, message, replyTo }),
     });
     const data = await res.json();
     if (!res.ok || !data.success) {
@@ -163,6 +167,7 @@ export const telegramApi = {
       caption?: string;
       voiceNote?: boolean;
       mimeType?: string;
+      replyTo?: number;
     }
   ): Promise<any> {
     const res = await fetch('/api/telegram/send-file', {
@@ -178,6 +183,27 @@ export const telegramApi = {
       throw new Error(data.error || 'فشل إرسال الملف إلى تليجرام');
     }
     return data.message;
+  },
+
+  async sendReaction(
+    peerId: string,
+    messageId: number,
+    emoji?: string | null
+  ): Promise<{ success: boolean; messageId: number; emoji?: string | null }> {
+    const res = await fetch('/api/telegram/send-reaction', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({
+        peerId,
+        messageId,
+        emoji,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل إرسال التفاعل');
+    }
+    return data;
   },
 
   getMediaUrl(peerId: string, messageId: number, download = false): string {

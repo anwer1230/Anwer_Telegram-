@@ -14,6 +14,7 @@ import {
   downloadTelegramMedia,
   sendTelegramMessage,
   sendTelegramFile,
+  sendTelegramReaction,
   logoutTelegramSession,
   getTelegramMe,
 } from './server/telegramClient.js';
@@ -253,11 +254,16 @@ async function startServer() {
       if (!sessionString) {
         return res.status(401).json({ success: false, error: 'غير مصرح' });
       }
-      const { peerId, message } = req.body;
+      const { peerId, message, replyTo } = req.body;
       if (!peerId || !message) {
         return res.status(400).json({ success: false, error: 'المعرف والرسالة مطلوبان' });
       }
-      const sent = await sendTelegramMessage(sessionString, peerId, message);
+      const sent = await sendTelegramMessage(
+        sessionString,
+        peerId,
+        message,
+        replyTo ? Number(replyTo) : undefined
+      );
       res.json({ success: true, message: sent });
     } catch (err: any) {
       console.error('Error sending message:', err);
@@ -268,14 +274,14 @@ async function startServer() {
     }
   });
 
-  // Send File, Photo, Document or Voice Note
+  // Send File, Photo, Document or Voice Note (with optional replyTo)
   app.post('/api/telegram/send-file', async (req, res) => {
     try {
       const sessionString = req.headers['x-telegram-session'] as string;
       if (!sessionString) {
         return res.status(401).json({ success: false, error: 'غير مصرح' });
       }
-      const { peerId, fileBase64, fileName, caption, voiceNote, mimeType } = req.body;
+      const { peerId, fileBase64, fileName, caption, voiceNote, mimeType, replyTo } = req.body;
       if (!peerId || !fileBase64) {
         return res.status(400).json({ success: false, error: 'المعرف وملف الوسائط مطلوبان' });
       }
@@ -291,6 +297,7 @@ async function startServer() {
         caption: caption || '',
         voiceNote: !!voiceNote,
         mimeType: mimeType || 'application/octet-stream',
+        replyTo: replyTo ? Number(replyTo) : undefined,
       });
 
       res.json({ success: true, message: sent });
@@ -299,6 +306,34 @@ async function startServer() {
       res.status(500).json({
         success: false,
         error: err.errorMessage || err.message || 'فشل إرسال الملف إلى تليجرام',
+      });
+    }
+  });
+
+  // Send or Toggle Message Reaction
+  app.post('/api/telegram/send-reaction', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, messageId, emoji } = req.body;
+      if (!peerId || !messageId) {
+        return res.status(400).json({ success: false, error: 'المعرف ورقم الرسالة مطلوبان' });
+      }
+
+      const result = await sendTelegramReaction(
+        sessionString,
+        peerId,
+        Number(messageId),
+        emoji
+      );
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error sending reaction:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل إرسال التفاعل',
       });
     }
   });
