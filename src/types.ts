@@ -31,6 +31,9 @@ export interface TelegramDialog {
     senderId: string;
   } | null;
   entity?: {
+    id?: string;
+    firstName?: string;
+    lastName?: string;
     username?: string | null;
     phone?: string | null;
     verified?: boolean;
@@ -151,6 +154,113 @@ export interface TelegramGifItem {
   type: string;
 }
 
+export interface TelegramPollAnswer {
+  text: string;
+  option: string;
+  voters?: number;
+  chosen?: boolean;
+  percentage?: number;
+  percent?: number;
+  correct?: boolean;
+}
+
+export interface TelegramPoll {
+  id?: string;
+  question: string;
+  answers: TelegramPollAnswer[];
+  closed?: boolean;
+  publicVoters?: boolean;
+  multipleChoice?: boolean;
+  quiz?: boolean;
+  totalVoters?: number;
+  solution?: string;
+}
+
+export interface TelegramWebPage {
+  url: string;
+  displayUrl?: string;
+  siteName?: string;
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  photoUrl?: string;
+  hasPhoto?: boolean;
+}
+
+export type WebPagePreview = TelegramWebPage;
+
+export interface TelegramForwardInfo {
+  fromName?: string;
+  fromId?: string;
+  date?: number;
+  postAuthor?: string;
+  channelPost?: number;
+}
+
+export interface TelegramKeyboardButton {
+  text: string;
+  type: 'callback' | 'url' | 'web_app' | 'switch_inline' | 'simple';
+  url?: string;
+  data?: string;
+  webAppUrl?: string;
+}
+
+export interface TelegramReplyMarkup {
+  rows: TelegramKeyboardButton[][];
+  inline?: boolean;
+}
+
+export interface TelegramMiniApp {
+  url: string;
+  title: string;
+  botUsername?: string;
+  botId?: string;
+  shortName?: string;
+}
+
+export type MiniAppSession = TelegramMiniApp;
+
+export interface TelegramContact {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  username: string | null;
+  statusText?: string;
+  status?: string;
+  isOnline?: boolean;
+  lastSeen?: string;
+  mutual?: boolean;
+}
+
+export interface TelegramActiveSession {
+  hash: string;
+  deviceModel: string;
+  platform: string;
+  systemVersion: string;
+  appName: string;
+  appVersion: string;
+  dateCreated: number;
+  dateActive: number;
+  ip: string;
+  country: string;
+  region: string;
+  isCurrent: boolean;
+  current?: boolean;
+}
+
+export type PrivacyRuleValue = 'everybody' | 'contacts' | 'nobody';
+
+export interface TelegramPrivacySettings {
+  phoneNumber?: PrivacyRuleValue;
+  phone?: PrivacyRuleValue;
+  lastSeen?: PrivacyRuleValue;
+  last_seen?: PrivacyRuleValue;
+  profilePhoto?: PrivacyRuleValue;
+  photo?: PrivacyRuleValue;
+  forwards?: PrivacyRuleValue;
+}
+
 export interface TelegramMessageMediaInfo {
   type: string;
   mimeType?: string;
@@ -161,6 +271,7 @@ export interface TelegramMessageMediaInfo {
   duration?: number;
   hasMedia: boolean;
   altEmoji?: string;
+  isRound?: boolean;
 }
 
 export interface TelegramReaction {
@@ -183,6 +294,13 @@ export interface TelegramMessage {
   editDate?: number | null;
   views: number | null;
   forwards: number | null;
+  pinned?: boolean;
+  silent?: boolean;
+  fwdFrom?: TelegramForwardInfo | null;
+  forwardFrom?: { id?: string; name?: string } | null;
+  poll?: TelegramPoll | null;
+  webPage?: TelegramWebPage | null;
+  replyMarkup?: TelegramReplyMarkup | null;
 }
 
 export interface TypingStatus {

@@ -1,11 +1,13 @@
 import React from 'react';
-import { Send, ShieldCheck, LogOut, Info, RefreshCw, Radio } from 'lucide-react';
+import { Send, LogOut, Info, RefreshCw, Users, Settings } from 'lucide-react';
 import { TelegramServerStatus, TelegramUser } from '../types';
 
 interface HeaderProps {
   status: TelegramServerStatus | null;
   user: TelegramUser | null;
   onOpenInfo: () => void;
+  onOpenContacts: () => void;
+  onOpenSettings: () => void;
   onLogout: () => void;
   onRefresh: () => void;
   isRefreshing: boolean;
@@ -15,6 +17,8 @@ export const Header: React.FC<HeaderProps> = ({
   status,
   user,
   onOpenInfo,
+  onOpenContacts,
+  onOpenSettings,
   onLogout,
   onRefresh,
   isRefreshing,
@@ -45,7 +49,8 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Actions & User */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* Sync / Refresh */}
         <button
           onClick={onRefresh}
           disabled={isRefreshing}
@@ -55,22 +60,55 @@ export const Header: React.FC<HeaderProps> = ({
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#54a9eb]' : ''}`} />
         </button>
 
+        {/* Contacts Book Button */}
+        {user && (
+          <button
+            onClick={onOpenContacts}
+            title="جهات الاتصال"
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-[#242f3d] hover:bg-[#2c3848] text-slate-200 rounded-lg transition-colors border border-slate-700/50 cursor-pointer"
+          >
+            <Users className="w-3.5 h-3.5 text-[#54a9eb]" />
+            <span className="hidden md:inline">جهات الاتصال</span>
+          </button>
+        )}
+
+        {/* Settings & Profile Button */}
+        {user && (
+          <button
+            onClick={onOpenSettings}
+            title="الإعدادات والملف الشخصي والأمان"
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-[#242f3d] hover:bg-[#2c3848] text-slate-200 rounded-lg transition-colors border border-slate-700/50 cursor-pointer"
+          >
+            <Settings className="w-3.5 h-3.5 text-[#54a9eb]" />
+            <span className="hidden md:inline">الإعدادات</span>
+          </button>
+        )}
+
+        {/* Official MTProto Info */}
         <button
           onClick={onOpenInfo}
           title="معلومات الاتصال الرسمي و MTProto"
-          className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-[#242f3d] hover:bg-[#2c3848] text-slate-200 rounded-lg transition-colors border border-slate-700/50 cursor-pointer"
+          className="p-2 sm:px-2.5 sm:py-1.5 text-xs bg-[#242f3d] hover:bg-[#2c3848] text-slate-200 rounded-lg transition-colors border border-slate-700/50 cursor-pointer flex items-center gap-1"
         >
           <Info className="w-3.5 h-3.5 text-[#54a9eb]" />
-          <span className="hidden sm:inline">تفاصيل الاتصال</span>
+          <span className="hidden xl:inline">تفاصيل الاتصال</span>
         </button>
 
         {user && (
           <div className="flex items-center gap-2 pl-1 border-r border-[#242f3d] pr-2">
-            <div className="w-8 h-8 rounded-full bg-[#5288c1] flex items-center justify-center text-white text-xs font-bold uppercase shadow-inner">
+            <div
+              onClick={onOpenSettings}
+              className="w-8 h-8 rounded-full bg-[#5288c1] hover:ring-2 hover:ring-[#54a9eb] flex items-center justify-center text-white text-xs font-bold uppercase shadow-inner cursor-pointer transition-all"
+              title="تعديل الملف الشخصي"
+            >
               {user.firstName ? user.firstName.charAt(0) : 'U'}
             </div>
-            <div className="hidden md:block text-right">
-              <div className="text-xs font-semibold text-slate-200 leading-tight">
+            <div
+              onClick={onOpenSettings}
+              className="hidden lg:block text-right cursor-pointer group"
+              title="تعديل الملف الشخصي"
+            >
+              <div className="text-xs font-semibold text-slate-200 leading-tight group-hover:text-[#54a9eb] transition-colors">
                 {user.firstName} {user.lastName}
               </div>
               <div className="text-[11px] text-slate-400 font-mono">

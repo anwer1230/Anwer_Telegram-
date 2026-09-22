@@ -27,15 +27,32 @@ import {
   Radio,
   Archive,
   ArchiveRestore,
+  Share2,
+  BarChart2,
+  Calendar,
+  VolumeX,
+  Clock,
 } from 'lucide-react';
-import { TelegramDialog, TelegramMessage, TelegramStickerDocument, TypingStatus } from '../types';
+import {
+  TelegramDialog,
+  TelegramMessage,
+  TelegramStickerDocument,
+  TypingStatus,
+  WebPagePreview,
+  TelegramMiniApp,
+} from '../types';
 import { telegramApi } from '../api/telegramApi';
 import { indexedDbCache } from '../utils/indexedDbCache';
 import { MediaRenderer } from './MediaRenderer';
 import { StickersAndGifsPicker } from './StickersAndGifsPicker';
+import { ForwardModal } from './ForwardModal';
+import { CreatePollModal } from './CreatePollModal';
+import { RoundVideoRecorder } from './RoundVideoRecorder';
+import { MiniAppModal } from './MiniAppModal';
 
 interface ChatViewProps {
   chat: TelegramDialog | null;
+  dialogs?: TelegramDialog[];
   onBackMobile: () => void;
   onMessageSent: () => void;
   onPinChat?: (dialog: TelegramDialog, pinned: boolean) => Promise<void>;
@@ -59,6 +76,7 @@ const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉', '👏', '😂', '😮
 
 export const ChatView: React.FC<ChatViewProps> = ({
   chat,
+  dialogs = [],
   onBackMobile,
   onMessageSent,
   onPinChat,
@@ -80,6 +98,24 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [messageToDelete, setMessageToDelete] = useState<TelegramMessage | null>(null);
   const [deleteRevoke, setDeleteRevoke] = useState(true);
   const [deleting, setDeleting] = useState(false);
+
+  // Pinned messages & Link Previews
+  const [pinnedMessages, setPinnedMessages] = useState<TelegramMessage[]>([]);
+  const [liveUrlPreview, setLiveUrlPreview] = useState<WebPagePreview | null>(null);
+
+  // Forwarding & Mini App modals
+  const [forwardModalOpen, setForwardModalOpen] = useState(false);
+  const [forwardMsgIds, setForwardMsgIds] = useState<number[]>([]);
+  const [activeMiniApp, setActiveMiniApp] = useState<TelegramMiniApp | null>(null);
+
+  // Polls & Round Video
+  const [showPollModal, setShowPollModal] = useState(false);
+  const [showRoundVideoModal, setShowRoundVideoModal] = useState(false);
+
+  // Silent & Scheduled messages
+  const [sendSilently, setSendSilently] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [showSchedulePicker, setShowSchedulePicker] = useState(false);
 
   // Sticker & GIF picker state
   const [showStickerPicker, setShowStickerPicker] = useState(false);
@@ -131,6 +167,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
       } else {
         setLoading(true);
       }
+
+      // Fetch Pinned Messages
+      telegramApi
+        .getPinnedMessages(chat.id)
+        .then((pinned: TelegramMessage[]) => {
+          if (isMounted) setPinnedMessages(pinned);
+        })
+        .catch(() => {});
 
       // 2. Fetch fresh from Telegram MTProto Cloud
       try {
@@ -427,6 +471,120 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setInputText('');
   };
 
+  const loadPinnedMessages = async () => {
+    if (!chat) return;
+    try {
+      const pinned = await telegramApi.getPinnedMessages(chat.id);
+      setPinnedMessages(pinned);
+    } catch (err) {
+      console.warn('Failed to load pinned messages:', err);
+    }
+  };
+
+  const handleTogglePin = async (msg: TelegramMessage) => {
+    if (!chat) return;
+    const nextPinState = !msg.pinned;
+    try {
+      await telegramApi.pinMessage(chat.id, msg.id, nextPinState);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msg.id ? { ...m, pinned: nextPinState } : m))
+      );
+      loadPinnedMessages();
+    } catch (err: any) {
+      alert(`فشل تثبيت الرسالة: ${err.message || 'خطأ'}`);
+    }
+  };
+
+  const handleUnpinTop = async (msgId: number) => {
+    if (!chat) return;
+    try {
+      await telegramApi.pinMessage(chat.id, msgId, false);
+      setPinnedMessages((prev) => prev.filter((m) => m.id !== msgId));
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgId ? { ...m, pinned: false } : m))
+      );
+    } catch (err: any) {
+      alert(`فشل إلغاء تثبيت الرسالة: ${err.message || 'خطأ'}`);
+    }
+  };
+
+  const scrollToMessage = (msgId: number) => {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-[#54a9eb]', 'rounded-2xl', 'transition-all');
+      setTimeout(() => el.classList.remove('ring-2', 'ring-[#54a9eb]'), 2000);
+    }
+  };
+
+  const handleStartForward = (msg: TelegramMessage) => {
+    setForwardMsgIds([msg.id]);
+    setForwardModalOpen(true);
+  };
+
+  const handleSendRoundVideo = async (file: File) => {
+    if (!chat) return;
+    setShowRoundVideoModal(false);
+    setSending(true);
+
+    const tempId = Date.now();
+    const optimisticMsg: TelegramMessage = {
+      id: tempId,
+      text: '',
+      date: Math.floor(Date.now() / 1000),
+      out: true,
+      senderId: 'me',
+      mediaType: 'round',
+      mediaInfo: {
+        type: 'round',
+        fileName: file.name,
+        mimeType: file.type,
+        size: file.size,
+        hasMedia: true,
+      },
+      replyToMsgId: replyingTo?.id,
+      views: null,
+      forwards: null,
+    };
+
+    setMessages((prev) => [...prev, optimisticMsg]);
+
+    try {
+      const scheduleTimestamp = scheduleDate
+        ? Math.floor(new Date(scheduleDate).getTime() / 1000)
+        : undefined;
+
+      const fileBase64 = await readFileAsBase64(file);
+      const sent = await telegramApi.sendFile(chat.id, {
+        fileBase64,
+        fileName: file.name,
+        isRoundVideo: true,
+        replyTo: replyingTo?.id,
+        silent: sendSilently,
+        scheduleDate: scheduleTimestamp,
+      });
+
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? { ...m, id: sent.id, date: sent.date } : m))
+      );
+      onMessageSent();
+    } catch (err: any) {
+      alert(`فشل إرسال رسالة الفيديو الدائرية: ${err.message || 'خطأ'}`);
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+    } finally {
+      setSending(false);
+      setSendSilently(false);
+      setScheduleDate('');
+      setShowSchedulePicker(false);
+    }
+  };
+
+  const handlePollCreated = (pollMessage: TelegramMessage) => {
+    setShowPollModal(false);
+    setMessages((prev) => [...prev, pollMessage]);
+    onMessageSent();
+  };
+
   const handleDeleteConfirm = async () => {
     if (!messageToDelete || !chat || deleting) return;
     const targetId = messageToDelete.id;
@@ -570,7 +728,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setMessages((prev) => [...prev, optimisticMsg]);
 
     try {
-      const sent = await telegramApi.sendMessage(chat.id, textToSend, replyToId);
+      const scheduleTimestamp = scheduleDate
+        ? Math.floor(new Date(scheduleDate).getTime() / 1000)
+        : undefined;
+
+      const sent = await telegramApi.sendMessage(
+        chat.id,
+        textToSend,
+        replyToId,
+        sendSilently,
+        scheduleTimestamp
+      );
       setMessages((prev) =>
         prev.map((m) => (m.id === tempId ? { ...m, id: sent.id, date: sent.date } : m))
       );
@@ -580,6 +748,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
     } finally {
       setSending(false);
+      setSendSilently(false);
+      setScheduleDate('');
+      setShowSchedulePicker(false);
+      setLiveUrlPreview(null);
     }
   };
 
@@ -868,6 +1040,22 @@ export const ChatView: React.FC<ChatViewProps> = ({
         telegramApi.setTyping(chat.id, 'typing');
       }
     }
+
+    // Smart link / WebPage live preview detection
+    const urlMatch = val.match(/https?:\/\/[^\s]+/);
+    if (urlMatch) {
+      const detectedUrl = urlMatch[0];
+      if (!liveUrlPreview || liveUrlPreview.url !== detectedUrl) {
+        telegramApi
+          .getUrlPreview(detectedUrl)
+          .then((preview) => {
+            if (preview) setLiveUrlPreview(preview);
+          })
+          .catch(() => {});
+      }
+    } else if (liveUrlPreview) {
+      setLiveUrlPreview(null);
+    }
   };
 
   if (!chat) {
@@ -1098,6 +1286,48 @@ export const ChatView: React.FC<ChatViewProps> = ({
         </div>
       </div>
 
+      {/* Pinned Messages Top Bar */}
+      {pinnedMessages.length > 0 && (
+        <div className="bg-[#17212b]/95 border-b border-[#242f3d] px-4 py-2 flex items-center justify-between z-20 shrink-0 backdrop-blur-xs">
+          <div
+            onClick={() => scrollToMessage(pinnedMessages[0].id)}
+            className="flex items-center gap-3 min-w-0 cursor-pointer flex-1 group"
+            title="انقر للتمرير إلى الرسالة المثبتة"
+          >
+            <div className="w-1 h-7 bg-[#54a9eb] rounded-full shrink-0 group-hover:scale-y-110 transition-transform" />
+            <Pin className="w-4 h-4 text-[#54a9eb] shrink-0 rotate-45" />
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] font-bold text-[#54a9eb] flex items-center gap-2">
+                <span>رسالة مثبتة</span>
+                {pinnedMessages.length > 1 && (
+                  <span className="text-[10px] text-slate-400 font-normal">
+                    (1 من {pinnedMessages.length})
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-200 truncate group-hover:text-white transition-colors">
+                {pinnedMessages[0].text ||
+                  (pinnedMessages[0].mediaType
+                    ? `مرفق: ${pinnedMessages[0].mediaType}`
+                    : 'رسالة مثبتة')}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleUnpinTop(pinnedMessages[0].id);
+            }}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            title="إلغاء التثبيت"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Messages Scroll Area */}
       <div
         ref={messageContainerRef}
@@ -1221,9 +1451,35 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     </div>
                   )}
 
-                  {/* Media Content with live preview and download */}
-                  {msg.mediaType && (
-                    <MediaRenderer message={msg} peerId={chat.id} />
+                  {/* Pinned Message Badge */}
+                  {msg.pinned && (
+                    <div className="flex items-center gap-1 text-[10px] text-[#54a9eb] font-semibold mb-1">
+                      <Pin className="w-2.5 h-2.5 rotate-45" />
+                      <span>مثبتة</span>
+                    </div>
+                  )}
+
+                  {/* Forwarded Message Header */}
+                  {(msg.forwardFrom || msg.fwdFrom) && (
+                    <div className="mb-1.5 pb-1 border-b border-white/10 text-[11px] text-[#54a9eb] flex items-center gap-1 font-medium">
+                      <Share2 className="w-3 h-3" />
+                      <span>
+                        معاد توجيهها من{' '}
+                        {msg.forwardFrom?.name ||
+                          msg.fwdFrom?.fromName ||
+                          msg.fwdFrom?.postAuthor ||
+                          'مستخدم'}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Media Content with live preview, webPage, polls, keyboards */}
+                  {(msg.mediaType || msg.webPage || msg.poll || msg.replyMarkup) && (
+                    <MediaRenderer
+                      message={msg}
+                      peerId={chat.id}
+                      onOpenMiniApp={(app) => setActiveMiniApp(app)}
+                    />
                   )}
 
                   {/* Message Text */}
@@ -1257,13 +1513,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
                   {/* Time & Sent status */}
                   <div
-                    className={`flex items-center gap-1 text-[10px] mt-1 select-none ${
+                    className={`flex items-center gap-1.5 text-[10px] mt-1 select-none ${
                       isOut ? 'text-slate-300 justify-end' : 'text-slate-400 justify-start'
                     }`}
                   >
                     {msg.editDate && (
                       <span className="text-[9px] text-slate-300/80 mr-0.5 font-sans select-none">
                         معدلة
+                      </span>
+                    )}
+                    {msg.forwards !== null && msg.forwards !== undefined && msg.forwards > 0 && (
+                      <span className="inline-flex items-center gap-0.5 text-slate-400">
+                        <Share2 className="w-2.5 h-2.5" />
+                        <span>{msg.forwards}</span>
                       </span>
                     )}
                     <span>{formatMsgTime(msg.date)}</span>
@@ -1279,7 +1541,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   </div>
                 </div>
 
-                {/* Message Hover Actions (Reply, Reaction, Edit, Delete) */}
+                {/* Message Hover Actions (Reply, Reaction, Pin, Forward, Edit, Delete) */}
                 <div
                   className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 self-center shrink-0 pb-1`}
                 >
@@ -1306,6 +1568,28 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     title="رد على الرسالة"
                   >
                     <Reply className="w-3.5 h-3.5 -scale-x-100" />
+                  </button>
+
+                  {/* Pin / Unpin Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleTogglePin(msg)}
+                    className={`p-1.5 rounded-full bg-[#1e2c3a] hover:bg-[#2b5278] border border-[#2c3e50] shadow cursor-pointer transition-transform hover:scale-110 ${
+                      msg.pinned ? 'text-[#54a9eb]' : 'text-slate-400 hover:text-white'
+                    }`}
+                    title={msg.pinned ? 'إلغاء تثبيت الرسالة' : 'تثبيت الرسالة'}
+                  >
+                    <Pin className="w-3.5 h-3.5 rotate-45" />
+                  </button>
+
+                  {/* Forward Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleStartForward(msg)}
+                    className="p-1.5 rounded-full bg-[#1e2c3a] hover:bg-[#2b5278] text-slate-400 hover:text-white border border-[#2c3e50] shadow cursor-pointer transition-transform hover:scale-110"
+                    title="إعادة توجيه الرسالة"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
                   </button>
 
                   {/* Edit Button (Only for own messages with text) */}
@@ -1449,6 +1733,44 @@ export const ChatView: React.FC<ChatViewProps> = ({
         </div>
       )}
 
+      {/* Live Smart URL / WebPage Preview Tray */}
+      {liveUrlPreview && (
+        <div className="bg-[#1e2c3a] border-t border-[#2c3e50] px-4 py-2 flex items-center justify-between gap-3 z-10 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-1 h-9 bg-[#54a9eb] rounded-full shrink-0" />
+            {liveUrlPreview.photoUrl && (
+              <img
+                src={liveUrlPreview.photoUrl}
+                alt={liveUrlPreview.title || 'preview'}
+                className="w-10 h-10 rounded-lg object-cover border border-white/10 shrink-0"
+              />
+            )}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#54a9eb]">
+                <span>{liveUrlPreview.siteName || 'معاينة الرابط الذكية'}</span>
+              </div>
+              <p className="text-[11px] text-slate-200 truncate max-w-[260px] md:max-w-md font-medium">
+                {liveUrlPreview.title || liveUrlPreview.url}
+              </p>
+              {liveUrlPreview.description && (
+                <p className="text-[10px] text-slate-400 truncate max-w-[260px] md:max-w-md">
+                  {liveUrlPreview.description}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setLiveUrlPreview(null)}
+            className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+            title="إلغاء معاينة الرابط"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Message Composer Bar */}
       <div className="bg-[#17212b] border-t border-[#242f3d] p-3 z-10 shrink-0">
         {/* Floating Sticker & GIF Picker */}
@@ -1505,7 +1827,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             </div>
           </div>
         ) : (
-          /* Standard Input Bar with File Upload & Mic */
+          /* Standard Input Bar with File Upload, Polls, Round Video & Mic */
           <form onSubmit={handleSendMessage} className="flex items-center gap-2 max-w-4xl mx-auto">
             {/* Attachment Button (Disabled during edit) */}
             {!editingMessage && (
@@ -1517,6 +1839,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 className="p-2.5 text-slate-400 hover:text-[#54a9eb] hover:bg-[#242f3d] rounded-full transition-colors cursor-pointer shrink-0 disabled:opacity-40"
               >
                 <Paperclip className="w-5 h-5" />
+              </button>
+            )}
+
+            {/* Create Poll Button (Disabled during edit) */}
+            {!editingMessage && (
+              <button
+                type="button"
+                onClick={() => setShowPollModal(true)}
+                disabled={sending}
+                title="إنشاء استطلاع رأي أو اختبار"
+                className="p-2.5 text-slate-400 hover:text-[#54a9eb] hover:bg-[#242f3d] rounded-full transition-colors cursor-pointer shrink-0 disabled:opacity-40"
+              >
+                <BarChart2 className="w-5 h-5" />
               </button>
             )}
 
@@ -1573,30 +1908,120 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 )}
               </button>
             ) : !inputText.trim() && !pendingFile ? (
-              /* Mic Button (Voice Note) */
-              <button
-                type="button"
-                onClick={startRecording}
-                disabled={sending}
-                title="تسجيل رسالة صوتية"
-                className="w-10 h-10 rounded-full bg-[#242f3d] hover:bg-[#2b5278] text-slate-300 hover:text-white flex items-center justify-center transition-all shadow cursor-pointer shrink-0 disabled:opacity-40"
-              >
-                <Mic className="w-4 h-4 text-[#54a9eb]" />
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* Round Video Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowRoundVideoModal(true)}
+                  disabled={sending}
+                  title="تسجيل رسالة فيديو دائرية"
+                  className="w-10 h-10 rounded-full bg-[#242f3d] hover:bg-[#2b5278] text-slate-300 hover:text-white flex items-center justify-center transition-all shadow cursor-pointer disabled:opacity-40"
+                >
+                  <Video className="w-4 h-4 text-[#54a9eb]" />
+                </button>
+
+                {/* Mic Button (Voice Note) */}
+                <button
+                  type="button"
+                  onClick={startRecording}
+                  disabled={sending}
+                  title="تسجيل رسالة صوتية"
+                  className="w-10 h-10 rounded-full bg-[#242f3d] hover:bg-[#2b5278] text-slate-300 hover:text-white flex items-center justify-center transition-all shadow cursor-pointer disabled:opacity-40"
+                >
+                  <Mic className="w-4 h-4 text-[#54a9eb]" />
+                </button>
+              </div>
             ) : (
-              /* Send Button */
-              <button
-                type="submit"
-                disabled={sending}
-                title={pendingFile ? 'إرسال المرفق' : 'إرسال الرسالة'}
-                className="w-10 h-10 rounded-full bg-[#2b5278] hover:bg-[#356391] text-white flex items-center justify-center transition-all disabled:opacity-40 disabled:hover:bg-[#2b5278] shadow cursor-pointer shrink-0"
-              >
-                {sending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4 -rotate-45 ml-0.5" />
+              /* Send Controls with Silent & Schedule options */
+              <div className="flex items-center gap-1.5 shrink-0 relative">
+                {/* Silent Send Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setSendSilently((prev) => !prev)}
+                  title={sendSilently ? 'الإرسال بدون صوت (مفعّل)' : 'إرسال بدون صوت'}
+                  className={`p-2 rounded-full transition-colors cursor-pointer ${
+                    sendSilently
+                      ? 'text-amber-400 bg-amber-400/10'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {sendSilently ? <VolumeX className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+                </button>
+
+                {/* Schedule Send Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowSchedulePicker((prev) => !prev)}
+                  title={scheduleDate ? `مجدولة: ${scheduleDate}` : 'جدولة الإرسال'}
+                  className={`p-2 rounded-full transition-colors cursor-pointer ${
+                    scheduleDate
+                      ? 'text-[#54a9eb] bg-[#54a9eb]/10'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Clock className="w-4 h-4" />
+                </button>
+
+                {/* Schedule Picker Popover */}
+                {showSchedulePicker && (
+                  <div className="absolute bottom-12 left-0 bg-[#1e2c3a] border border-[#2c3e50] rounded-xl p-3 shadow-2xl z-30 w-64 space-y-2 text-right">
+                    <span className="text-xs font-semibold text-white block">جدولة الرسالة</span>
+                    <input
+                      type="datetime-local"
+                      value={scheduleDate}
+                      onChange={(e) => setScheduleDate(e.target.value)}
+                      className="w-full bg-[#17212b] border border-[#2c3e50] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#54a9eb]"
+                    />
+                    <div className="flex items-center justify-between pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setScheduleDate('');
+                          setShowSchedulePicker(false);
+                        }}
+                        className="text-[11px] text-slate-400 hover:text-white"
+                      >
+                        إلغاء الجدولة
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowSchedulePicker(false)}
+                        className="px-2.5 py-1 rounded bg-[#54a9eb] text-white text-[11px] font-medium"
+                      >
+                        تم
+                      </button>
+                    </div>
+                  </div>
                 )}
-              </button>
+
+                {/* Send Button */}
+                <button
+                  type="submit"
+                  disabled={sending}
+                  title={
+                    scheduleDate
+                      ? 'إرسال مجدول'
+                      : sendSilently
+                      ? 'إرسال صامت'
+                      : pendingFile
+                      ? 'إرسال المرفق'
+                      : 'إرسال الرسالة'
+                  }
+                  className={`w-10 h-10 rounded-full text-white flex items-center justify-center transition-all disabled:opacity-40 shadow cursor-pointer shrink-0 ${
+                    scheduleDate
+                      ? 'bg-amber-600 hover:bg-amber-500'
+                      : 'bg-[#2b5278] hover:bg-[#356391]'
+                  }`}
+                >
+                  {sending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : scheduleDate ? (
+                    <Clock className="w-4 h-4" />
+                  ) : (
+                    <Send className="w-4 h-4 -rotate-45 ml-0.5" />
+                  )}
+                </button>
+              </div>
             )}
           </form>
         )}
@@ -1759,6 +2184,50 @@ export const ChatView: React.FC<ChatViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Forward Messages Modal */}
+      <ForwardModal
+        isOpen={forwardModalOpen}
+        onClose={() => {
+          setForwardModalOpen(false);
+          setForwardMsgIds([]);
+        }}
+        dialogs={dialogs}
+        fromPeerId={chat?.id || ''}
+        messageIds={forwardMsgIds}
+        onForwardComplete={() => {
+          setForwardModalOpen(false);
+          setForwardMsgIds([]);
+          onMessageSent();
+        }}
+      />
+
+      {/* Create Poll Modal */}
+      {showPollModal && chat && (
+        <CreatePollModal
+          isOpen={showPollModal}
+          onClose={() => setShowPollModal(false)}
+          peerId={chat.id}
+          onPollCreated={handlePollCreated}
+        />
+      )}
+
+      {/* Round Video Note Recorder Modal */}
+      {showRoundVideoModal && (
+        <RoundVideoRecorder
+          isOpen={showRoundVideoModal}
+          onClose={() => setShowRoundVideoModal(false)}
+          onSendVideo={handleSendRoundVideo}
+        />
+      )}
+
+      {/* Telegram Mini App Modal */}
+      {activeMiniApp && (
+        <MiniAppModal
+          app={activeMiniApp}
+          onClose={() => setActiveMiniApp(null)}
+        />
       )}
     </div>
   );

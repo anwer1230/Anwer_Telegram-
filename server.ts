@@ -47,6 +47,23 @@ import {
   joinVoiceChatSpace,
   leaveVoiceChatSpace,
   updateVoiceChatState,
+  forwardTelegramMessages,
+  pinTelegramMessage,
+  unpinTelegramMessage,
+  sendTelegramPoll,
+  voteTelegramPoll,
+  getTelegramContacts,
+  addTelegramContact,
+  getTelegramUserProfile,
+  updateTelegramUserProfile,
+  updateTelegramUsername,
+  uploadTelegramProfilePhoto,
+  getTelegramActiveSessions,
+  terminateTelegramSession,
+  terminateAllOtherTelegramSessions,
+  getTelegramPrivacySettings,
+  setTelegramPrivacyRule,
+  sendBotCallbackAnswer,
 } from './server/telegramClient.js';
 
 async function startServer() {
@@ -320,7 +337,7 @@ async function startServer() {
       if (!sessionString) {
         return res.status(401).json({ success: false, error: 'غير مصرح' });
       }
-      const { peerId, message, replyTo } = req.body;
+      const { peerId, message, replyTo, silent, scheduleDate } = req.body;
       if (!peerId || !message) {
         return res.status(400).json({ success: false, error: 'المعرف والرسالة مطلوبان' });
       }
@@ -328,7 +345,8 @@ async function startServer() {
         sessionString,
         peerId,
         message,
-        replyTo ? Number(replyTo) : undefined
+        replyTo ? Number(replyTo) : undefined,
+        { silent: !!silent, scheduleDate: scheduleDate ? Number(scheduleDate) : undefined }
       );
       res.json({ success: true, message: sent });
     } catch (err: any) {
@@ -347,7 +365,18 @@ async function startServer() {
       if (!sessionString) {
         return res.status(401).json({ success: false, error: 'غير مصرح' });
       }
-      const { peerId, fileBase64, fileName, caption, voiceNote, mimeType, replyTo } = req.body;
+      const {
+        peerId,
+        fileBase64,
+        fileName,
+        caption,
+        voiceNote,
+        isRoundVideo,
+        mimeType,
+        replyTo,
+        silent,
+        scheduleDate,
+      } = req.body;
       if (!peerId || !fileBase64) {
         return res.status(400).json({ success: false, error: 'المعرف وملف الوسائط مطلوبان' });
       }
@@ -362,8 +391,11 @@ async function startServer() {
         fileName: fileName || 'attachment',
         caption: caption || '',
         voiceNote: !!voiceNote,
+        isRoundVideo: !!isRoundVideo,
         mimeType: mimeType || 'application/octet-stream',
         replyTo: replyTo ? Number(replyTo) : undefined,
+        silent: !!silent,
+        scheduleDate: scheduleDate ? Number(scheduleDate) : undefined,
       });
 
       res.json({ success: true, message: sent });
@@ -462,6 +494,470 @@ async function startServer() {
       res.status(500).json({
         success: false,
         error: err.errorMessage || err.message || 'فشل حذف الرسائل في تليجرام',
+      });
+    }
+  });
+
+  // Forward Messages (with option to hide author / sender name)
+  app.post('/api/telegram/forward-messages', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { toPeerId, fromPeerId, messageIds, dropAuthor, silent } = req.body;
+      if (!toPeerId || !fromPeerId || !Array.isArray(messageIds) || messageIds.length === 0) {
+        return res.status(400).json({ success: false, error: 'معرفات الوجهة والمصدر والرسائل مطلوبة' });
+      }
+
+      const result = await forwardTelegramMessages(
+        sessionString,
+        toPeerId,
+        fromPeerId,
+        messageIds.map((id) => Number(id)),
+        !!dropAuthor,
+        !!silent
+      );
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error forwarding messages:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل إعادة توجيه الرسائل',
+      });
+    }
+  });
+
+  // Pin Message in chat
+  app.post('/api/telegram/messages/pin', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, messageId, silent, pmOneSide } = req.body;
+      if (!peerId || !messageId) {
+        return res.status(400).json({ success: false, error: 'معرف المحادثة ورقم الرسالة مطلوبان' });
+      }
+
+      const result = await pinTelegramMessage(
+        sessionString,
+        peerId,
+        Number(messageId),
+        !!silent,
+        !!pmOneSide
+      );
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error pinning message:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل تثبيت الرسالة',
+      });
+    }
+  });
+
+  // Unpin Message in chat
+  app.post('/api/telegram/messages/unpin', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, messageId } = req.body;
+      if (!peerId) {
+        return res.status(400).json({ success: false, error: 'معرف المحادثة مطلوب' });
+      }
+
+      const result = await unpinTelegramMessage(
+        sessionString,
+        peerId,
+        messageId ? Number(messageId) : undefined
+      );
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error unpinning message:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل إلغاء تثبيت الرسالة',
+      });
+    }
+  });
+
+  // Send Poll / Quiz
+  app.post('/api/telegram/send-poll', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, question, answers, options } = req.body;
+      if (!peerId || !question || !Array.isArray(answers) || answers.length < 2) {
+        return res.status(400).json({ success: false, error: 'السؤال وخياران على الأقل مطلوبان' });
+      }
+
+      const sent = await sendTelegramPoll(sessionString, peerId, question, answers, options);
+      res.json({ success: true, message: sent });
+    } catch (err: any) {
+      console.error('Error sending poll:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل إنشاء الاستطلاع في تليجرام',
+      });
+    }
+  });
+
+  // Vote on Poll
+  app.post('/api/telegram/vote-poll', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, messageId, options } = req.body;
+      if (!peerId || !messageId || !Array.isArray(options)) {
+        return res.status(400).json({ success: false, error: 'المعطيات غير مكتملة للتصويت' });
+      }
+
+      const result = await voteTelegramPoll(sessionString, peerId, Number(messageId), options);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error voting on poll:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل تسجيل التصويت',
+      });
+    }
+  });
+
+  // Smart Link / WebPage Preview Scraper
+  app.get('/api/telegram/preview-url', async (req, res) => {
+    try {
+      const targetUrl = req.query.url as string;
+      if (!targetUrl || !targetUrl.startsWith('http')) {
+        return res.status(400).json({ success: false, error: 'الرابط غير صالح' });
+      }
+
+      const parsedUrl = new URL(targetUrl);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+
+      const response = await fetch(targetUrl, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; TelegramBot/1.0; +https://telegram.org/bot)',
+          'Accept': 'text/html,application/xhtml+xml',
+        },
+      });
+      clearTimeout(timeout);
+
+      const html = await response.text();
+
+      const getMeta = (prop: string): string => {
+        const regex1 = new RegExp(`<meta[^>]+property=["']${prop}["'][^>]+content=["']([^"']+)["']`, 'i');
+        const match1 = html.match(regex1);
+        if (match1) return match1[1];
+        const regex2 = new RegExp(`<meta[^>]+name=["']${prop}["'][^>]+content=["']([^"']+)["']`, 'i');
+        const match2 = html.match(regex2);
+        return match2 ? match2[1] : '';
+      };
+
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      const title = getMeta('og:title') || getMeta('twitter:title') || (titleMatch ? titleMatch[1] : parsedUrl.hostname);
+      const description = getMeta('og:description') || getMeta('twitter:description') || getMeta('description') || '';
+      let imageUrl = getMeta('og:image') || getMeta('twitter:image') || '';
+      if (imageUrl && !imageUrl.startsWith('http')) {
+        try {
+          imageUrl = new URL(imageUrl, targetUrl).toString();
+        } catch (_) {}
+      }
+      const siteName = getMeta('og:site_name') || parsedUrl.hostname;
+
+      res.json({
+        success: true,
+        preview: {
+          url: targetUrl,
+          displayUrl: parsedUrl.hostname + (parsedUrl.pathname !== '/' ? parsedUrl.pathname.slice(0, 20) : ''),
+          domain: parsedUrl.hostname,
+          siteName,
+          title: title.trim().slice(0, 100),
+          description: description.trim().slice(0, 200),
+          imageUrl,
+          hasPhoto: !!imageUrl,
+        },
+      });
+    } catch (err: any) {
+      res.json({
+        success: false,
+        error: err.message || 'تعذر جلب معاينة الرابط',
+      });
+    }
+  });
+
+  // Bot Callback Answer / Inline Button Click
+  app.post('/api/telegram/bot/callback', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, msgId, data } = req.body;
+      if (!peerId || !msgId || !data) {
+        return res.status(400).json({ success: false, error: 'معطيات الزر مطلوبة' });
+      }
+
+      const result = await sendBotCallbackAnswer(sessionString, peerId, Number(msgId), data);
+      res.json({ success: true, result });
+    } catch (err: any) {
+      console.error('Error sending bot callback answer:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل معالجة استجابة البوت',
+      });
+    }
+  });
+
+  // --------------------------------
+  // Contacts Book Routes
+  // --------------------------------
+
+  // Get Contacts List
+  app.get('/api/telegram/contacts', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const contacts = await getTelegramContacts(sessionString);
+      res.json({ success: true, contacts });
+    } catch (err: any) {
+      console.error('Error fetching contacts:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل جلب جهات الاتصال',
+      });
+    }
+  });
+
+  // Add Contact
+  app.post('/api/telegram/contacts/add', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { phone, firstName, lastName } = req.body;
+      if (!phone || !firstName) {
+        return res.status(400).json({ success: false, error: 'رقم الهاتف والاسم الأول مطلوبان' });
+      }
+
+      const result = await addTelegramContact(sessionString, phone, firstName, lastName || '');
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error adding contact:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل إضافة جهة الاتصال',
+      });
+    }
+  });
+
+  // --------------------------------
+  // Profile Management Routes
+  // --------------------------------
+
+  // Get Full Profile
+  app.get('/api/telegram/profile/full', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const profile = await getTelegramUserProfile(sessionString);
+      res.json({ success: true, profile });
+    } catch (err: any) {
+      console.error('Error fetching user profile:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل جلب الملف الشخصي',
+      });
+    }
+  });
+
+  // Update Profile Name and Bio
+  app.post('/api/telegram/profile/update', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { firstName, lastName, about } = req.body;
+      if (!firstName) {
+        return res.status(400).json({ success: false, error: 'الاسم الأول مطلوب' });
+      }
+
+      const user = await updateTelegramUserProfile(sessionString, firstName, lastName || '', about || '');
+      res.json({ success: true, user });
+    } catch (err: any) {
+      console.error('Error updating profile:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل تحديث البيانات الشخصية',
+      });
+    }
+  });
+
+  // Update Username
+  app.post('/api/telegram/profile/username', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { username } = req.body;
+      const user = await updateTelegramUsername(sessionString, username || '');
+      res.json({ success: true, user });
+    } catch (err: any) {
+      console.error('Error updating username:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل تحديث اسم المستخدم',
+      });
+    }
+  });
+
+  // Upload Profile Photo
+  app.post('/api/telegram/profile/photo', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { photoBase64, fileName } = req.body;
+      if (!photoBase64) {
+        return res.status(400).json({ success: false, error: 'صورة الملف الشخصي مطلوبة' });
+      }
+
+      const cleanBase64 = photoBase64.includes(';base64,')
+        ? photoBase64.split(';base64,')[1]
+        : photoBase64;
+      const buffer = Buffer.from(cleanBase64, 'base64');
+
+      const user = await uploadTelegramProfilePhoto(sessionString, buffer, fileName || 'avatar.jpg');
+      res.json({ success: true, user });
+    } catch (err: any) {
+      console.error('Error uploading profile photo:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل رفع الصورة الشخصية',
+      });
+    }
+  });
+
+  // --------------------------------
+  // Active Sessions & Devices Routes
+  // --------------------------------
+
+  // Get Active Authorizations
+  app.get('/api/telegram/sessions/active', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const sessions = await getTelegramActiveSessions(sessionString);
+      res.json({ success: true, sessions });
+    } catch (err: any) {
+      console.error('Error fetching sessions:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل جلب الجلسات النشطة',
+      });
+    }
+  });
+
+  // Terminate a specific session
+  app.post('/api/telegram/sessions/terminate', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { hash } = req.body;
+      if (!hash) {
+        return res.status(400).json({ success: false, error: 'معرف الجلسة مطلوب' });
+      }
+
+      const result = await terminateTelegramSession(sessionString, hash);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error terminating session:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل إنهاء الجلسة',
+      });
+    }
+  });
+
+  // Terminate all other sessions
+  app.post('/api/telegram/sessions/terminate-all', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const result = await terminateAllOtherTelegramSessions(sessionString);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error terminating all sessions:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل إنهاء الجلسات الأخرى',
+      });
+    }
+  });
+
+  // --------------------------------
+  // Privacy & Security Settings Routes
+  // --------------------------------
+
+  // Get Privacy Settings
+  app.get('/api/telegram/privacy', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const privacy = await getTelegramPrivacySettings(sessionString);
+      res.json({ success: true, privacy });
+    } catch (err: any) {
+      console.error('Error fetching privacy settings:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل جلب إعدادات الخصوصية',
+      });
+    }
+  });
+
+  // Update Privacy Rule
+  app.post('/api/telegram/privacy/set', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { key, value } = req.body;
+      if (!key || !value) {
+        return res.status(400).json({ success: false, error: 'المعطيات غير مكتملة' });
+      }
+
+      const result = await setTelegramPrivacyRule(sessionString, key, value);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error setting privacy rule:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل تحديث قاعدة الخصوصية',
       });
     }
   });

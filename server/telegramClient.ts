@@ -506,10 +506,15 @@ export function formatTelegramMessage(m: any, readOutboxMaxId?: number) {
           if (attr.className === 'DocumentAttributeAnimated') {
             isAnimated = true;
           }
+          if (attr.roundMessage || (attr.className === 'DocumentAttributeVideo' && attr.roundMessage)) {
+            mediaType = 'round';
+          }
         }
       }
 
-      if (isSticker || mime === 'application/x-tgsticker') {
+      if (mediaType === 'round') {
+        // Video Note / Round
+      } else if (isSticker || mime === 'application/x-tgsticker') {
         mediaType = 'sticker';
       } else if (isAnimated || mime === 'image/gif') {
         mediaType = 'gif';
@@ -533,14 +538,121 @@ export function formatTelegramMessage(m: any, readOutboxMaxId?: number) {
         duration: duration || undefined,
         altEmoji: altEmoji || undefined,
         isAnimated: isAnimated || mime === 'application/x-tgsticker',
+        isRound: mediaType === 'round',
         hasMedia: true,
       };
-    } else if (className.includes('WebPage')) {
+    } else if (className.includes('Poll') || m.media.poll) {
+      mediaType = 'poll';
+      const p = m.media.poll;
+      const res = m.media.results;
+      const totalVoters = res?.totalVoters || 0;
+      const resultsMap = new Map<string, { voters: number; chosen?: boolean }>();
+      if (res?.results && Array.isArray(res.results)) {
+        for (const r of res.results) {
+          const optStr = Buffer.isBuffer(r.option) ? r.option.toString('hex') : r.option?.toString() || '';
+          resultsMap.set(optStr, { voters: r.voters || 0, chosen: !!r.chosen });
+        }
+      }
+
+      const answers = (p.answers || []).map((a: any) => {
+        const optStr = Buffer.isBuffer(a.option) ? a.option.toString('hex') : a.option?.toString() || '';
+        const r = resultsMap.get(optStr);
+        const voters = r?.voters || 0;
+        const chosen = r?.chosen || false;
+        const percentage = totalVoters > 0 ? Math.round((voters / totalVoters) * 100) : 0;
+        return {
+          text: a.text?.text || a.text || '',
+          option: optStr,
+          voters,
+          chosen,
+          percentage,
+        };
+      });
+
+      mediaInfo = {
+        type: 'poll',
+        hasMedia: true,
+        poll: {
+          id: p.id?.toString(),
+          question: p.question?.text || p.question || '',
+          answers,
+          closed: !!p.closed,
+          publicVoters: !!p.publicVoters,
+          multipleChoice: !!p.multipleChoice,
+          quiz: !!p.quiz,
+          totalVoters,
+          solution: res?.solution || undefined,
+        },
+      };
+    } else if (className.includes('WebPage') || m.media.webpage) {
       mediaType = 'webpage';
+      const wp = m.media.webpage;
+      mediaInfo = {
+        type: 'webpage',
+        hasMedia: true,
+        webPage: {
+          url: wp?.url || '',
+          displayUrl: wp?.displayUrl || wp?.url || '',
+          siteName: wp?.siteName || '',
+          title: wp?.title || '',
+          description: wp?.description || '',
+          hasPhoto: !!wp?.photo,
+        },
+      };
     } else {
       mediaType = 'media';
       mediaInfo = { type: 'media', hasMedia: true };
     }
+  }
+
+  // Parse Reply Markup (Bot Inline & Reply Keyboards)
+  let replyMarkup: any = null;
+  if (m.replyMarkup && m.replyMarkup.rows && Array.isArray(m.replyMarkup.rows)) {
+    const rows = m.replyMarkup.rows.map((row: any) => {
+      const buttons = row.buttons || [];
+      return buttons.map((b: any) => {
+        let type = 'simple';
+        let data: string | undefined;
+        let url: string | undefined = b.url;
+        let webAppUrl: string | undefined;
+
+        if (b.data) {
+          type = 'callback';
+          data = Buffer.isBuffer(b.data) ? b.data.toString('hex') : b.data.toString();
+        } else if (b.url) {
+          type = 'url';
+        } else if (b.webApp || b.className === 'KeyboardButtonWebView' || b.className === 'KeyboardButtonSimpleWebView') {
+          type = 'web_app';
+          webAppUrl = b.webApp?.url || b.url;
+        } else if (b.query !== undefined) {
+          type = 'switch_inline';
+        }
+
+        return {
+          text: b.text || '',
+          type,
+          url,
+          data,
+          webAppUrl,
+        };
+      });
+    });
+    replyMarkup = {
+      rows,
+      inline: !!m.replyMarkup.className?.includes('Inline'),
+    };
+  }
+
+  // Parse Forward header
+  let fwdFrom: any = null;
+  if (m.fwdFrom) {
+    fwdFrom = {
+      fromName: m.fwdFrom.fromName || (m.fwdFrom.fromId ? 'جهة اتصال' : null),
+      fromId: m.fwdFrom.fromId ? getPeerId(m.fwdFrom.fromId).toString() : null,
+      date: m.fwdFrom.date || 0,
+      postAuthor: m.fwdFrom.postAuthor || null,
+      channelPost: m.fwdFrom.channelPost || null,
+    };
   }
 
   const replyToMsgId = m.replyTo?.replyToMsgId || m.replyToMsgId || null;
@@ -576,6 +688,12 @@ export function formatTelegramMessage(m: any, readOutboxMaxId?: number) {
     editDate: m.editDate || null,
     views: m.views || null,
     forwards: m.forwards || null,
+    pinned: !!m.pinned,
+    silent: !!m.silent,
+    fwdFrom,
+    poll: mediaInfo?.poll || null,
+    webPage: mediaInfo?.webPage || null,
+    replyMarkup,
   };
 }
 
@@ -1012,7 +1130,8 @@ export async function sendTelegramMessage(
   sessionString: string,
   peerId: string,
   text: string,
-  replyTo?: number
+  replyTo?: number,
+  options?: { silent?: boolean; scheduleDate?: number }
 ) {
   const session = await getClientForSession(sessionString);
   const client = session.client;
@@ -1031,6 +1150,8 @@ export async function sendTelegramMessage(
   const sentMessage: any = await client.sendMessage(targetPeer, {
     message: text,
     replyTo: replyTo ? Number(replyTo) : undefined,
+    silent: options?.silent,
+    schedule: options?.scheduleDate ? Number(options.scheduleDate) : undefined,
   });
 
   return {
@@ -1039,6 +1160,7 @@ export async function sendTelegramMessage(
     date: sentMessage.date || Math.floor(Date.now() / 1000),
     out: true,
     replyToMsgId: replyTo ? Number(replyTo) : undefined,
+    silent: options?.silent,
   };
 }
 
@@ -1053,8 +1175,11 @@ export async function sendTelegramFile(
     fileName: string;
     caption?: string;
     voiceNote?: boolean;
+    isRoundVideo?: boolean;
     mimeType?: string;
     replyTo?: number;
+    silent?: boolean;
+    scheduleDate?: number;
   }
 ) {
   const session = await getClientForSession(sessionString);
@@ -1084,14 +1209,20 @@ export async function sendTelegramFile(
 
   const isImage = !!fileData.mimeType?.startsWith('image/');
   const isVoice = !!fileData.voiceNote;
+  const isRound = !!fileData.isRoundVideo;
 
   const sentMessage: any = await client.sendFile(targetPeer, {
     file: customFile,
     caption: fileData.caption || '',
     voiceNote: isVoice,
-    forceDocument: !isVoice && !isImage,
+    videoNote: isRound,
+    forceDocument: !isVoice && !isImage && !isRound,
     replyTo: fileData.replyTo ? Number(fileData.replyTo) : undefined,
+    silent: fileData.silent,
+    scheduleDate: fileData.scheduleDate ? Number(fileData.scheduleDate) : undefined,
   });
+
+  const resolvedMediaType = isRound ? 'round' : isVoice ? 'voice' : isImage ? 'photo' : 'document';
 
   return {
     id: sentMessage.id,
@@ -1099,12 +1230,13 @@ export async function sendTelegramFile(
     date: sentMessage.date || Math.floor(Date.now() / 1000),
     out: true,
     replyToMsgId: fileData.replyTo ? Number(fileData.replyTo) : undefined,
-    mediaType: isVoice ? 'voice' : isImage ? 'photo' : 'document',
+    mediaType: resolvedMediaType,
     mediaInfo: {
-      type: isVoice ? 'voice' : isImage ? 'photo' : 'document',
+      type: resolvedMediaType,
       fileName: fileData.fileName,
       mimeType: fileData.mimeType,
       size: fileData.buffer.length,
+      isRound,
       hasMedia: true,
     },
   };
@@ -2520,3 +2652,547 @@ export async function updateVoiceChatState(
 
   return { success: true };
 }
+
+/**
+ * Forward Telegram Messages to another chat / dialog
+ */
+export async function forwardTelegramMessages(
+  sessionString: string,
+  toPeerId: string,
+  fromPeerId: string,
+  messageIds: number[],
+  dropAuthor = false,
+  silent = false
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetToPeer: any = toPeerId;
+  try {
+    targetToPeer = await client.getInputEntity(toPeerId.startsWith('-') ? bigInt(toPeerId) : toPeerId);
+  } catch (_) {
+    targetToPeer = toPeerId;
+  }
+
+  let targetFromPeer: any = fromPeerId;
+  try {
+    targetFromPeer = await client.getInputEntity(fromPeerId.startsWith('-') ? bigInt(fromPeerId) : fromPeerId);
+  } catch (_) {
+    targetFromPeer = fromPeerId;
+  }
+
+  const result: any = await client.forwardMessages(targetToPeer, {
+    messages: messageIds,
+    fromPeer: targetFromPeer,
+    dropAuthor: !!dropAuthor,
+    silent: !!silent,
+  });
+
+  return {
+    success: true,
+    forwardedCount: Array.isArray(result) ? result.length : 1,
+  };
+}
+
+/**
+ * Pin a message in chat
+ */
+export async function pinTelegramMessage(
+  sessionString: string,
+  peerId: string,
+  messageId: number,
+  silent = false,
+  pmOneSide = false
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetPeer: any = peerId;
+  try {
+    targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+  } catch (_) {
+    targetPeer = peerId;
+  }
+
+  await client.pinMessage(targetPeer, messageId, {
+    notify: !silent,
+    pmOneSide: !!pmOneSide,
+  });
+
+  return { success: true, messageId };
+}
+
+/**
+ * Unpin message in chat
+ */
+export async function unpinTelegramMessage(
+  sessionString: string,
+  peerId: string,
+  messageId?: number
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetPeer: any = peerId;
+  try {
+    targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+  } catch (_) {
+    targetPeer = peerId;
+  }
+
+  if (messageId && messageId > 0) {
+    await client.unpinMessage(targetPeer, messageId);
+  } else {
+    try {
+      await client.invoke(new Api.messages.UnpinAllMessages({ peer: targetPeer }));
+    } catch (_) {
+      if (messageId) await client.unpinMessage(targetPeer, messageId);
+    }
+  }
+
+  return { success: true };
+}
+
+/**
+ * Send Poll or Quiz to a chat
+ */
+export async function sendTelegramPoll(
+  sessionString: string,
+  peerId: string,
+  question: string,
+  answers: string[],
+  options?: {
+    closed?: boolean;
+    publicVoters?: boolean;
+    multipleChoice?: boolean;
+    quiz?: boolean;
+    correctAnswers?: number[];
+    solution?: string;
+  }
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetPeer: any = peerId;
+  try {
+    targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+  } catch (_) {
+    targetPeer = peerId;
+  }
+
+  const pollAnswers = answers.map((ans, idx) => {
+    return new Api.PollAnswer({
+      text: new Api.TextWithEntities({ text: ans, entities: [] }),
+      option: Buffer.from(idx.toString()),
+    });
+  });
+
+  const poll = new Api.Poll({
+    id: bigInt(Date.now()),
+    question: new Api.TextWithEntities({ text: question, entities: [] }),
+    answers: pollAnswers,
+    closed: !!options?.closed,
+    publicVoters: options?.publicVoters !== undefined ? options.publicVoters : false,
+    multipleChoice: !!options?.multipleChoice,
+    quiz: !!options?.quiz,
+  });
+
+  let correctAnswersBuffers: Buffer[] | undefined;
+  if (options?.quiz && options.correctAnswers && options.correctAnswers.length > 0) {
+    correctAnswersBuffers = options.correctAnswers.map((idx) => Buffer.from(idx.toString()));
+  }
+
+  const inputMedia = new Api.InputMediaPoll({
+    poll,
+    correctAnswers: correctAnswersBuffers,
+    solution: options?.solution,
+    solutionEntities: [],
+  });
+
+  const sentMessage: any = await client.sendMessage(targetPeer, {
+    file: inputMedia,
+  });
+
+  return formatTelegramMessage(sentMessage);
+}
+
+/**
+ * Vote on a Poll in a chat
+ */
+export async function voteTelegramPoll(
+  sessionString: string,
+  peerId: string,
+  messageId: number,
+  options: string[]
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetPeer: any = peerId;
+  try {
+    targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+  } catch (_) {
+    targetPeer = peerId;
+  }
+
+  const optionsBuffers = options.map((opt) => {
+    try {
+      if (opt.length % 2 === 0 && /^[0-9a-fA-F]+$/.test(opt)) {
+        return Buffer.from(opt, 'hex');
+      }
+    } catch (_) {}
+    return Buffer.from(opt);
+  });
+
+  await client.invoke(
+    new Api.messages.SendVote({
+      peer: targetPeer,
+      msgId: Number(messageId),
+      options: optionsBuffers,
+    })
+  );
+
+  return { success: true };
+}
+
+/**
+ * Get contacts from Telegram Cloud
+ */
+export async function getTelegramContacts(sessionString: string) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  const result: any = await client.invoke(new Api.contacts.GetContacts({ hash: bigInt(0) }));
+  const users = result.users || [];
+
+  return users.map((u: any) => {
+    let statusText = 'غير متاح';
+    let isOnline = false;
+    if (u.status) {
+      const sName = u.status.className || u.status.constructor?.name || '';
+      if (sName.includes('Online')) {
+        statusText = 'متصل الآن';
+        isOnline = true;
+      } else if (sName.includes('Recently')) {
+        statusText = 'آخر ظهور منذ قليل';
+      } else if (sName.includes('Offline')) {
+        const d = new Date((u.status.wasOnline || 0) * 1000);
+        statusText = `آخر ظهور ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      } else if (sName.includes('LastWeek')) {
+        statusText = 'آخر ظهور هذا الأسبوع';
+      } else if (sName.includes('LastMonth')) {
+        statusText = 'آخر ظهور هذا الشهر';
+      }
+    }
+
+    return {
+      id: u.id?.toString(),
+      firstName: u.firstName || '',
+      lastName: u.lastName || '',
+      phone: u.phone ? (u.phone.startsWith('+') ? u.phone : `+${u.phone}`) : '',
+      username: u.username || null,
+      statusText,
+      isOnline,
+      mutual: !!u.mutualContact,
+    };
+  });
+}
+
+/**
+ * Add a new contact to Telegram Cloud
+ */
+export async function addTelegramContact(
+  sessionString: string,
+  phone: string,
+  firstName: string,
+  lastName = ''
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  const cleanPhone = phone.replace(/[\s\-\(\)]/g, '').trim();
+
+  const res: any = await client.invoke(
+    new Api.contacts.AddContact({
+      id: cleanPhone,
+      firstName,
+      lastName,
+      phone: cleanPhone,
+      addPhonePrivacyException: false,
+    })
+  );
+
+  return { success: true, result: res };
+}
+
+/**
+ * Get user profile info including Bio
+ */
+export async function getTelegramUserProfile(sessionString: string) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  const me: any = await client.getMe();
+  let bio = '';
+  try {
+    const full: any = await client.invoke(new Api.users.GetFullUser({ id: me }));
+    bio = full.fullUser?.about || '';
+  } catch (_) {}
+
+  return {
+    id: me.id?.toString(),
+    firstName: me.firstName || '',
+    lastName: me.lastName || '',
+    username: me.username || null,
+    phone: me.phone ? `+${me.phone}` : null,
+    bio,
+  };
+}
+
+/**
+ * Update User Profile (first name, last name, about/bio)
+ */
+export async function updateTelegramUserProfile(
+  sessionString: string,
+  firstName: string,
+  lastName: string,
+  about: string
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  await client.invoke(
+    new Api.account.UpdateProfile({
+      firstName,
+      lastName,
+      about: about.slice(0, 70),
+    })
+  );
+
+  session.me = await client.getMe();
+  return formatUser(session.me);
+}
+
+/**
+ * Update @username
+ */
+export async function updateTelegramUsername(sessionString: string, username: string) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  const cleanUsername = username.replace(/^@/, '').trim();
+  await client.invoke(
+    new Api.account.UpdateUsername({
+      username: cleanUsername,
+    })
+  );
+
+  session.me = await client.getMe();
+  return formatUser(session.me);
+}
+
+/**
+ * Upload new Profile Avatar
+ */
+export async function uploadTelegramProfilePhoto(
+  sessionString: string,
+  buffer: Buffer,
+  fileName = 'avatar.jpg'
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  const customFile = new CustomFile(fileName, buffer.length, '', buffer);
+  const uploaded = await client.uploadFile({ file: customFile, workers: 1 });
+
+  await client.invoke(
+    new Api.photos.UploadProfilePhoto({
+      file: uploaded,
+    })
+  );
+
+  session.me = await client.getMe();
+  return formatUser(session.me);
+}
+
+/**
+ * Get active sessions / devices
+ */
+export async function getTelegramActiveSessions(sessionString: string) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  const res: any = await client.invoke(new Api.account.GetAuthorizations());
+  const auths = res.authorizations || [];
+
+  return auths.map((a: any) => ({
+    hash: a.hash?.toString(),
+    deviceModel: a.deviceModel || 'جهاز غير معروف',
+    platform: a.platform || '',
+    systemVersion: a.systemVersion || '',
+    appName: a.appName || 'Telegram App',
+    appVersion: a.appVersion || '1.0',
+    dateCreated: a.dateCreated || 0,
+    dateActive: a.dateActive || 0,
+    ip: a.ip || '',
+    country: a.country || '',
+    region: a.region || '',
+    isCurrent: !!a.current,
+  }));
+}
+
+/**
+ * Terminate a specific session by hash
+ */
+export async function terminateTelegramSession(sessionString: string, hash: string) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  await client.invoke(
+    new Api.account.ResetAuthorization({
+      hash: bigInt(hash),
+    })
+  );
+
+  return { success: true };
+}
+
+/**
+ * Terminate all other sessions
+ */
+export async function terminateAllOtherTelegramSessions(sessionString: string) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  await client.invoke(new Api.auth.ResetAuthorizations());
+  return { success: true };
+}
+
+/**
+ * Get Privacy settings
+ */
+export async function getTelegramPrivacySettings(sessionString: string) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  const parseRules = (rules: any[]): 'everybody' | 'contacts' | 'nobody' => {
+    for (const r of rules || []) {
+      const c = r.className || r.constructor?.name || '';
+      if (c.includes('AllowAll')) return 'everybody';
+      if (c.includes('AllowContacts')) return 'contacts';
+      if (c.includes('DisallowAll')) return 'nobody';
+    }
+    return 'everybody';
+  };
+
+  let phoneNumber: 'everybody' | 'contacts' | 'nobody' = 'contacts';
+  let lastSeen: 'everybody' | 'contacts' | 'nobody' = 'everybody';
+  let profilePhoto: 'everybody' | 'contacts' | 'nobody' = 'everybody';
+  let forwards: 'everybody' | 'contacts' | 'nobody' = 'everybody';
+
+  try {
+    const resPhone: any = await client.invoke(
+      new Api.account.GetPrivacy({ key: new Api.InputPrivacyKeyPhoneNumber() })
+    );
+    phoneNumber = parseRules(resPhone.rules);
+  } catch (_) {}
+
+  try {
+    const resStatus: any = await client.invoke(
+      new Api.account.GetPrivacy({ key: new Api.InputPrivacyKeyStatusTimestamp() })
+    );
+    lastSeen = parseRules(resStatus.rules);
+  } catch (_) {}
+
+  try {
+    const resPhoto: any = await client.invoke(
+      new Api.account.GetPrivacy({ key: new Api.InputPrivacyKeyProfilePhoto() })
+    );
+    profilePhoto = parseRules(resPhoto.rules);
+  } catch (_) {}
+
+  try {
+    const resFwd: any = await client.invoke(
+      new Api.account.GetPrivacy({ key: new Api.InputPrivacyKeyForwards() })
+    );
+    forwards = parseRules(resFwd.rules);
+  } catch (_) {}
+
+  return {
+    phoneNumber,
+    lastSeen,
+    profilePhoto,
+    forwards,
+  };
+}
+
+/**
+ * Set Privacy rule
+ */
+export async function setTelegramPrivacyRule(
+  sessionString: string,
+  key: 'phone' | 'last_seen' | 'photo' | 'forwards',
+  value: 'everybody' | 'contacts' | 'nobody'
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let inputKey: any;
+  if (key === 'phone') inputKey = new Api.InputPrivacyKeyPhoneNumber();
+  else if (key === 'last_seen') inputKey = new Api.InputPrivacyKeyStatusTimestamp();
+  else if (key === 'photo') inputKey = new Api.InputPrivacyKeyProfilePhoto();
+  else inputKey = new Api.InputPrivacyKeyForwards();
+
+  const rules: any[] = [];
+  if (value === 'everybody') {
+    rules.push(new Api.InputPrivacyValueAllowAll());
+  } else if (value === 'contacts') {
+    rules.push(new Api.InputPrivacyValueAllowContacts());
+  } else {
+    rules.push(new Api.InputPrivacyValueDisallowAll());
+  }
+
+  await client.invoke(
+    new Api.account.SetPrivacy({
+      key: inputKey,
+      rules,
+    })
+  );
+
+  return { success: true };
+}
+
+/**
+ * Handle Bot Callback Button click
+ */
+export async function sendBotCallbackAnswer(
+  sessionString: string,
+  peerId: string,
+  msgId: number,
+  dataHex: string
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetPeer: any = peerId;
+  try {
+    targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+  } catch (_) {
+    targetPeer = peerId;
+  }
+
+  const res: any = await client.invoke(
+    new Api.messages.GetBotCallbackAnswer({
+      peer: targetPeer,
+      msgId: Number(msgId),
+      data: Buffer.from(dataHex, 'hex'),
+    })
+  );
+
+  return {
+    message: res.message || '',
+    alert: !!res.alert,
+    url: res.url || null,
+  };
+}
+

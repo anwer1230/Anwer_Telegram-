@@ -9,6 +9,8 @@ import { CallModal } from './components/CallModal';
 import { VoiceChatModal } from './components/VoiceChatModal';
 import { FolderManagerModal } from './components/FolderManagerModal';
 import { NewChatModal } from './components/NewChatModal';
+import { ContactsModal } from './components/ContactsModal';
+import { SettingsModal } from './components/SettingsModal';
 import {
   TelegramDialog,
   TelegramServerStatus,
@@ -16,6 +18,7 @@ import {
   TypingStatus,
   ChatFolder,
   CallSession,
+  TelegramContact,
 } from './types';
 import { telegramApi } from './api/telegramApi';
 import { indexedDbCache } from './utils/indexedDbCache';
@@ -38,6 +41,8 @@ export default function App() {
   // New features modals & state
   const [isFolderManagerOpen, setIsFolderManagerOpen] = useState(false);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+  const [isContactsOpen, setIsContactsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeCall, setActiveCall] = useState<CallSession | null>(null);
   const [activeVoiceChat, setActiveVoiceChat] = useState<{
     chatId: string;
@@ -456,6 +461,8 @@ export default function App() {
         status={status}
         user={user}
         onOpenInfo={() => setIsInfoModalOpen(true)}
+        onOpenContacts={() => setIsContactsOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
         onLogout={handleLogout}
         onRefresh={() => loadDialogs(false)}
         isRefreshing={isRefreshing}
@@ -485,6 +492,8 @@ export default function App() {
               folders={folders}
               onOpenFolderManager={() => setIsFolderManagerOpen(true)}
               onOpenNewChat={() => setIsNewChatOpen(true)}
+              onOpenContacts={() => setIsContactsOpen(true)}
+              onOpenSettings={() => setIsSettingsOpen(true)}
               onPinChat={handlePinChat}
               onMuteChat={handleMuteChat}
               onArchiveChat={handleArchiveChat}
@@ -497,6 +506,7 @@ export default function App() {
           <div className={`${mobileView === 'list' ? 'hidden md:flex' : 'flex'} flex-1 h-full`}>
             <ChatView
               chat={selectedChat}
+              dialogs={dialogs}
               onBackMobile={() => setMobileView('list')}
               onMessageSent={() => loadDialogs(true)}
               onPinChat={handlePinChat}
@@ -515,6 +525,55 @@ export default function App() {
             />
           </div>
         </div>
+      )}
+
+      {/* Contacts Book Modal */}
+      {isContactsOpen && (
+        <ContactsModal
+          onClose={() => setIsContactsOpen(false)}
+          onSelectContact={(contact) => {
+            const existing = dialogs.find(
+              (d) =>
+                d.id === contact.id ||
+                (contact.username && d.entity?.username === contact.username) ||
+                (contact.phone && d.entity?.phone === contact.phone)
+            );
+            if (existing) {
+              handleSelectChat(existing);
+            } else {
+              const newPeerChat: TelegramDialog = {
+                id: contact.id,
+                name: `${contact.firstName} ${contact.lastName || ''}`.trim(),
+                title: `${contact.firstName} ${contact.lastName || ''}`.trim(),
+                unreadCount: 0,
+                date: Math.floor(Date.now() / 1000),
+                isUser: true,
+                isGroup: false,
+                isChannel: false,
+                entity: {
+                  id: contact.id,
+                  firstName: contact.firstName,
+                  lastName: contact.lastName,
+                  username: contact.username,
+                  phone: contact.phone,
+                },
+              };
+              setDialogs((prev) => [newPeerChat, ...prev]);
+              handleSelectChat(newPeerChat);
+            }
+          }}
+        />
+      )}
+
+      {/* Settings & Profile & Active Sessions & Privacy Modal */}
+      {isSettingsOpen && (
+        <SettingsModal
+          user={user}
+          onClose={() => setIsSettingsOpen(false)}
+          onUserUpdated={(updatedUser) => {
+            setUser(updatedUser);
+          }}
+        />
       )}
 
       {/* Official MTProto Information Modal */}

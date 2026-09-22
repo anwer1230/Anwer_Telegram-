@@ -26,6 +26,7 @@ import {
   Radio,
   SlidersHorizontal,
   X,
+  Settings,
 } from 'lucide-react';
 import { TelegramDialog, TypingStatus, ChatFolder, GlobalSearchResult } from '../types';
 import { telegramApi } from '../api/telegramApi';
@@ -44,6 +45,8 @@ interface ChatListProps {
   onArchiveChat?: (dialog: TelegramDialog, archive: boolean) => Promise<void>;
   onClearHistory?: (dialog: TelegramDialog, revoke: boolean) => Promise<void>;
   onLeaveChat?: (dialog: TelegramDialog) => Promise<void>;
+  onOpenContacts?: () => void;
+  onOpenSettings?: () => void;
 }
 
 export const ChatList: React.FC<ChatListProps> = ({
@@ -60,6 +63,8 @@ export const ChatList: React.FC<ChatListProps> = ({
   onArchiveChat,
   onClearHistory,
   onLeaveChat,
+  onOpenContacts,
+  onOpenSettings,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFolderId, setActiveFolderId] = useState<string | number>('all');
@@ -315,6 +320,28 @@ export const ChatList: React.FC<ChatListProps> = ({
             </button>
           )}
         </div>
+
+        {/* Contacts Button */}
+        {onOpenContacts && !isViewingArchive && (
+          <button
+            onClick={onOpenContacts}
+            className="p-2 rounded-xl bg-[#242f3d] hover:bg-[#2c3848] text-slate-300 hover:text-white transition cursor-pointer shrink-0"
+            title="جهات الاتصال"
+          >
+            <Users className="w-4 h-4 text-[#54a9eb]" />
+          </button>
+        )}
+
+        {/* Settings Button */}
+        {onOpenSettings && !isViewingArchive && (
+          <button
+            onClick={onOpenSettings}
+            className="p-2 rounded-xl bg-[#242f3d] hover:bg-[#2c3848] text-slate-300 hover:text-white transition cursor-pointer shrink-0"
+            title="الإعدادات والملف الشخصي"
+          >
+            <Settings className="w-4 h-4 text-[#54a9eb]" />
+          </button>
+        )}
 
         {/* New Chat Button */}
         {onOpenNewChat && !isViewingArchive && (

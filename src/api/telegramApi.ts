@@ -10,6 +10,10 @@ import {
   ChatFolder,
   GlobalSearchResult,
   VoiceChatSpace,
+  TelegramContact,
+  TelegramActiveSession,
+  TelegramPrivacySettings,
+  TelegramWebPage,
 } from '../types';
 
 const SESSION_STORAGE_KEY = 'telegram_mtproto_session';
@@ -202,18 +206,46 @@ export const telegramApi = {
   async sendMessage(
     peerId: string,
     message: string,
-    replyTo?: number
-  ): Promise<{ id: number; text: string; date: number; out: boolean; replyToMsgId?: number }> {
+    replyTo?: number,
+    optionsOrSilent?: { silent?: boolean; scheduleDate?: number } | boolean,
+    scheduleDate?: number
+  ): Promise<{ id: number; text: string; date: number; out: boolean; replyToMsgId?: number; silent?: boolean }> {
+    let silent = false;
+    let schedDate: number | undefined = undefined;
+    if (typeof optionsOrSilent === 'boolean') {
+      silent = optionsOrSilent;
+      schedDate = scheduleDate;
+    } else if (optionsOrSilent) {
+      silent = !!optionsOrSilent.silent;
+      schedDate = optionsOrSilent.scheduleDate;
+    }
     const res = await fetch('/api/telegram/send-message', {
       method: 'POST',
       headers: this.getHeaders(),
-      body: JSON.stringify({ peerId, message, replyTo }),
+      body: JSON.stringify({ peerId, message, replyTo, silent, scheduleDate: schedDate }),
     });
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'فشل إرسال الرسالة');
     }
     return data.message;
+  },
+
+  async sendMedia(
+    peerId: string,
+    params: {
+      fileBase64: string;
+      fileName: string;
+      caption?: string;
+      voiceNote?: boolean;
+      isRoundVideo?: boolean;
+      mimeType?: string;
+      replyTo?: number;
+      silent?: boolean;
+      scheduleDate?: number;
+    }
+  ): Promise<any> {
+    return this.sendFile(peerId, params);
   },
 
   async sendFile(
@@ -223,8 +255,11 @@ export const telegramApi = {
       fileName: string;
       caption?: string;
       voiceNote?: boolean;
+      isRoundVideo?: boolean;
       mimeType?: string;
       replyTo?: number;
+      silent?: boolean;
+      scheduleDate?: number;
     }
   ): Promise<any> {
     const res = await fetch('/api/telegram/send-file', {
@@ -362,6 +397,34 @@ export const telegramApi = {
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'فشل مسح سجل المحادثة');
+    }
+    return data;
+  },
+
+  async getPinnedMessages(peerId: string): Promise<TelegramMessage[]> {
+    try {
+      const res = await fetch(`/api/telegram/pinned/${encodeURIComponent(peerId)}`, {
+        headers: this.getHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return [];
+      }
+      return data.messages || [];
+    } catch (_) {
+      return [];
+    }
+  },
+
+  async sendVote(peerId: string, msgId: number, options: (string | number)[]): Promise<any> {
+    const res = await fetch('/api/telegram/poll/vote', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ peerId, msgId, options: options.map(String) }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل التصويت في الاستطلاع');
     }
     return data;
   },
@@ -790,5 +853,296 @@ export const telegramApi = {
         eventSource = null;
       }
     };
+  },
+
+  // --------------------------------
+  // Forward Messages
+  // --------------------------------
+  async forwardMessages(
+    toPeerId: string,
+    fromPeerId: string,
+    messageIds: number[],
+    dropAuthor = false,
+    silent = false
+  ): Promise<{ success: boolean; forwardedCount: number }> {
+    const res = await fetch('/api/telegram/forward-messages', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ toPeerId, fromPeerId, messageIds, dropAuthor, silent }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل إعادة توجيه الرسائل');
+    }
+    return data;
+  },
+
+  // --------------------------------
+  // Pinned Messages
+  // --------------------------------
+  async pinMessage(
+    peerId: string,
+    messageId: number,
+    silent = false,
+    pmOneSide = false
+  ): Promise<{ success: boolean; messageId: number }> {
+    const res = await fetch('/api/telegram/messages/pin', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ peerId, messageId, silent, pmOneSide }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل تثبيت الرسالة');
+    }
+    return data;
+  },
+
+  async unpinMessage(peerId: string, messageId?: number): Promise<{ success: boolean }> {
+    const res = await fetch('/api/telegram/messages/unpin', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ peerId, messageId }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل إلغاء تثبيت الرسالة');
+    }
+    return data;
+  },
+
+  // --------------------------------
+  // Polls & Quizzes
+  // --------------------------------
+  async sendPoll(
+    peerId: string,
+    question: string,
+    answers: string[],
+    options?: {
+      closed?: boolean;
+      publicVoters?: boolean;
+      multipleChoice?: boolean;
+      quiz?: boolean;
+      correctAnswers?: number[];
+      solution?: string;
+    }
+  ): Promise<TelegramMessage> {
+    const res = await fetch('/api/telegram/send-poll', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ peerId, question, answers, options }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل إرسال الاستطلاع');
+    }
+    return data.message;
+  },
+
+  async votePoll(peerId: string, messageId: number, options: string[]): Promise<{ success: boolean }> {
+    const res = await fetch('/api/telegram/vote-poll', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ peerId, messageId, options }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل تسجيل التصويت');
+    }
+    return data;
+  },
+
+  // --------------------------------
+  // Smart Link Previews
+  // --------------------------------
+  async getUrlPreview(url: string): Promise<TelegramWebPage | null> {
+    try {
+      const res = await fetch(`/api/telegram/preview-url?url=${encodeURIComponent(url)}`, {
+        headers: this.getHeaders(),
+      });
+      const data = await res.json();
+      if (data.success && data.preview) {
+        return data.preview;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  },
+
+  // --------------------------------
+  // Bot Callbacks
+  // --------------------------------
+  async sendBotCallback(
+    peerId: string,
+    msgId: number,
+    dataHex: string
+  ): Promise<{ message?: string; alert?: boolean; url?: string | null }> {
+    const res = await fetch('/api/telegram/bot/callback', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ peerId, msgId, data: dataHex }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل معالجة استجابة البوت');
+    }
+    return data.result;
+  },
+
+  // --------------------------------
+  // Contacts Book
+  // --------------------------------
+  async getContacts(): Promise<TelegramContact[]> {
+    const res = await fetch('/api/telegram/contacts', {
+      headers: this.getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل جلب جهات الاتصال');
+    }
+    return data.contacts || [];
+  },
+
+  async addContact(phone: string, firstName: string, lastName?: string): Promise<{ success: boolean }> {
+    const res = await fetch('/api/telegram/contacts/add', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ phone, firstName, lastName }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل إضافة جهة الاتصال');
+    }
+    return data;
+  },
+
+  // --------------------------------
+  // Profile Management
+  // --------------------------------
+  async getFullProfile(): Promise<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    username: string | null;
+    phone: string | null;
+    bio: string;
+  }> {
+    const res = await fetch('/api/telegram/profile/full', {
+      headers: this.getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل جلب الملف الشخصي');
+    }
+    return data.profile;
+  },
+
+  async updateProfile(firstName: string, lastName?: string, about?: string): Promise<TelegramUser> {
+    const res = await fetch('/api/telegram/profile/update', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ firstName, lastName, about }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل تحديث البيانات الشخصية');
+    }
+    return data.user;
+  },
+
+  async updateUsername(username: string): Promise<TelegramUser> {
+    const res = await fetch('/api/telegram/profile/username', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ username }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل تحديث اسم المستخدم');
+    }
+    return data.user;
+  },
+
+  async uploadProfilePhoto(photoBase64: string, fileName?: string): Promise<TelegramUser> {
+    const res = await fetch('/api/telegram/profile/photo', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ photoBase64, fileName }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل رفع الصورة الشخصية');
+    }
+    return data.user;
+  },
+
+  // --------------------------------
+  // Active Sessions
+  // --------------------------------
+  async getActiveSessions(): Promise<TelegramActiveSession[]> {
+    const res = await fetch('/api/telegram/sessions/active', {
+      headers: this.getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل جلب الجلسات النشطة');
+    }
+    return data.sessions || [];
+  },
+
+  async terminateSession(hash: string): Promise<{ success: boolean }> {
+    const res = await fetch('/api/telegram/sessions/terminate', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ hash }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل إنهاء الجلسة');
+    }
+    return data;
+  },
+
+  async terminateAllOtherSessions(): Promise<{ success: boolean }> {
+    const res = await fetch('/api/telegram/sessions/terminate-all', {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل إنهاء الجلسات الأخرى');
+    }
+    return data;
+  },
+
+  // --------------------------------
+  // Privacy Settings
+  // --------------------------------
+  async getPrivacySettings(): Promise<TelegramPrivacySettings> {
+    const res = await fetch('/api/telegram/privacy', {
+      headers: this.getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل جلب إعدادات الخصوصية');
+    }
+    return data.privacy;
+  },
+
+  async setPrivacyRule(
+    key: 'phone' | 'last_seen' | 'photo' | 'forwards',
+    value: 'everybody' | 'contacts' | 'nobody'
+  ): Promise<{ success: boolean }> {
+    const res = await fetch('/api/telegram/privacy/set', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ key, value }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل تحديث الخصوصية');
+    }
+    return data;
   },
 };
