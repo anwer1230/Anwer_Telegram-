@@ -35,10 +35,10 @@ export default function App() {
   }, [loadingInitial]);
 
   // Load Dialogs from Telegram Cloud (stable callback with functional state update)
-  const loadDialogs = useCallback(async (quiet = false) => {
+  const loadDialogs = useCallback(async (quiet = false, retry = true) => {
     if (!quiet) setIsRefreshing(true);
     try {
-      const chatList = await telegramApi.getDialogs(50);
+      const chatList = await telegramApi.getDialogs(40);
       setDialogs(chatList);
       // Update selected chat reference if active without re-triggering callback
       setSelectedChat((prev) => {
@@ -46,8 +46,15 @@ export default function App() {
         const updated = chatList.find((d) => d.id === prev.id);
         return updated || prev;
       });
-    } catch (err) {
-      console.error('Failed to load dialogs from Telegram:', err);
+    } catch (err: any) {
+      if (retry) {
+        console.warn('Initial dialog fetch hiccup, retrying gracefully in background...');
+        setTimeout(() => {
+          loadDialogs(quiet, false);
+        }, 1200);
+      } else {
+        console.error('Failed to load dialogs from Telegram:', err);
+      }
     } finally {
       if (!quiet) setIsRefreshing(false);
     }

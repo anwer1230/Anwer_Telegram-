@@ -10,15 +10,22 @@ import {
 
 const SESSION_STORAGE_KEY = 'telegram_mtproto_session';
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 25000): Promise<Response> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutId = setTimeout(() => {
+    controller.abort(new Error(`Timeout: ${timeoutMs}ms exceeded`));
+  }, timeoutMs);
   try {
     const res = await fetch(url, {
       ...options,
       signal: controller.signal,
     });
     return res;
+  } catch (err: any) {
+    if (err?.name === 'AbortError' || err?.message?.includes('aborted')) {
+      throw new Error(`انتهت مهلة الاتصال بالخادم (${Math.round(timeoutMs / 1000)} ثانية)`);
+    }
+    throw err;
   } finally {
     clearTimeout(timeoutId);
   }
@@ -134,7 +141,7 @@ export const telegramApi = {
   async getMe(): Promise<TelegramUser> {
     const res = await fetchWithTimeout('/api/telegram/me', {
       headers: this.getHeaders(),
-    }, 6000);
+    }, 15000);
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'فشل جلب بيانات المستخدم');
@@ -145,7 +152,7 @@ export const telegramApi = {
   async getDialogs(limit = 40): Promise<TelegramDialog[]> {
     const res = await fetchWithTimeout(`/api/telegram/dialogs?limit=${limit}`, {
       headers: this.getHeaders(),
-    }, 8000);
+    }, 30000);
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'فشل جلب المحادثات');

@@ -19,6 +19,8 @@ interface ActiveSession {
   lastActive: number;
   entityCache: Map<string, any>;
   me?: any;
+  cachedDialogs?: any[];
+  lastDialogsFetch?: number;
   eventListenersAttached?: boolean;
   eventSubscribers: Set<(data: { event: string; payload: any }) => void>;
 }
@@ -66,7 +68,7 @@ export async function getClientForSession(sessionString: string): Promise<Active
       try {
         const connectPromise = existing.client.connect();
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('انتهت مهلة إعادة الاتصال')), 6000)
+          setTimeout(() => reject(new Error('انتهت مهلة إعادة الاتصال بسحابة تليجرام')), 20000)
         );
         await Promise.race([connectPromise, timeoutPromise]);
       } catch (reconnectErr) {
@@ -80,14 +82,14 @@ export async function getClientForSession(sessionString: string): Promise<Active
 
   const stringSession = new StringSession(cleanKey);
   const client = new TelegramClient(stringSession, TELEGRAM_API_ID, TELEGRAM_API_HASH, {
-    connectionRetries: 3,
-    timeout: 8,
+    connectionRetries: 4,
+    timeout: 15,
     useWSS: false,
   });
 
   const connectPromise = client.connect();
   const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('انتهت مهلة الاتصال بسحابة تليجرام الرسمية')), 6000)
+    setTimeout(() => reject(new Error('انتهت مهلة الاتصال بسحابة تليجرام الرسمية')), 20000)
   );
   await Promise.race([connectPromise, timeoutPromise]);
 
@@ -330,6 +332,11 @@ export async function getTelegramDialogs(sessionString: string, limit = 40) {
   const session = await getClientForSession(sessionString);
   const client = session.client;
 
+  // Serve from memory cache if less than 15 seconds old
+  if (session.cachedDialogs && session.lastDialogsFetch && Date.now() - session.lastDialogsFetch < 15000) {
+    return session.cachedDialogs;
+  }
+
   const dialogs = await client.getDialogs({ limit });
   const formattedDialogs = [];
 
@@ -374,6 +381,9 @@ export async function getTelegramDialogs(sessionString: string, limit = 40) {
       },
     });
   }
+
+  session.cachedDialogs = formattedDialogs;
+  session.lastDialogsFetch = Date.now();
 
   return formattedDialogs;
 }
