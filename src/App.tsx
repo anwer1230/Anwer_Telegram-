@@ -1,16 +1,30 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { WifiOff } from 'lucide-react';
 import { Header } from './components/Header';
 import { AuthView } from './components/AuthView';
 import { ChatList } from './components/ChatList';
 import { ChatView } from './components/ChatView';
 import { OfficialInfoModal } from './components/OfficialInfoModal';
-import { TelegramDialog, TelegramServerStatus, TelegramUser } from './types';
+import { CallModal } from './components/CallModal';
+import { VoiceChatModal } from './components/VoiceChatModal';
+import { FolderManagerModal } from './components/FolderManagerModal';
+import { NewChatModal } from './components/NewChatModal';
+import {
+  TelegramDialog,
+  TelegramServerStatus,
+  TelegramUser,
+  TypingStatus,
+  ChatFolder,
+  CallSession,
+} from './types';
 import { telegramApi } from './api/telegramApi';
+import { indexedDbCache } from './utils/indexedDbCache';
 
 export default function App() {
   const [status, setStatus] = useState<TelegramServerStatus | null>(null);
   const [user, setUser] = useState<TelegramUser | null>(null);
   const [dialogs, setDialogs] = useState<TelegramDialog[]>([]);
+  const [folders, setFolders] = useState<ChatFolder[]>([]);
   const [selectedChat, setSelectedChat] = useState<TelegramDialog | null>(null);
   const [isAuth, setIsAuth] = useState<boolean>(false);
   const [loadingInitial, setLoadingInitial] = useState<boolean>(true);
@@ -18,9 +32,33 @@ export default function App() {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState<boolean>(false);
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
+  const [typingStatuses, setTypingStatuses] = useState<Record<string, TypingStatus>>({});
+  const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
+
+  // New features modals & state
+  const [isFolderManagerOpen, setIsFolderManagerOpen] = useState(false);
+  const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+  const [activeCall, setActiveCall] = useState<CallSession | null>(null);
+  const [activeVoiceChat, setActiveVoiceChat] = useState<{
+    chatId: string;
+    title: string;
+    isChannel: boolean;
+  } | null>(null);
 
   const selectedChatIdRef = React.useRef<string | undefined>(selectedChat?.id);
   selectedChatIdRef.current = selectedChat?.id;
+
+  // Track online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Track slow loading to provide skip and clear actions
   useEffect(() => {
@@ -34,12 +72,14 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [loadingInitial]);
 
-  // Load Dialogs from Telegram Cloud (stable callback with functional state update)
+  // Load Dialogs from Telegram Cloud & Cache to IndexedDB
   const loadDialogs = useCallback(async (quiet = false, retry = true) => {
     if (!quiet) setIsRefreshing(true);
     try {
       const chatList = await telegramApi.getDialogs(40);
       setDialogs(chatList);
+      indexedDbCache.saveDialogs(chatList);
+
       // Update selected chat reference if active without re-triggering callback
       setSelectedChat((prev) => {
         if (!prev) return null;
@@ -47,6 +87,12 @@ export default function App() {
         return updated || prev;
       });
     } catch (err: any) {
+      // Offline fallback: load dialogs from IndexedDB
+      const cached = await indexedDbCache.getCachedDialogs();
+      if (cached.length > 0) {
+        setDialogs(cached);
+      }
+
       if (retry) {
         console.warn('Initial dialog fetch hiccup, retrying gracefully in background...');
         setTimeout(() => {
@@ -57,6 +103,16 @@ export default function App() {
       }
     } finally {
       if (!quiet) setIsRefreshing(false);
+    }
+  }, []);
+
+  // Load Chat Folders from Telegram Cloud (account.getDialogFilters)
+  const loadFolders = useCallback(async () => {
+    try {
+      const list = await telegramApi.getFolders();
+      setFolders(list);
+    } catch (err) {
+      console.warn('Failed to load chat folders:', err);
     }
   }, []);
 
@@ -74,41 +130,39 @@ export default function App() {
     const initApp = async () => {
       try {
         const serverStatus = await telegramApi.getStatus().catch((err) => {
-          console.warn('Telegram status check warning:', err);
-          return null;
+          console.warn('Backend status probe returned error:', err);
+          return {
+            connected: false,
+            authorized: false,
+            configured: false,
+            apiIdPresent: false,
+            apiHashPresent: false,
+          } as unknown as TelegramServerStatus;
         });
 
-        if (isMounted && serverStatus) {
-          setStatus(serverStatus);
-        }
+        if (!isMounted) return;
+        setStatus(serverStatus);
 
-        const hasSession = !!telegramApi.getSession();
-        if (hasSession) {
+        if (serverStatus.authorized) {
+          setIsAuth(true);
+
           try {
-            const currentUser = await telegramApi.getMe();
-            if (isMounted) {
-              setUser(currentUser);
-              setIsAuth(true);
-              await loadDialogs(true);
-            }
-          } catch (sessionErr) {
-            console.warn('Session expired or unauthorized, clearing stored session:', sessionErr);
-            telegramApi.clearSession();
-            if (isMounted) {
-              setIsAuth(false);
-              setUser(null);
-            }
+            const me = await telegramApi.getMe();
+            if (isMounted) setUser(me);
+          } catch (e) {
+            console.warn('Failed to get me profile:', e);
           }
-        } else {
+
           if (isMounted) {
-            setIsAuth(false);
+            loadDialogs(true);
+            loadFolders();
           }
         }
       } catch (err) {
-        console.error('App initialization error:', err);
+        console.error('Initial bootstrap failed:', err);
       } finally {
-        clearTimeout(watchdogTimer);
         if (isMounted) {
+          clearTimeout(watchdogTimer);
           setLoadingInitial(false);
         }
       }
@@ -120,55 +174,88 @@ export default function App() {
       isMounted = false;
       clearTimeout(watchdogTimer);
     };
-  }, [loadDialogs]);
+  }, [loadDialogs, loadFolders]);
 
-  // Periodic Cloud Sync every 45 seconds as a fallback
-  useEffect(() => {
-    if (!isAuth) return;
-    const syncInterval = setInterval(() => {
-      loadDialogs(true);
-    }, 45000);
-    return () => clearInterval(syncInterval);
-  }, [isAuth, loadDialogs]);
-
-  // Real-time live events subscription for instant dialogs list updates
+  // Subscribe to real-time events via Server-Sent Events (SSE)
   useEffect(() => {
     if (!isAuth) return;
 
     const unsubscribe = telegramApi.subscribeToEvents({
-      onNewMessage: (data) => {
-        setDialogs((prev) => {
-          const cleanDataChatId = data.chatId.replace(/^-100/, '').replace(/^-/, '');
-          const matchIdx = prev.findIndex((d) => {
-            const cleanDId = d.id.replace(/^-100/, '').replace(/^-/, '');
-            return d.id === data.chatId || cleanDId === cleanDataChatId;
+      onNewMessage: () => {
+        // Refresh dialogs list to show latest snippet and unread counter
+        loadDialogs(true);
+      },
+      onTypingStatus: (data) => {
+        const cleanChatId = data.chatId.replace(/^-100/, '').replace(/^-/, '');
+        if (data.actionType === 'cancel') {
+          setTypingStatuses((prev) => {
+            const next = { ...prev };
+            delete next[data.chatId];
+            delete next[cleanChatId];
+            return next;
           });
-
-          if (matchIdx !== -1) {
-            const existing = prev[matchIdx];
-            const updatedDialog: TelegramDialog = {
-              ...existing,
-              lastMessage: {
-                text: data.message.text || (data.message.mediaType ? 'مرفق وسائط' : ''),
-                date: data.message.date,
-                out: data.message.out,
-                senderId: data.message.senderId,
-              },
-              date: data.message.date,
-              unreadCount:
-                !data.message.out && selectedChatIdRef.current !== existing.id
-                  ? (existing.unreadCount || 0) + 1
-                  : existing.unreadCount,
-            };
-            const copy = [...prev];
-            copy.splice(matchIdx, 1);
-            return [updatedDialog, ...copy];
-          }
-
-          // If conversation isn't in current list, load dialogs to include it
-          loadDialogs(true);
-          return prev;
+        } else {
+          setTypingStatuses((prev) => ({
+            ...prev,
+            [data.chatId]: data,
+            [cleanChatId]: data,
+          }));
+          setTimeout(() => {
+            setTypingStatuses((prev) => {
+              const next = { ...prev };
+              delete next[data.chatId];
+              delete next[cleanChatId];
+              return next;
+            });
+          }, 6000);
+        }
+      },
+      onReadReceipt: (data) => {
+        const cleanChatId = data.chatId.replace(/^-100/, '').replace(/^-/, '');
+        setDialogs((prev) => {
+          const next = prev.map((d) => {
+            const dClean = d.id.replace(/^-100/, '').replace(/^-/, '');
+            if (d.id === data.chatId || dClean === cleanChatId) {
+              if (d.lastMessage && d.lastMessage.out && d.lastMessage.id && d.lastMessage.id <= data.maxId) {
+                return {
+                  ...d,
+                  lastMessage: {
+                    ...d.lastMessage,
+                    unread: false,
+                  },
+                };
+              }
+            }
+            return d;
+          });
+          indexedDbCache.saveDialogs(next);
+          return next;
         });
+      },
+      // Real-time WebRTC Calls Signaling Events
+      onCallIncoming: (data) => {
+        setActiveCall({
+          callId: data.callId,
+          peerId: data.callerId,
+          peerName: data.callerName || 'مستخدم تليجرام',
+          isVideo: !!data.isVideo,
+          isOutgoing: false,
+          status: 'calling',
+          sdp: data.sdp,
+        });
+      },
+      onCallAnswered: (data) => {
+        setActiveCall((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            status: 'connected',
+            sdp: data.sdp,
+          };
+        });
+      },
+      onCallEnded: () => {
+        setActiveCall(null);
       },
     });
 
@@ -185,6 +272,7 @@ export default function App() {
       setUser(currentUser);
       setIsAuth(true);
       await loadDialogs();
+      await loadFolders();
     } catch (err) {
       console.error('Post-auth fetch failed:', err);
     } finally {
@@ -239,6 +327,53 @@ export default function App() {
     }
   };
 
+  // Archive / Unarchive chat
+  const handleArchiveChat = async (dialog: TelegramDialog, archive: boolean) => {
+    try {
+      await telegramApi.toggleArchive(dialog.id, archive);
+      setDialogs((prev) =>
+        prev.map((d) =>
+          d.id === dialog.id ? { ...d, isArchived: archive, folderId: archive ? 1 : 0 } : d
+        )
+      );
+      if (selectedChat?.id === dialog.id) {
+        setSelectedChat((prev) => (prev ? { ...prev, isArchived: archive } : null));
+      }
+    } catch (err: any) {
+      alert(`فشل أرشفة المحادثة: ${err.message || 'خطأ'}`);
+    }
+  };
+
+  // Start outgoing Call (Phone or Video)
+  const handleStartCall = (chat: TelegramDialog, isVideo: boolean) => {
+    const callId = `call_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    setActiveCall({
+      callId,
+      peerId: chat.id,
+      peerName: chat.title || chat.name || 'مستخدم تليجرام',
+      isVideo,
+      isOutgoing: true,
+      status: 'calling',
+    });
+  };
+
+  // End Call
+  const handleEndCall = () => {
+    if (activeCall) {
+      telegramApi.sendCallSignal({
+        action: 'call_end',
+        callId: activeCall.callId,
+        peerId: activeCall.peerId,
+      }).catch(() => {});
+    }
+    setActiveCall(null);
+  };
+
+  // Answer Call
+  const handleAnswerCall = () => {
+    setActiveCall((prev) => (prev ? { ...prev, status: 'connected' } : null));
+  };
+
   // Leave chat / group
   const handleLeaveChat = async (dialog: TelegramDialog) => {
     try {
@@ -273,35 +408,34 @@ export default function App() {
   if (loadingInitial) {
     return (
       <div className="h-screen w-screen bg-[#0e1621] flex flex-col items-center justify-center text-white select-none px-4">
-        <div className="w-12 h-12 border-3 border-[#54a9eb] border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-base font-semibold text-slate-200">جاري الاتصال بسحابة تليجرام الرسمية...</p>
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-xs text-slate-400 font-mono bg-slate-800/80 px-2.5 py-1 rounded border border-slate-700/60">
-            MTProto Layer 198 (API: 22043994)
-          </span>
-          <span className="text-xs text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/50 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            سيرفر رسمي (DC2)
-          </span>
+        <div className="relative mb-6">
+          <div className="w-16 h-16 rounded-full border-4 border-[#2b5278] border-t-[#54a9eb] animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-[#54a9eb] flex items-center justify-center shadow-lg">
+              <span className="text-white font-black text-sm">T</span>
+            </div>
+          </div>
         </div>
+        <h2 className="text-lg font-bold mb-2">جاري الاتصال بسحابة تليجرام</h2>
+        <p className="text-xs text-slate-400 text-center max-w-sm">
+          جاري مزامنة المحادثات والمجلدات عبر بروتوكول MTProto الرسمي...
+        </p>
 
         {slowLoading && (
-          <div className="mt-6 flex flex-col items-center gap-3 animate-fade-in max-w-sm text-center">
-            <p className="text-xs text-slate-400">
-              يستغرق التحقق وقتاً إضافياً بسبب سرعة استجابة الشبكة مع سحابة تليجرام
+          <div className="mt-8 flex flex-col items-center gap-3 animate-in fade-in duration-300">
+            <p className="text-[11px] text-amber-400 bg-amber-950/40 px-3 py-1.5 rounded-lg border border-amber-800/40">
+              يستغرق الاتصال وقتاً أطول من المعتاد
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex gap-2">
               <button
-                type="button"
                 onClick={() => setLoadingInitial(false)}
-                className="px-4 py-2 bg-[#2b5278] hover:bg-[#33618f] text-white rounded-lg text-xs font-medium transition cursor-pointer shadow-md"
+                className="px-4 py-2 bg-[#2b5278] hover:bg-[#3b6a99] text-white rounded-lg text-xs font-semibold transition cursor-pointer shadow"
               >
-                المتابعة إلى تسجيل الدخول
+                تخطي والدخول الآن
               </button>
               <button
-                type="button"
                 onClick={() => {
-                  telegramApi.clearSession();
+                  indexedDbCache.clearAllCache();
                   window.location.reload();
                 }}
                 className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition cursor-pointer border border-slate-700"
@@ -327,6 +461,14 @@ export default function App() {
         isRefreshing={isRefreshing}
       />
 
+      {/* Offline Status Warning Banner */}
+      {isOffline && (
+        <div className="bg-amber-600/90 text-white text-xs px-3 py-1 flex items-center justify-center gap-2 font-medium z-40 border-b border-amber-500/50 shadow">
+          <WifiOff className="w-3.5 h-3.5 shrink-0" />
+          <span>أنت في وضع عدم الاتصال - يتم عرض المحادثات والرسائل من التخزين المؤقت المحلي (IndexedDB).</span>
+        </div>
+      )}
+
       {/* Main Container */}
       {!isAuth ? (
         <AuthView onAuthSuccess={handleAuthSuccess} />
@@ -339,8 +481,13 @@ export default function App() {
               selectedChatId={selectedChat?.id || null}
               onSelectChat={handleSelectChat}
               isLoading={isRefreshing}
+              typingStatuses={typingStatuses}
+              folders={folders}
+              onOpenFolderManager={() => setIsFolderManagerOpen(true)}
+              onOpenNewChat={() => setIsNewChatOpen(true)}
               onPinChat={handlePinChat}
               onMuteChat={handleMuteChat}
+              onArchiveChat={handleArchiveChat}
               onClearHistory={handleClearHistory}
               onLeaveChat={handleLeaveChat}
             />
@@ -354,6 +501,15 @@ export default function App() {
               onMessageSent={() => loadDialogs(true)}
               onPinChat={handlePinChat}
               onMuteChat={handleMuteChat}
+              onArchiveChat={handleArchiveChat}
+              onStartCall={handleStartCall}
+              onOpenVoiceChat={(chat) =>
+                setActiveVoiceChat({
+                  chatId: chat.id,
+                  title: chat.title || chat.name || 'محادثة صوتية',
+                  isChannel: !!chat.isChannel,
+                })
+              }
               onClearHistory={handleClearHistory}
               onLeaveChat={handleLeaveChat}
             />
@@ -368,6 +524,45 @@ export default function App() {
         status={status}
         user={user}
       />
+
+      {/* Folders Manager Modal */}
+      {isFolderManagerOpen && (
+        <FolderManagerModal
+          folders={folders}
+          onFoldersChanged={loadFolders}
+          onClose={() => setIsFolderManagerOpen(false)}
+        />
+      )}
+
+      {/* New Group / Channel / Private Chat Modal */}
+      {isNewChatOpen && (
+        <NewChatModal
+          onClose={() => setIsNewChatOpen(false)}
+          onChatCreated={(newChat) => {
+            setDialogs((prev) => [newChat, ...prev.filter((d) => d.id !== newChat.id)]);
+            handleSelectChat(newChat);
+          }}
+        />
+      )}
+
+      {/* WebRTC Video & Audio Call Modal */}
+      {activeCall && (
+        <CallModal
+          call={activeCall}
+          onEndCall={handleEndCall}
+          onAnswerCall={handleAnswerCall}
+        />
+      )}
+
+      {/* Voice Chat Space & Live Stream Modal */}
+      {activeVoiceChat && (
+        <VoiceChatModal
+          chatId={activeVoiceChat.chatId}
+          chatTitle={activeVoiceChat.title}
+          isChannel={activeVoiceChat.isChannel}
+          onClose={() => setActiveVoiceChat(null)}
+        />
+      )}
     </div>
   );
 }

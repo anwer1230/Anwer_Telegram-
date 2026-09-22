@@ -1,6 +1,6 @@
 {
   "name": "Telegram Web",
   "description": "تطبيق تليجرام رسمي وحقيقي مرتبط بسحابة تليجرام الرسمية ومزامنة الرسائل والمحادثات عبر MTProto",
-  "requestFramePermissions": ["microphone"],
+  "requestFramePermissions": ["microphone", "camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

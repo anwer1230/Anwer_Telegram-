@@ -18,6 +18,7 @@ interface ActiveSession {
   phoneCodeHash?: string;
   lastActive: number;
   entityCache: Map<string, any>;
+  dialogOutboxReadCache: Map<string, number>;
   me?: any;
   cachedDialogs?: any[];
   lastDialogsFetch?: number;
@@ -98,6 +99,7 @@ export async function getClientForSession(sessionString: string): Promise<Active
     sessionString: cleanKey,
     lastActive: Date.now(),
     entityCache: new Map(),
+    dialogOutboxReadCache: new Map(),
     eventSubscribers: new Set(),
   };
 
@@ -195,6 +197,7 @@ export async function signInWithTelegramCode(phoneNumber: string, code: string, 
       phone: cleanPhone,
       lastActive: Date.now(),
       entityCache: new Map(),
+      dialogOutboxReadCache: new Map(),
       me,
       eventSubscribers: new Set(),
     };
@@ -253,6 +256,7 @@ export async function checkTwoFactorPassword(phoneNumber: string, passwordInput:
     phone: cleanPhone,
     lastActive: Date.now(),
     entityCache: new Map(),
+    dialogOutboxReadCache: new Map(),
     me,
     eventSubscribers: new Set(),
   };
@@ -292,6 +296,7 @@ export async function signInWithBotToken(botToken: string) {
     sessionString,
     lastActive: Date.now(),
     entityCache: new Map(),
+    dialogOutboxReadCache: new Map(),
     me,
     eventSubscribers: new Set(),
   };
@@ -328,22 +333,30 @@ export async function restoreTelegramSession(sessionString: string) {
 /**
  * Get dialogs / chat list
  */
-export async function getTelegramDialogs(sessionString: string, limit = 40) {
+export async function getTelegramDialogs(sessionString: string, limit = 50, folder?: number) {
   const session = await getClientForSession(sessionString);
   const client = session.client;
 
-  // Serve from memory cache if less than 15 seconds old
-  if (session.cachedDialogs && session.lastDialogsFetch && Date.now() - session.lastDialogsFetch < 15000) {
+  // Serve from memory cache if less than 15 seconds old and not requesting specific folder
+  if (folder === undefined && session.cachedDialogs && session.lastDialogsFetch && Date.now() - session.lastDialogsFetch < 15000) {
     return session.cachedDialogs;
   }
 
-  const dialogs = await client.getDialogs({ limit });
+  const queryOpts: any = { limit };
+  if (folder !== undefined) {
+    queryOpts.folder = folder;
+  }
+
+  const dialogs = await client.getDialogs(queryOpts);
   const formattedDialogs = [];
 
   for (const d of dialogs) {
     const idStr = d.id?.toString() || '';
     if (idStr) {
       session.entityCache.set(idStr, d.inputEntity || d.entity);
+      if ((d.dialog as any)?.readOutboxMaxId) {
+        session.dialogOutboxReadCache.set(idStr, Number((d.dialog as any).readOutboxMaxId));
+      }
     }
 
     let lastText = '';
@@ -355,6 +368,11 @@ export async function getTelegramDialogs(sessionString: string, limit = 40) {
 
     const muteUntil = (d.dialog as any)?.notifySettings?.muteUntil;
     const muted = !!(muteUntil && Number(muteUntil) > Math.floor(Date.now() / 1000));
+    const isOut = !!d.message?.out;
+    const readOutboxMaxId = (d.dialog as any)?.readOutboxMaxId ? Number((d.dialog as any).readOutboxMaxId) : undefined;
+    const unread = isOut && readOutboxMaxId !== undefined && d.message?.id ? d.message.id > readOutboxMaxId : false;
+    const folderId = Number((d.dialog as any)?.folderId || (d as any).folderId || 0);
+    const isArchived = folderId === 1;
 
     formattedDialogs.push({
       id: idStr,
@@ -366,11 +384,15 @@ export async function getTelegramDialogs(sessionString: string, limit = 40) {
       unreadCount: d.unreadCount || 0,
       pinned: !!d.pinned,
       muted,
+      folderId,
+      isArchived,
       date: d.date || 0,
       lastMessage: {
+        id: d.message?.id,
         text: lastText,
         date: d.message?.date || d.date || 0,
-        out: !!d.message?.out,
+        out: isOut,
+        unread,
         senderId: d.message?.senderId?.toString?.() || '',
       },
       entity: {
@@ -382,16 +404,69 @@ export async function getTelegramDialogs(sessionString: string, limit = 40) {
     });
   }
 
-  session.cachedDialogs = formattedDialogs;
-  session.lastDialogsFetch = Date.now();
+  if (folder === undefined) {
+    session.cachedDialogs = formattedDialogs;
+    session.lastDialogsFetch = Date.now();
+  }
 
   return formattedDialogs;
 }
 
 /**
+ * Get Archived Dialogs (folder: 1)
+ */
+export async function getTelegramArchivedDialogs(sessionString: string, limit = 50) {
+  return getTelegramDialogs(sessionString, limit, 1);
+}
+
+/**
+ * Archive or unarchive a chat (Telegram folder 1 or 0)
+ */
+export async function toggleArchiveTelegramChat(sessionString: string, peerId: string, archive: boolean) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetPeer: any = peerId;
+  if (session.entityCache.has(peerId)) {
+    targetPeer = session.entityCache.get(peerId);
+  } else {
+    try {
+      targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+    } catch (_) {
+      try {
+        targetPeer = await client.getEntity(bigInt(peerId));
+      } catch (e) {
+        targetPeer = peerId;
+      }
+    }
+  }
+
+  try {
+    const inputPeer = await client.getInputEntity(targetPeer);
+    await client.invoke(
+      new Api.folders.EditPeerFolders({
+        folderPeers: [
+          new Api.InputFolderPeer({
+            peer: inputPeer,
+            folderId: archive ? 1 : 0,
+          }),
+        ],
+      })
+    );
+  } catch (err) {
+    console.warn('EditPeerFolders invoke error:', err);
+  }
+
+  session.cachedDialogs = undefined;
+  session.lastDialogsFetch = undefined;
+
+  return { success: true, peerId, isArchived: archive };
+}
+
+/**
  * Format a Telegram message into our standard application model
  */
-export function formatTelegramMessage(m: any) {
+export function formatTelegramMessage(m: any, readOutboxMaxId?: number) {
   let mediaType: string | null = null;
   let mediaInfo: any = null;
 
@@ -478,11 +553,21 @@ export function formatTelegramMessage(m: any) {
       }))
       .filter((r: any) => !!r.emoticon) || [];
 
+  const isOut = !!m.out;
+  const unread = isOut
+    ? readOutboxMaxId !== undefined
+      ? m.id > readOutboxMaxId
+      : m.unread !== undefined
+      ? !!m.unread
+      : false
+    : false;
+
   return {
     id: m.id,
     text: m.message || '',
     date: m.date || 0,
-    out: !!m.out,
+    out: isOut,
+    unread,
     senderId: m.senderId?.toString?.() || '',
     mediaType,
     mediaInfo,
@@ -603,12 +688,102 @@ export function attachTelegramEventHandlers(sessionObj: ActiveSession) {
               });
             } catch (_) {}
           }
+        } else if (update instanceof Api.UpdateReadHistoryOutbox) {
+          const cid = update.peer ? getPeerId(update.peer).toString() : '';
+          if (cid) {
+            sessionObj.dialogOutboxReadCache.set(cid, update.maxId);
+            for (const subscriber of sessionObj.eventSubscribers) {
+              try {
+                subscriber({
+                  event: 'read_receipt',
+                  payload: { chatId: cid, maxId: update.maxId },
+                });
+              } catch (_) {}
+            }
+          }
+        } else if (update instanceof Api.UpdateReadChannelOutbox) {
+          const cid = update.channelId ? `-100${update.channelId}` : '';
+          if (cid) {
+            sessionObj.dialogOutboxReadCache.set(cid, update.maxId);
+            for (const subscriber of sessionObj.eventSubscribers) {
+              try {
+                subscriber({
+                  event: 'read_receipt',
+                  payload: { chatId: cid, maxId: update.maxId },
+                });
+              } catch (_) {}
+            }
+          }
+        } else if (update instanceof Api.UpdateUserTyping) {
+          const cid = update.userId?.toString();
+          if (cid) {
+            const parsed = parseTypingAction(update.action);
+            for (const subscriber of sessionObj.eventSubscribers) {
+              try {
+                subscriber({
+                  event: 'typing_status',
+                  payload: { chatId: cid, userId: cid, ...parsed },
+                });
+              } catch (_) {}
+            }
+          }
+        } else if (update instanceof Api.UpdateChatUserTyping) {
+          const cid = update.chatId ? `-${update.chatId}` : '';
+          const fromId = update.fromId ? getPeerId(update.fromId).toString() : '';
+          if (cid) {
+            const parsed = parseTypingAction(update.action);
+            for (const subscriber of sessionObj.eventSubscribers) {
+              try {
+                subscriber({
+                  event: 'typing_status',
+                  payload: { chatId: cid, fromId, ...parsed },
+                });
+              } catch (_) {}
+            }
+          }
+        } else if (update instanceof Api.UpdateChannelUserTyping) {
+          const cid = update.channelId ? `-100${update.channelId}` : '';
+          const fromId = update.fromId ? getPeerId(update.fromId).toString() : '';
+          if (cid) {
+            const parsed = parseTypingAction(update.action);
+            for (const subscriber of sessionObj.eventSubscribers) {
+              try {
+                subscriber({
+                  event: 'typing_status',
+                  payload: { chatId: cid, fromId, ...parsed },
+                });
+              } catch (_) {}
+            }
+          }
         }
       } catch (_) {}
     }, new Raw({}));
   } catch (err) {
     console.warn('Could not attach Raw handler:', err);
   }
+}
+
+/**
+ * Parse Telegram typing action into human-readable action text and type
+ */
+export function parseTypingAction(action: any): { actionType: string; actionText: string } {
+  const className = action?.className || action?.constructor?.name || '';
+  if (className.includes('RecordAudio') || className.includes('UploadAudio')) {
+    return { actionType: 'record_audio', actionText: 'يسجل مقطعاً صوتياً...' };
+  }
+  if (className.includes('RecordVideo') || className.includes('UploadVideo')) {
+    return { actionType: 'record_video', actionText: 'يسجل مقطع فيديو...' };
+  }
+  if (className.includes('UploadPhoto')) {
+    return { actionType: 'upload_photo', actionText: 'يرسل صورة...' };
+  }
+  if (className.includes('UploadDocument')) {
+    return { actionType: 'upload_document', actionText: 'يرسل ملفاً...' };
+  }
+  if (className.includes('Cancel')) {
+    return { actionType: 'cancel', actionText: '' };
+  }
+  return { actionType: 'typing', actionText: 'يكتب الآن...' };
 }
 
 /**
@@ -628,9 +803,14 @@ export async function subscribeToTelegramEvents(
 }
 
 /**
- * Get messages from a chat / peer
+ * Get messages from a chat / peer (supports pagination with offsetId)
  */
-export async function getTelegramMessages(sessionString: string, peerId: string, limit = 50) {
+export async function getTelegramMessages(
+  sessionString: string,
+  peerId: string,
+  limit = 50,
+  offsetId?: number
+) {
   const session = await getClientForSession(sessionString);
   const client = session.client;
 
@@ -650,9 +830,104 @@ export async function getTelegramMessages(sessionString: string, peerId: string,
     }
   }
 
-  const messages = await client.getMessages(targetPeer, { limit });
+  const queryOptions: any = { limit };
+  if (offsetId && Number(offsetId) > 0) {
+    queryOptions.offsetId = Number(offsetId);
+  }
 
-  return messages.map((m: any) => formatTelegramMessage(m));
+  const messages = await client.getMessages(targetPeer, queryOptions);
+  const readOutboxMaxId = session.dialogOutboxReadCache.get(peerId);
+
+  return messages.map((m: any) => formatTelegramMessage(m, readOutboxMaxId));
+}
+
+/**
+ * Set typing action in a chat (Typing Indicators)
+ */
+export async function setTelegramTyping(
+  sessionString: string,
+  peerId: string,
+  actionType: string = 'typing'
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetPeer: any = peerId;
+  if (session.entityCache.has(peerId)) {
+    targetPeer = session.entityCache.get(peerId);
+  } else {
+    try {
+      targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+    } catch (_) {
+      try {
+        targetPeer = await client.getEntity(bigInt(peerId));
+      } catch (e) {
+        targetPeer = peerId;
+      }
+    }
+  }
+
+  let action: any;
+  if (actionType === 'record_audio') {
+    action = new Api.SendMessageRecordAudioAction();
+  } else if (actionType === 'upload_photo') {
+    action = new Api.SendMessageUploadPhotoAction({ progress: 50 });
+  } else if (actionType === 'upload_document') {
+    action = new Api.SendMessageUploadDocumentAction({ progress: 50 });
+  } else if (actionType === 'cancel') {
+    action = new Api.SendMessageCancelAction();
+  } else {
+    action = new Api.SendMessageTypingAction();
+  }
+
+  try {
+    await client.invoke(
+      new Api.messages.SetTyping({
+        peer: targetPeer,
+        action,
+      })
+    );
+  } catch (err: any) {
+    // Some channels or restricted chats do not allow SetTyping, ignore gracefully
+    console.warn('SetTyping error:', err?.message);
+  }
+
+  return { success: true, peerId, actionType };
+}
+
+/**
+ * Mark incoming messages as read in chat (Read Receipts)
+ */
+export async function markTelegramAsRead(
+  sessionString: string,
+  peerId: string,
+  maxId?: number
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetPeer: any = peerId;
+  if (session.entityCache.has(peerId)) {
+    targetPeer = session.entityCache.get(peerId);
+  } else {
+    try {
+      targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+    } catch (_) {
+      try {
+        targetPeer = await client.getEntity(bigInt(peerId));
+      } catch (e) {
+        targetPeer = peerId;
+      }
+    }
+  }
+
+  try {
+    await client.markAsRead(targetPeer, maxId ? Number(maxId) : undefined);
+  } catch (err: any) {
+    console.warn('markAsRead error:', err?.message);
+  }
+
+  return { success: true, peerId, maxId };
 }
 
 /**
@@ -1535,4 +1810,713 @@ export async function sendTelegramGif(
   });
 
   return formatTelegramMessage(sent);
+}
+
+// ----------------------------------------------------
+// Chat Folders & Filters Management (account.getDialogFilters)
+// ----------------------------------------------------
+
+/**
+ * Get user dialog folders from Telegram cloud
+ */
+export async function getTelegramFolders(sessionString: string) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  try {
+    const filters: any = await client.invoke(new Api.messages.GetDialogFilters());
+    const result: any[] = [];
+    if (Array.isArray(filters)) {
+      for (const f of filters) {
+        if (f instanceof Api.DialogFilter) {
+          result.push({
+            id: f.id,
+            title: f.title,
+            emoticon: f.emoticon || '',
+            contacts: !!f.contacts,
+            nonContacts: !!f.nonContacts,
+            groups: !!f.groups,
+            broadcasts: !!f.broadcasts,
+            bots: !!f.bots,
+            excludeMuted: !!f.excludeMuted,
+            excludeRead: !!f.excludeRead,
+            excludeArchived: !!f.excludeArchived,
+            includePeerIds: f.includePeers?.map((p: any) => getPeerId(p).toString()) || [],
+            excludePeerIds: f.excludePeers?.map((p: any) => getPeerId(p).toString()) || [],
+          });
+        }
+      }
+    }
+    return result;
+  } catch (err) {
+    console.warn('Could not fetch cloud dialog filters:', err);
+    return [];
+  }
+}
+
+/**
+ * Create or update a dialog folder filter in Telegram
+ */
+export async function updateTelegramFolder(
+  sessionString: string,
+  filterData: {
+    id?: number;
+    title: string;
+    emoticon?: string;
+    groups?: boolean;
+    broadcasts?: boolean;
+    contacts?: boolean;
+    nonContacts?: boolean;
+    bots?: boolean;
+    excludeMuted?: boolean;
+    excludeRead?: boolean;
+    excludeArchived?: boolean;
+    includePeerIds?: string[];
+    excludePeerIds?: string[];
+  }
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  const filterId = filterData.id || Math.floor(Math.random() * 200) + 2;
+
+  const includePeers: any[] = [];
+  if (filterData.includePeerIds && Array.isArray(filterData.includePeerIds)) {
+    for (const pid of filterData.includePeerIds) {
+      try {
+        const input = await client.getInputEntity(pid.startsWith('-') ? bigInt(pid) : pid);
+        includePeers.push(input);
+      } catch (_) {}
+    }
+  }
+
+  const excludePeers: any[] = [];
+  if (filterData.excludePeerIds && Array.isArray(filterData.excludePeerIds)) {
+    for (const pid of filterData.excludePeerIds) {
+      try {
+        const input = await client.getInputEntity(pid.startsWith('-') ? bigInt(pid) : pid);
+        excludePeers.push(input);
+      } catch (_) {}
+    }
+  }
+
+  const filter = new Api.DialogFilter({
+    id: filterId,
+    title: new Api.TextWithEntities({ text: filterData.title, entities: [] }),
+    emoticon: filterData.emoticon || undefined,
+    contacts: filterData.contacts ?? false,
+    nonContacts: filterData.nonContacts ?? false,
+    groups: filterData.groups ?? false,
+    broadcasts: filterData.broadcasts ?? false,
+    bots: filterData.bots ?? false,
+    excludeMuted: filterData.excludeMuted ?? false,
+    excludeRead: filterData.excludeRead ?? false,
+    excludeArchived: filterData.excludeArchived ?? true,
+    pinnedPeers: [],
+    includePeers,
+    excludePeers,
+  });
+
+  await client.invoke(
+    new Api.messages.UpdateDialogFilter({
+      id: filterId,
+      filter,
+    })
+  );
+
+  return { success: true, id: filterId, title: filterData.title };
+}
+
+/**
+ * Delete a dialog folder filter from Telegram
+ */
+export async function deleteTelegramFolder(sessionString: string, filterId: number) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  await client.invoke(
+    new Api.messages.UpdateDialogFilter({
+      id: Number(filterId),
+      filter: undefined,
+    })
+  );
+
+  return { success: true, id: filterId };
+}
+
+// ----------------------------------------------------
+// Global Cloud Search (contacts.Search & messages.SearchGlobal)
+// ----------------------------------------------------
+
+/**
+ * Search global contacts, public channels, groups, and global messages
+ */
+export async function searchTelegramGlobal(sessionString: string, query: string) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+  const cleanQ = query.trim();
+  if (!cleanQ) {
+    return { contacts: [], chats: [], messages: [] };
+  }
+
+  let contactsResults: any[] = [];
+  let chatsResults: any[] = [];
+  try {
+    const searchRes: any = await client.invoke(
+      new Api.contacts.Search({
+        q: cleanQ,
+        limit: 15,
+      })
+    );
+
+    if (searchRes.users && Array.isArray(searchRes.users)) {
+      for (const u of searchRes.users) {
+        const idStr = u.id?.toString() || '';
+        if (idStr) session.entityCache.set(idStr, u);
+        contactsResults.push({
+          id: idStr,
+          title: [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username || 'مستخدم تليجرام',
+          username: u.username || null,
+          phone: u.phone || null,
+          verified: !!u.verified,
+          isUser: true,
+          isGroup: false,
+          isChannel: false,
+          bot: !!u.bot,
+        });
+      }
+    }
+
+    if (searchRes.chats && Array.isArray(searchRes.chats)) {
+      for (const c of searchRes.chats) {
+        const idStr = c.id ? (c.broadcast ? `-100${c.id}` : `-${c.id}`) : '';
+        if (idStr) session.entityCache.set(idStr, c);
+        chatsResults.push({
+          id: idStr,
+          title: c.title || 'مجموعة/قناة',
+          username: (c as any).username || null,
+          verified: !!(c as any).verified,
+          isUser: false,
+          isGroup: !c.broadcast,
+          isChannel: !!c.broadcast,
+          participantsCount: (c as any).participantsCount || undefined,
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('contacts.Search error:', err);
+  }
+
+  let messageResults: any[] = [];
+  try {
+    const msgRes: any = await client.invoke(
+      new Api.messages.SearchGlobal({
+        q: cleanQ,
+        filter: new Api.InputMessagesFilterEmpty(),
+        minDate: 0,
+        maxDate: 0,
+        offsetRate: 0,
+        offsetPeer: new Api.InputPeerEmpty(),
+        offsetId: 0,
+        limit: 15,
+      })
+    );
+
+    if (msgRes.messages && Array.isArray(msgRes.messages)) {
+      messageResults = msgRes.messages.map((m: any) => {
+        const myId = session.me?.id?.toString();
+        const chatId = extractChatId(m, myId);
+        return {
+          ...formatTelegramMessage(m),
+          chatId,
+        };
+      });
+    }
+  } catch (err) {
+    console.warn('messages.SearchGlobal error:', err);
+  }
+
+  return {
+    contacts: contactsResults,
+    chats: chatsResults,
+    messages: messageResults,
+  };
+}
+
+// ----------------------------------------------------
+// New Chats & Channels Creation
+// ----------------------------------------------------
+
+/**
+ * Create a new Telegram Group
+ */
+export async function createTelegramGroup(
+  sessionString: string,
+  title: string,
+  usernamesOrPhones: string[] = [],
+  about: string = ''
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  const inputUsers: any[] = [];
+  for (const userIdent of usernamesOrPhones) {
+    const clean = userIdent.trim().replace(/^@/, '');
+    if (!clean) continue;
+    try {
+      const resolved = await client.getInputEntity(clean);
+      inputUsers.push(resolved);
+    } catch (_) {}
+  }
+
+  try {
+    const res: any = await client.invoke(
+      new Api.channels.CreateChannel({
+        title,
+        about: about || '',
+        megagroup: true,
+      })
+    );
+    const channel = res.chats?.[0];
+    const channelId = channel ? `-100${channel.id}` : '';
+
+    if (channel && inputUsers.length > 0) {
+      try {
+        await client.invoke(
+          new Api.channels.InviteToChannel({
+            channel: await client.getInputEntity(channel),
+            users: inputUsers,
+          })
+        );
+      } catch (_) {}
+    }
+
+    session.cachedDialogs = undefined;
+    session.lastDialogsFetch = undefined;
+
+    return {
+      success: true,
+      chatId: channelId,
+      title,
+      isGroup: true,
+    };
+  } catch (err: any) {
+    const res: any = await client.invoke(
+      new Api.messages.CreateChat({
+        title,
+        users: inputUsers,
+      })
+    );
+    const chat = res.chats?.[0];
+    const chatId = chat ? `-${chat.id}` : '';
+
+    session.cachedDialogs = undefined;
+    session.lastDialogsFetch = undefined;
+
+    return {
+      success: true,
+      chatId,
+      title,
+      isGroup: true,
+    };
+  }
+}
+
+/**
+ * Create a new Telegram Channel
+ */
+export async function createTelegramChannel(
+  sessionString: string,
+  title: string,
+  about: string = ''
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  const res: any = await client.invoke(
+    new Api.channels.CreateChannel({
+      title,
+      about,
+      broadcast: true,
+    })
+  );
+
+  const channel = res.chats?.[0];
+  const channelId = channel ? `-100${channel.id}` : '';
+
+  session.cachedDialogs = undefined;
+  session.lastDialogsFetch = undefined;
+
+  return {
+    success: true,
+    chatId: channelId,
+    title,
+    isChannel: true,
+  };
+}
+
+/**
+ * Resolve a Telegram user or channel by @username
+ */
+export async function resolveTelegramContact(sessionString: string, identifier: string) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+  const clean = identifier.trim().replace(/^@/, '');
+
+  try {
+    const res: any = await client.invoke(
+      new Api.contacts.ResolveUsername({
+        username: clean,
+      })
+    );
+
+    const user = res.users?.[0];
+    const chat = res.chats?.[0];
+
+    if (user) {
+      const idStr = user.id.toString();
+      session.entityCache.set(idStr, user);
+      return {
+        success: true,
+        id: idStr,
+        title: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || 'مستخدم',
+        username: user.username || null,
+        phone: user.phone || null,
+        isUser: true,
+        isGroup: false,
+        isChannel: false,
+      };
+    } else if (chat) {
+      const idStr = chat.broadcast ? `-100${chat.id}` : `-${chat.id}`;
+      session.entityCache.set(idStr, chat);
+      return {
+        success: true,
+        id: idStr,
+        title: chat.title || 'مجموعة/قناة',
+        username: (chat as any).username || null,
+        isUser: false,
+        isGroup: !chat.broadcast,
+        isChannel: !!chat.broadcast,
+      };
+    }
+
+    throw new Error('لم يتم العثور على مستخدم أو قناة بهذا المعرف');
+  } catch (err: any) {
+    throw new Error(err.errorMessage || err.message || 'تعذر العثور على جهة الاتصال');
+  }
+}
+
+// ----------------------------------------------------
+// Real-time WebRTC Calling & Group Voice Chat Space Hub
+// ----------------------------------------------------
+
+interface ActiveCallRecord {
+  callId: string;
+  callerPeerId: string;
+  callerSession: string;
+  calleePeerId: string;
+  isVideo: boolean;
+  status: 'calling' | 'ringing' | 'connected' | 'ended' | 'rejected';
+  sdpOffer?: any;
+  sdpAnswer?: any;
+  candidates: any[];
+  createdAt: number;
+}
+
+const activeCalls = new Map<string, ActiveCallRecord>();
+
+interface ActiveVoiceSpaceRecord {
+  chatId: string;
+  title: string;
+  isChannel: boolean;
+  isActive: boolean;
+  participants: Map<string, {
+    id: string;
+    name: string;
+    username?: string | null;
+    isSpeaking: boolean;
+    isMuted: boolean;
+    isRaisedHand: boolean;
+    isVideo: boolean;
+    role: 'admin' | 'speaker' | 'listener';
+    joinedAt: number;
+  }>;
+  createdAt: number;
+}
+
+const activeVoiceSpaces = new Map<string, ActiveVoiceSpaceRecord>();
+
+/**
+ * Handle WebRTC Call Signal (offer, answer, candidate, end, reject)
+ */
+export async function handleCallSignal(sessionString: string, signalData: {
+  action: 'call_offer' | 'call_answer' | 'ice_candidate' | 'call_end' | 'call_reject';
+  callId: string;
+  peerId: string;
+  isVideo?: boolean;
+  sdp?: any;
+  candidate?: any;
+}) {
+  const session = await getClientForSession(sessionString);
+  const myId = session.me?.id?.toString() || 'me';
+  const myName = [session.me?.firstName, session.me?.lastName].filter(Boolean).join(' ') || session.me?.username || 'أنا';
+
+  const { action, callId, peerId, isVideo, sdp, candidate } = signalData;
+
+  if (action === 'call_offer') {
+    const callRecord: ActiveCallRecord = {
+      callId,
+      callerPeerId: myId,
+      callerSession: sessionString,
+      calleePeerId: peerId,
+      isVideo: !!isVideo,
+      status: 'calling',
+      sdpOffer: sdp,
+      candidates: [],
+      createdAt: Date.now(),
+    };
+    activeCalls.set(callId, callRecord);
+
+    // Broadcast incoming call event to all active sessions (e.g. other tabs or callee)
+    for (const [sessKey, s] of activeSessions.entries()) {
+      if (sessKey !== sessionString || true) {
+        for (const sub of s.eventSubscribers) {
+          try {
+            sub({
+              event: 'call_incoming',
+              payload: {
+                callId,
+                callerId: myId,
+                callerName: myName,
+                peerId: myId,
+                isVideo: !!isVideo,
+                sdp,
+              },
+            });
+          } catch (_) {}
+        }
+      }
+    }
+
+    return { success: true, callId, status: 'calling' };
+  }
+
+  if (action === 'call_answer') {
+    const existing = activeCalls.get(callId);
+    if (existing) {
+      existing.status = 'connected';
+      existing.sdpAnswer = sdp;
+    }
+
+    for (const s of activeSessions.values()) {
+      for (const sub of s.eventSubscribers) {
+        try {
+          sub({
+            event: 'call_answered',
+            payload: { callId, sdp },
+          });
+        } catch (_) {}
+      }
+    }
+    return { success: true, callId, status: 'connected' };
+  }
+
+  if (action === 'ice_candidate') {
+    const existing = activeCalls.get(callId);
+    if (existing && candidate) {
+      existing.candidates.push(candidate);
+    }
+    for (const s of activeSessions.values()) {
+      for (const sub of s.eventSubscribers) {
+        try {
+          sub({
+            event: 'call_candidate',
+            payload: { callId, candidate },
+          });
+        } catch (_) {}
+      }
+    }
+    return { success: true };
+  }
+
+  if (action === 'call_end' || action === 'call_reject') {
+    activeCalls.delete(callId);
+    for (const s of activeSessions.values()) {
+      for (const sub of s.eventSubscribers) {
+        try {
+          sub({
+            event: 'call_ended',
+            payload: { callId, reason: action },
+          });
+        } catch (_) {}
+      }
+    }
+    return { success: true, callId, status: 'ended' };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Get or initialize Voice Chat Space for a chat/channel
+ */
+export function getVoiceChatSpace(chatId: string, title?: string, isChannel: boolean = false) {
+  let space = activeVoiceSpaces.get(chatId);
+  if (!space) {
+    space = {
+      chatId,
+      title: title || 'محادثة صوتية',
+      isChannel,
+      isActive: false,
+      participants: new Map(),
+      createdAt: Date.now(),
+    };
+    activeVoiceSpaces.set(chatId, space);
+  }
+
+  return {
+    chatId: space.chatId,
+    title: space.title,
+    isChannel: space.isChannel,
+    isActive: space.isActive,
+    participants: Array.from(space.participants.values()),
+  };
+}
+
+/**
+ * Join Voice Chat Space
+ */
+export async function joinVoiceChatSpace(
+  sessionString: string,
+  chatId: string,
+  title?: string,
+  isChannel: boolean = false
+) {
+  const session = await getClientForSession(sessionString);
+  const myId = session.me?.id?.toString() || 'me';
+  const myName = [session.me?.firstName, session.me?.lastName].filter(Boolean).join(' ') || session.me?.username || 'أنا';
+  const myUsername = session.me?.username || null;
+
+  let space = activeVoiceSpaces.get(chatId);
+  if (!space) {
+    space = {
+      chatId,
+      title: title || 'محادثة صوتية',
+      isChannel,
+      isActive: true,
+      participants: new Map(),
+      createdAt: Date.now(),
+    };
+    activeVoiceSpaces.set(chatId, space);
+  } else {
+    space.isActive = true;
+  }
+
+  space.participants.set(myId, {
+    id: myId,
+    name: myName,
+    username: myUsername,
+    isSpeaking: false,
+    isMuted: true,
+    isRaisedHand: false,
+    isVideo: false,
+    role: space.participants.size === 0 ? 'admin' : 'listener',
+    joinedAt: Date.now(),
+  });
+
+  const payload = {
+    chatId: space.chatId,
+    title: space.title,
+    isChannel: space.isChannel,
+    isActive: space.isActive,
+    participants: Array.from(space.participants.values()),
+  };
+
+  // Broadcast to all sessions
+  for (const s of activeSessions.values()) {
+    for (const sub of s.eventSubscribers) {
+      try {
+        sub({ event: 'voice_chat_update', payload });
+      } catch (_) {}
+    }
+  }
+
+  return payload;
+}
+
+/**
+ * Leave Voice Chat Space
+ */
+export async function leaveVoiceChatSpace(sessionString: string, chatId: string) {
+  const session = await getClientForSession(sessionString);
+  const myId = session.me?.id?.toString() || 'me';
+
+  const space = activeVoiceSpaces.get(chatId);
+  if (space) {
+    space.participants.delete(myId);
+    if (space.participants.size === 0) {
+      space.isActive = false;
+    }
+
+    const payload = {
+      chatId: space.chatId,
+      title: space.title,
+      isChannel: space.isChannel,
+      isActive: space.isActive,
+      participants: Array.from(space.participants.values()),
+    };
+
+    for (const s of activeSessions.values()) {
+      for (const sub of s.eventSubscribers) {
+        try {
+          sub({ event: 'voice_chat_update', payload });
+        } catch (_) {}
+      }
+    }
+
+    return payload;
+  }
+
+  return { success: true };
+}
+
+/**
+ * Update Voice Chat Participant state (speaking, mute, raise hand, video)
+ */
+export async function updateVoiceChatState(
+  sessionString: string,
+  chatId: string,
+  state: { isSpeaking?: boolean; isMuted?: boolean; isRaisedHand?: boolean; isVideo?: boolean }
+) {
+  const session = await getClientForSession(sessionString);
+  const myId = session.me?.id?.toString() || 'me';
+
+  const space = activeVoiceSpaces.get(chatId);
+  if (space && space.participants.has(myId)) {
+    const p = space.participants.get(myId)!;
+    if (state.isSpeaking !== undefined) p.isSpeaking = state.isSpeaking;
+    if (state.isMuted !== undefined) p.isMuted = state.isMuted;
+    if (state.isRaisedHand !== undefined) p.isRaisedHand = state.isRaisedHand;
+    if (state.isVideo !== undefined) p.isVideo = state.isVideo;
+
+    const payload = {
+      chatId: space.chatId,
+      title: space.title,
+      isChannel: space.isChannel,
+      isActive: space.isActive,
+      participants: Array.from(space.participants.values()),
+    };
+
+    for (const s of activeSessions.values()) {
+      for (const sub of s.eventSubscribers) {
+        try {
+          sub({ event: 'voice_chat_update', payload });
+        } catch (_) {}
+      }
+    }
+
+    return payload;
+  }
+
+  return { success: true };
 }

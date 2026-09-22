@@ -31,6 +31,22 @@ import {
   searchTelegramGifs,
   sendTelegramGif,
   getFastActiveUser,
+  setTelegramTyping,
+  markTelegramAsRead,
+  getTelegramArchivedDialogs,
+  toggleArchiveTelegramChat,
+  getTelegramFolders,
+  updateTelegramFolder,
+  deleteTelegramFolder,
+  searchTelegramGlobal,
+  createTelegramGroup,
+  createTelegramChannel,
+  resolveTelegramContact,
+  handleCallSignal,
+  getVoiceChatSpace,
+  joinVoiceChatSpace,
+  leaveVoiceChatSpace,
+  updateVoiceChatState,
 } from './server/telegramClient.js';
 
 async function startServer() {
@@ -186,7 +202,7 @@ async function startServer() {
     }
   });
 
-  // Messages in a Chat
+  // Messages in a Chat (Supports limit and offsetId pagination)
   app.get('/api/telegram/messages/:peerId', async (req, res) => {
     try {
       const sessionString = req.headers['x-telegram-session'] as string;
@@ -195,13 +211,58 @@ async function startServer() {
       }
       const { peerId } = req.params;
       const limit = Number(req.query.limit) || 50;
-      const messages = await getTelegramMessages(sessionString, peerId, limit);
+      const offsetId = req.query.offsetId ? Number(req.query.offsetId) : undefined;
+      const messages = await getTelegramMessages(sessionString, peerId, limit, offsetId);
       res.json({ success: true, messages });
     } catch (err: any) {
       console.error('Error fetching messages:', err);
       res.status(500).json({
         success: false,
         error: err.errorMessage || err.message || 'فشل جلب الرسائل',
+      });
+    }
+  });
+
+  // Set Typing Status Indicator (Typing Indicators)
+  app.post('/api/telegram/set-typing', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, action } = req.body;
+      if (!peerId) {
+        return res.status(400).json({ success: false, error: 'معرف المحادثة مطلوب' });
+      }
+      const result = await setTelegramTyping(sessionString, peerId, action || 'typing');
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error setting typing status:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل إرسال حالة الكتابة',
+      });
+    }
+  });
+
+  // Mark Chat Messages as Read (Read Receipts)
+  app.post('/api/telegram/mark-read', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, maxId } = req.body;
+      if (!peerId) {
+        return res.status(400).json({ success: false, error: 'معرف المحادثة مطلوب' });
+      }
+      const result = await markTelegramAsRead(sessionString, peerId, maxId ? Number(maxId) : undefined);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error marking as read:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل تحديث حالة القراءة',
       });
     }
   });
@@ -494,6 +555,274 @@ async function startServer() {
         success: false,
         error: err.errorMessage || err.message || 'فشل مسح سجل المحادثة',
       });
+    }
+  });
+
+  // --------------------------------
+  // Chat Folders & Archive Management
+  // --------------------------------
+
+  // Get Archived Dialogs
+  app.get('/api/telegram/dialogs/archived', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const dialogs = await getTelegramArchivedDialogs(sessionString);
+      res.json({ success: true, dialogs });
+    } catch (err: any) {
+      console.error('Error getting archived dialogs:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل جلب المحادثات المؤرشفة',
+      });
+    }
+  });
+
+  // Archive / Unarchive Chat
+  app.post('/api/telegram/dialogs/archive', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, archive } = req.body;
+      if (!peerId) {
+        return res.status(400).json({ success: false, error: 'معرف المحادثة مطلوب' });
+      }
+      const result = await toggleArchiveTelegramChat(sessionString, peerId, archive !== false);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error archiving chat:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل تحديث أرشفة المحادثة',
+      });
+    }
+  });
+
+  // Get Cloud Dialog Folders / Filters
+  app.get('/api/telegram/folders', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const folders = await getTelegramFolders(sessionString);
+      res.json({ success: true, folders });
+    } catch (err: any) {
+      console.error('Error getting folders:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل جلب مجلدات المحادثات',
+      });
+    }
+  });
+
+  // Create or Update Cloud Dialog Folder
+  app.post('/api/telegram/folders', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { folder } = req.body;
+      if (!folder || !folder.title) {
+        return res.status(400).json({ success: false, error: 'عنوان المجلد مطلوب' });
+      }
+      const result = await updateTelegramFolder(sessionString, folder);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error updating folder:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل حفظ المجلد',
+      });
+    }
+  });
+
+  // Delete Dialog Folder
+  app.delete('/api/telegram/folders/:id', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const id = Number(req.params.id);
+      const result = await deleteTelegramFolder(sessionString, id);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error deleting folder:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل حذف المجلد',
+      });
+    }
+  });
+
+  // --------------------------------
+  // Global Search (Cloud Contacts, Channels, Messages)
+  // --------------------------------
+  app.get('/api/telegram/search/global', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const q = (req.query.q as string) || '';
+      const results = await searchTelegramGlobal(sessionString, q);
+      res.json({ success: true, ...results });
+    } catch (err: any) {
+      console.error('Error in global search:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل البحث العام في سحابة تليجرام',
+      });
+    }
+  });
+
+  // --------------------------------
+  // Create New Chats & Channels & Resolve Users
+  // --------------------------------
+  app.post('/api/telegram/chat/create-group', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { title, users, about } = req.body;
+      if (!title) {
+        return res.status(400).json({ success: false, error: 'اسم المجموعة مطلوب' });
+      }
+      const result = await createTelegramGroup(sessionString, title, users || [], about || '');
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error creating group:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل إنشاء المجموعة',
+      });
+    }
+  });
+
+  app.post('/api/telegram/chat/create-channel', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { title, about } = req.body;
+      if (!title) {
+        return res.status(400).json({ success: false, error: 'اسم القناة مطلوب' });
+      }
+      const result = await createTelegramChannel(sessionString, title, about || '');
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error creating channel:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل إنشاء القناة',
+      });
+    }
+  });
+
+  app.post('/api/telegram/contacts/resolve', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { identifier } = req.body;
+      if (!identifier) {
+        return res.status(400).json({ success: false, error: 'اسم المعرف مطلوب' });
+      }
+      const contact = await resolveTelegramContact(sessionString, identifier);
+      res.json(contact);
+    } catch (err: any) {
+      console.error('Error resolving contact:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'تعذر العثور على جهة الاتصال أو القناة',
+      });
+    }
+  });
+
+  // --------------------------------
+  // WebRTC 1-on-1 Calls Signaling & Voice Chats
+  // --------------------------------
+  app.post('/api/telegram/calls/signal', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const result = await handleCallSignal(sessionString, req.body);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error handling call signal:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل معالجة إشارة الاتصال',
+      });
+    }
+  });
+
+  app.get('/api/telegram/voice-chat/:chatId', (req, res) => {
+    try {
+      const { chatId } = req.params;
+      const title = req.query.title as string | undefined;
+      const isChannel = req.query.isChannel === 'true' || req.query.isChannel === '1';
+      const space = getVoiceChatSpace(chatId, title, isChannel);
+      res.json({ success: true, space });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/telegram/voice-chat/:chatId/join', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { chatId } = req.params;
+      const { title, isChannel } = req.body;
+      const space = await joinVoiceChatSpace(sessionString, chatId, title, isChannel);
+      res.json({ success: true, space });
+    } catch (err: any) {
+      console.error('Error joining voice chat:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/telegram/voice-chat/:chatId/leave', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { chatId } = req.params;
+      const space = await leaveVoiceChatSpace(sessionString, chatId);
+      res.json({ success: true, space });
+    } catch (err: any) {
+      console.error('Error leaving voice chat:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/telegram/voice-chat/:chatId/state', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { chatId } = req.params;
+      const space = await updateVoiceChatState(sessionString, chatId, req.body);
+      res.json({ success: true, space });
+    } catch (err: any) {
+      console.error('Error updating voice chat state:', err);
+      res.status(500).json({ success: false, error: err.message });
     }
   });
 

@@ -12,26 +12,110 @@ export interface TelegramUser {
 export interface TelegramDialog {
   id: string;
   title: string;
-  name: string;
+  name?: string;
   isUser: boolean;
   isGroup: boolean;
   isChannel: boolean;
   unreadCount: number;
-  pinned: boolean;
+  pinned?: boolean;
   muted?: boolean;
+  folderId?: number;
+  isArchived?: boolean;
   date: number;
-  lastMessage: {
+  lastMessage?: {
+    id?: number;
     text: string;
     date: number;
     out: boolean;
+    unread?: boolean;
     senderId: string;
-  };
-  entity: {
+  } | null;
+  entity?: {
+    username?: string | null;
+    phone?: string | null;
+    verified?: boolean;
+    scam?: boolean;
+  } | null;
+}
+
+export interface ChatFolder {
+  id: string | number;
+  title: string;
+  emoticon?: string;
+  type: 'all' | 'personal' | 'groups' | 'channels' | 'unread' | 'custom';
+  includePeerIds?: string[];
+  excludePeerIds?: string[];
+  contacts?: boolean;
+  nonContacts?: boolean;
+  groups?: boolean;
+  broadcasts?: boolean;
+  bots?: boolean;
+  excludeMuted?: boolean;
+  excludeRead?: boolean;
+  excludeArchived?: boolean;
+}
+
+export interface GlobalSearchResult {
+  contacts: {
+    id: string;
+    title: string;
     username: string | null;
     phone: string | null;
     verified: boolean;
-    scam: boolean;
-  };
+    isUser: boolean;
+    isGroup: boolean;
+    isChannel: boolean;
+    bot?: boolean;
+  }[];
+  chats: {
+    id: string;
+    title: string;
+    username: string | null;
+    verified: boolean;
+    isUser: boolean;
+    isGroup: boolean;
+    isChannel: boolean;
+    participantsCount?: number;
+  }[];
+  messages: (TelegramMessage & { chatId: string })[];
+}
+
+export interface CallSession {
+  callId: string;
+  peerId: string;
+  peerTitle?: string;
+  peerName?: string;
+  isVideo: boolean;
+  direction?: 'outgoing' | 'incoming';
+  isOutgoing?: boolean;
+  status: 'requesting' | 'ringing' | 'connected' | 'ended' | 'rejected' | 'busy' | 'calling';
+  startTime?: number;
+  isMuted?: boolean;
+  isCameraOff?: boolean;
+  isScreenSharing?: boolean;
+  isSpeakerOn?: boolean;
+  sdp?: any;
+}
+
+export interface VoiceChatParticipant {
+  id: string;
+  name: string;
+  username?: string | null;
+  isSpeaking: boolean;
+  isMuted: boolean;
+  isRaisedHand: boolean;
+  isVideo: boolean;
+  role: 'admin' | 'speaker' | 'listener';
+  joinedAt: number;
+}
+
+export interface VoiceChatSpace {
+  chatId: string;
+  title: string;
+  isChannel: boolean;
+  isActive: boolean;
+  participants: VoiceChatParticipant[];
+  hasLiveVideo?: boolean;
 }
 
 export interface TelegramStickerSet {
@@ -90,6 +174,7 @@ export interface TelegramMessage {
   text: string;
   date: number;
   out: boolean;
+  unread?: boolean;
   senderId: string;
   mediaType: string | null;
   mediaInfo?: TelegramMessageMediaInfo | null;
@@ -98,6 +183,14 @@ export interface TelegramMessage {
   editDate?: number | null;
   views: number | null;
   forwards: number | null;
+}
+
+export interface TypingStatus {
+  chatId: string;
+  userId?: string;
+  fromId?: string;
+  actionType: 'typing' | 'record_audio' | 'record_video' | 'upload_photo' | 'upload_document' | 'cancel';
+  actionText: string;
 }
 
 export interface TelegramServerStatus {

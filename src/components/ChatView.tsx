@@ -23,9 +23,14 @@ import {
   LogOut,
   AlertTriangle,
   Sticker,
+  Phone,
+  Radio,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react';
-import { TelegramDialog, TelegramMessage, TelegramStickerDocument } from '../types';
+import { TelegramDialog, TelegramMessage, TelegramStickerDocument, TypingStatus } from '../types';
 import { telegramApi } from '../api/telegramApi';
+import { indexedDbCache } from '../utils/indexedDbCache';
 import { MediaRenderer } from './MediaRenderer';
 import { StickersAndGifsPicker } from './StickersAndGifsPicker';
 
@@ -35,6 +40,9 @@ interface ChatViewProps {
   onMessageSent: () => void;
   onPinChat?: (dialog: TelegramDialog, pinned: boolean) => Promise<void>;
   onMuteChat?: (dialog: TelegramDialog, muted: boolean) => Promise<void>;
+  onArchiveChat?: (dialog: TelegramDialog, archive: boolean) => Promise<void>;
+  onStartCall?: (chat: TelegramDialog, isVideo: boolean) => void;
+  onOpenVoiceChat?: (chat: TelegramDialog) => void;
   onClearHistory?: (dialog: TelegramDialog, revoke: boolean) => Promise<void>;
   onLeaveChat?: (dialog: TelegramDialog) => Promise<void>;
 }
@@ -55,6 +63,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onMessageSent,
   onPinChat,
   onMuteChat,
+  onArchiveChat,
+  onStartCall,
+  onOpenVoiceChat,
   onClearHistory,
   onLeaveChat,
 }) => {
@@ -86,27 +97,56 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [micError, setMicError] = useState<string | null>(null);
 
+  // Performance & UX: Typing indicators & Infinite Pagination & Read Receipts
+  const [typingStatus, setTypingStatus] = useState<TypingStatus | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const typingTimeoutRef = useRef<any>(null);
+  const lastTypingSentRef = useRef<number>(0);
+  const isPrependingRef = useRef<boolean>(false);
 
-  // Load messages when active chat changes
+  // Load messages when active chat changes (Offline IndexedDB first + Cloud fetch)
   useEffect(() => {
     if (!chat) return;
 
     let isMounted = true;
-    const fetchMessages = async () => {
-      setLoading(true);
+    setTypingStatus(null);
+    setHasMoreMessages(true);
+
+    const initChatMessages = async () => {
+      // 1. Instant 0ms Load from IndexedDB Cache
+      const cached = await indexedDbCache.getCachedMessages(chat.id, 50);
+      if (cached.length > 0 && isMounted) {
+        setMessages(cached);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+
+      // 2. Fetch fresh from Telegram MTProto Cloud
       try {
         const msgs = await telegramApi.getMessages(chat.id, 50);
         if (isMounted) {
-          // Telegram messages usually come newest first, reverse for chronological top-to-bottom chat
-          setMessages([...msgs].reverse());
+          const sorted = [...msgs].reverse();
+          setMessages(sorted);
           setLoading(false);
+          // Save to IndexedDB
+          indexedDbCache.saveMessages(chat.id, sorted);
+
+          // If there's an unread incoming message, mark as read
+          const lastMsg = sorted[sorted.length - 1];
+          if (lastMsg && !lastMsg.out) {
+            telegramApi.markAsRead(chat.id, lastMsg.id);
+          }
         }
       } catch (err) {
         console.error('Failed to load messages:', err);
@@ -114,24 +154,31 @@ export const ChatView: React.FC<ChatViewProps> = ({
       }
     };
 
-    fetchMessages();
+    initChatMessages();
 
-    // 1. Instant Real-time Live Events Subscription via SSE (NewMessage, Edit, Delete)
+    // Instant Real-time Live Events Subscription via SSE
     const unsubscribeEvents = telegramApi.subscribeToEvents({
       onNewMessage: (data) => {
-        // Match chatId: data.chatId could be "12345", chat.id could be "12345" or "-10012345"
         const cleanDataChatId = data.chatId.replace(/^-100/, '').replace(/^-/, '');
         const cleanCurrentChatId = chat.id.replace(/^-100/, '').replace(/^-/, '');
         const isMatch = data.chatId === chat.id || cleanDataChatId === cleanCurrentChatId;
 
         if (isMatch && isMounted) {
           setMessages((prev) => {
-            // Idempotency: avoid adding duplicate messages if already present
             if (prev.some((m) => m.id === data.message.id)) {
               return prev.map((m) => (m.id === data.message.id ? data.message : m));
             }
-            return [...prev, data.message];
+            const updated = [...prev, data.message];
+            indexedDbCache.saveMessages(chat.id, updated);
+            return updated;
           });
+
+          // If incoming, mark as read
+          if (!data.message.out) {
+            telegramApi.markAsRead(chat.id, data.message.id);
+          }
+          // Clear typing indicator since a message arrived
+          setTypingStatus(null);
           onMessageSent();
         }
       },
@@ -141,8 +188,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
         const isMatch = data.chatId === chat.id || cleanDataChatId === cleanCurrentChatId;
 
         if (isMatch && isMounted) {
-          setMessages((prev) =>
-            prev.map((m) =>
+          setMessages((prev) => {
+            const updated = prev.map((m) =>
               m.id === data.message.id
                 ? {
                     ...m,
@@ -151,41 +198,132 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     reactions: data.message.reactions || m.reactions,
                   }
                 : m
-            )
-          );
+            );
+            indexedDbCache.saveMessages(chat.id, updated);
+            return updated;
+          });
         }
       },
       onDeleteMessages: (data) => {
         if (!isMounted) return;
         const targetIds = new Set(data.messageIds);
-        setMessages((prev) => prev.filter((m) => !targetIds.has(m.id)));
+        setMessages((prev) => {
+          const updated = prev.filter((m) => !targetIds.has(m.id));
+          indexedDbCache.saveMessages(chat.id, updated);
+          return updated;
+        });
+      },
+      onTypingStatus: (data) => {
+        const cleanDataChatId = data.chatId.replace(/^-100/, '').replace(/^-/, '');
+        const cleanCurrentChatId = chat.id.replace(/^-100/, '').replace(/^-/, '');
+        const isMatch = data.chatId === chat.id || cleanDataChatId === cleanCurrentChatId;
+
+        if (isMatch && isMounted) {
+          if (data.actionType === 'cancel') {
+            setTypingStatus(null);
+          } else {
+            setTypingStatus(data);
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = setTimeout(() => {
+              if (isMounted) setTypingStatus(null);
+            }, 6000);
+          }
+        }
+      },
+      onReadReceipt: (data) => {
+        const cleanDataChatId = data.chatId.replace(/^-100/, '').replace(/^-/, '');
+        const cleanCurrentChatId = chat.id.replace(/^-100/, '').replace(/^-/, '');
+        const isMatch = data.chatId === chat.id || cleanDataChatId === cleanCurrentChatId;
+
+        if (isMatch && isMounted) {
+          setMessages((prev) => {
+            const updated = prev.map((m) =>
+              m.out && m.id <= data.maxId ? { ...m, unread: false } : m
+            );
+            indexedDbCache.saveMessages(chat.id, updated);
+            return updated;
+          });
+        }
       },
     });
 
-    // 2. Gentle background fallback sync every 30 seconds
+    // Gentle background fallback sync every 30 seconds
     const fallbackInterval = setInterval(async () => {
       try {
         const msgs = await telegramApi.getMessages(chat.id, 50);
         if (isMounted) {
-          setMessages([...msgs].reverse());
+          const sorted = [...msgs].reverse();
+          setMessages(sorted);
+          indexedDbCache.saveMessages(chat.id, sorted);
         }
       } catch (_) {}
     }, 30000);
 
     return () => {
       isMounted = false;
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       unsubscribeEvents();
       clearInterval(fallbackInterval);
     };
   }, [chat?.id, onMessageSent]);
 
+  // Load older messages for infinite pagination using offset_id
+  const loadOlderMessages = async () => {
+    if (loadingMore || !hasMoreMessages || messages.length === 0 || !chat) return;
+    setLoadingMore(true);
+    isPrependingRef.current = true;
+
+    const container = messageContainerRef.current;
+    const prevScrollHeight = container ? container.scrollHeight : 0;
+    const prevScrollTop = container ? container.scrollTop : 0;
+
+    try {
+      const oldestId = messages[0].id;
+      const olderMsgs = await telegramApi.getMessages(chat.id, 40, oldestId);
+
+      if (!olderMsgs || olderMsgs.length === 0) {
+        setHasMoreMessages(false);
+      } else {
+        const reversed = [...olderMsgs].reverse();
+        const existingIds = new Set(messages.map((m) => m.id));
+        const filtered = reversed.filter((m) => !existingIds.has(m.id));
+
+        if (filtered.length === 0) {
+          setHasMoreMessages(false);
+        } else {
+          const merged = [...filtered, ...messages];
+          setMessages(merged);
+          indexedDbCache.saveMessages(chat.id, merged);
+
+          // Restore scroll position so content doesn't jump
+          requestAnimationFrame(() => {
+            if (container) {
+              const newScrollHeight = container.scrollHeight;
+              container.scrollTop = prevScrollTop + (newScrollHeight - prevScrollHeight);
+            }
+            setTimeout(() => {
+              isPrependingRef.current = false;
+            }, 100);
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load older messages:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   // Scroll to bottom on new messages
   const scrollToBottom = () => {
+    if (isPrependingRef.current) return;
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
-    scrollToBottom();
+    if (!isPrependingRef.current) {
+      scrollToBottom();
+    }
   }, [messages]);
 
   // Convert File / Blob to Base64
@@ -421,6 +559,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       text: textToSend,
       date: Math.floor(Date.now() / 1000),
       out: true,
+      unread: true,
       senderId: 'me',
       mediaType: null,
       replyToMsgId: replyToId,
@@ -475,6 +614,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       mediaRecorder.start(250);
       setIsRecording(true);
       setRecordingDuration(0);
+      if (chat) telegramApi.setTyping(chat.id, 'record_audio');
 
       timerIntervalRef.current = setInterval(() => {
         setRecordingDuration((prev) => prev + 1);
@@ -487,6 +627,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   const cancelRecording = () => {
+    if (chat) telegramApi.setTyping(chat.id, 'cancel');
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
@@ -505,6 +646,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const stopAndSendRecording = () => {
     if (!mediaRecorderRef.current || !chat) return;
+    if (chat) telegramApi.setTyping(chat.id, 'cancel');
 
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
@@ -543,6 +685,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           text: '',
           date: Math.floor(Date.now() / 1000),
           out: true,
+          unread: true,
           senderId: 'me',
           mediaType: 'voice',
           mediaInfo: {
@@ -713,6 +856,20 @@ export const ChatView: React.FC<ChatViewProps> = ({
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInputText(val);
+
+    // Throttled typing indicator emission (every 3.5 seconds)
+    if (chat && !editingMessage && val.trim()) {
+      const now = Date.now();
+      if (now - lastTypingSentRef.current > 3500) {
+        lastTypingSentRef.current = now;
+        telegramApi.setTyping(chat.id, 'typing');
+      }
+    }
+  };
+
   if (!chat) {
     return (
       <div className="flex-1 hidden md:flex flex-col items-center justify-center p-8 text-center tg-chat-bg">
@@ -762,15 +919,26 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 <Check className="w-3.5 h-3.5 text-[#54a9eb]" />
               )}
             </h2>
-            <p className="text-[11px] text-slate-400">
-              {chat.isChannel
-                ? 'قناة رسمية'
-                : chat.isGroup
-                ? 'مجموعة تليجرام'
-                : chat.entity?.username
-                ? `@${chat.entity.username}`
-                : 'محادثة خاصة'}
-            </p>
+            {typingStatus ? (
+              <div className="flex items-center gap-1.5 text-[11px] text-[#54a9eb] font-medium animate-pulse">
+                <span className="flex gap-0.5 items-center">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#54a9eb] animate-bounce [animation-delay:-0.3s]"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#54a9eb] animate-bounce [animation-delay:-0.15s]"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#54a9eb] animate-bounce"></span>
+                </span>
+                <span>{typingStatus.actionText}</span>
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-400">
+                {chat.isChannel
+                  ? 'قناة رسمية'
+                  : chat.isGroup
+                  ? 'مجموعة تليجرام'
+                  : chat.entity?.username
+                  ? `@${chat.entity.username}`
+                  : 'محادثة خاصة'}
+              </p>
+            )}
           </div>
         </div>
 
@@ -778,6 +946,42 @@ export const ChatView: React.FC<ChatViewProps> = ({
           <span className="hidden sm:inline-block px-2 py-1 rounded-md bg-[#242f3d] text-[10px] font-mono text-[#54a9eb]">
             MTProto ID: {chat.id}
           </span>
+
+          {/* Voice & Video Call Buttons for Private Chats */}
+          {chat.isUser && onStartCall && (
+            <>
+              <button
+                type="button"
+                onClick={() => onStartCall(chat, false)}
+                title="مكالمة صوتية مشفرة (MTProto WebRTC)"
+                className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <Phone className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onStartCall(chat, true)}
+                title="مكالمة فيديو مشفرة (MTProto WebRTC)"
+                className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <Video className="w-4 h-4" />
+              </button>
+            </>
+          )}
+
+          {/* Voice Chat / Live Stream Button for Groups & Channels */}
+          {(chat.isGroup || chat.isChannel) && onOpenVoiceChat && (
+            <button
+              type="button"
+              onClick={() => onOpenVoiceChat(chat)}
+              title={chat.isChannel ? 'بدء أو الانضمام للبث المباشر' : 'بدء أو الانضمام للمحادثة الصوتية'}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#54a9eb]/15 hover:bg-[#54a9eb]/25 text-[#54a9eb] font-semibold text-xs transition-colors cursor-pointer"
+            >
+              <Radio className="w-3.5 h-3.5 animate-pulse" />
+              <span className="hidden md:inline">{chat.isChannel ? 'بث مباشر' : 'مساحة صوتية'}</span>
+            </button>
+          )}
 
           {/* Pin / Unpin Button */}
           {onPinChat && (
@@ -815,7 +1019,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             </button>
           )}
 
-          {/* 3-dots Menu for Clear History and Leave */}
+          {/* 3-dots Menu for Clear History, Archive, and Leave */}
           <div className="relative">
             <button
               type="button"
@@ -831,6 +1035,30 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 className="absolute left-0 top-full mt-1.5 w-48 bg-[#1e2c3a] border border-[#2c3e50] rounded-xl shadow-2xl py-1 text-xs text-slate-200 z-50 animate-in fade-in duration-100"
                 dir="rtl"
               >
+                {/* Archive / Unarchive */}
+                {onArchiveChat && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowHeaderMenu(false);
+                      onArchiveChat(chat, !chat.isArchived);
+                    }}
+                    className="w-full px-3.5 py-2.5 flex items-center gap-2 hover:bg-[#242f3d] text-slate-200 text-right cursor-pointer"
+                  >
+                    {chat.isArchived ? (
+                      <>
+                        <ArchiveRestore className="w-4 h-4 text-[#54a9eb]" />
+                        <span>إلغاء الأرشفة</span>
+                      </>
+                    ) : (
+                      <>
+                        <Archive className="w-4 h-4 text-slate-400" />
+                        <span>أرشفة المحادثة</span>
+                      </>
+                    )}
+                  </button>
+                )}
+
                 {onClearHistory && (
                   <button
                     type="button"
@@ -871,7 +1099,37 @@ export const ChatView: React.FC<ChatViewProps> = ({
       </div>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2 tg-chat-bg">
+      <div
+        ref={messageContainerRef}
+        onScroll={(e) => {
+          const container = e.currentTarget;
+          if (container.scrollTop < 60 && hasMoreMessages && !loadingMore && !loading) {
+            loadOlderMessages();
+          }
+        }}
+        className="flex-1 overflow-y-auto p-4 space-y-2 tg-chat-bg"
+      >
+        {/* Infinite History Pagination Button */}
+        {hasMoreMessages && messages.length > 0 && (
+          <div className="flex justify-center py-2">
+            <button
+              type="button"
+              onClick={loadOlderMessages}
+              disabled={loadingMore}
+              className="px-3.5 py-1.5 rounded-full bg-[#182533]/90 hover:bg-[#202f40] border border-[#242f3d] text-xs text-slate-300 hover:text-white transition-all flex items-center gap-2 shadow cursor-pointer disabled:opacity-60"
+            >
+              {loadingMore ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-[#54a9eb] border-t-transparent rounded-full animate-spin"></div>
+                  <span>جاري جلب الرسائل السابقة...</span>
+                </>
+              ) : (
+                <span>تحميل الرسائل السابقة ↑</span>
+              )}
+            </button>
+          </div>
+        )}
+
         {loading && messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="w-7 h-7 border-2 border-[#54a9eb] border-t-transparent rounded-full animate-spin"></div>
@@ -1009,7 +1267,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       </span>
                     )}
                     <span>{formatMsgTime(msg.date)}</span>
-                    {isOut && <CheckCheck className="w-3.5 h-3.5 text-[#54a9eb]" />}
+                    {isOut && (
+                      <span title={msg.unread ? 'تم الإرسال (صح واحدة)' : 'تمت القراءة (علامتا صح)'} className="inline-flex items-center">
+                        {msg.unread ? (
+                          <Check className="w-3.5 h-3.5 text-slate-300" />
+                        ) : (
+                          <CheckCheck className="w-3.5 h-3.5 text-[#54a9eb]" />
+                        )}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -1283,7 +1549,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   : 'اكتب رسالة...'
               }
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={handleInputChange}
               disabled={sending}
               className={`flex-1 bg-[#242f3d] border rounded-2xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-400 focus:outline-none transition-all ${
                 editingMessage

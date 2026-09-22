@@ -6,6 +6,10 @@ import {
   TelegramStickerSet,
   TelegramStickerDocument,
   TelegramGifItem,
+  TypingStatus,
+  ChatFolder,
+  GlobalSearchResult,
+  VoiceChatSpace,
 } from '../types';
 
 const SESSION_STORAGE_KEY = 'telegram_mtproto_session';
@@ -160,8 +164,12 @@ export const telegramApi = {
     return data.dialogs;
   },
 
-  async getMessages(peerId: string, limit = 50): Promise<TelegramMessage[]> {
-    const res = await fetch(`/api/telegram/messages/${encodeURIComponent(peerId)}?limit=${limit}`, {
+  async getMessages(peerId: string, limit = 50, offsetId?: number): Promise<TelegramMessage[]> {
+    const params = new URLSearchParams({ limit: limit.toString() });
+    if (offsetId && offsetId > 0) {
+      params.set('offsetId', offsetId.toString());
+    }
+    const res = await fetch(`/api/telegram/messages/${encodeURIComponent(peerId)}?${params.toString()}`, {
       headers: this.getHeaders(),
     });
     const data = await res.json();
@@ -169,6 +177,26 @@ export const telegramApi = {
       throw new Error(data.error || 'فشل جلب الرسائل');
     }
     return data.messages;
+  },
+
+  async setTyping(peerId: string, action: string = 'typing'): Promise<void> {
+    try {
+      await fetch('/api/telegram/set-typing', {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ peerId, action }),
+      });
+    } catch (_) {}
+  },
+
+  async markAsRead(peerId: string, maxId?: number): Promise<void> {
+    try {
+      await fetch('/api/telegram/mark-read', {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ peerId, maxId }),
+      });
+    } catch (_) {}
   },
 
   async sendMessage(
@@ -437,13 +465,200 @@ export const telegramApi = {
     this.clearSession();
   },
 
+  // --------------------------------
+  // Folders & Archive Management
+  // --------------------------------
+  async getArchivedDialogs(): Promise<TelegramDialog[]> {
+    const res = await fetchWithTimeout('/api/telegram/dialogs/archived', {
+      headers: this.getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل جلب المحادثات المؤرشفة');
+    }
+    return data.dialogs || [];
+  },
+
+  async toggleArchive(peerId: string, archive: boolean): Promise<any> {
+    const res = await fetchWithTimeout('/api/telegram/dialogs/archive', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ peerId, archive }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل تغيير حالة الأرشفة');
+    }
+    return data;
+  },
+
+  async getFolders(): Promise<ChatFolder[]> {
+    const res = await fetchWithTimeout('/api/telegram/folders', {
+      headers: this.getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل جلب مجلدات المحادثات');
+    }
+    return data.folders || [];
+  },
+
+  async saveFolder(folder: Partial<ChatFolder>): Promise<any> {
+    const res = await fetchWithTimeout('/api/telegram/folders', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ folder }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل حفظ المجلد');
+    }
+    return data;
+  },
+
+  async deleteFolder(filterId: number | string): Promise<any> {
+    const res = await fetchWithTimeout(`/api/telegram/folders/${filterId}`, {
+      method: 'DELETE',
+      headers: this.getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل حذف المجلد');
+    }
+    return data;
+  },
+
+  // --------------------------------
+  // Global Search
+  // --------------------------------
+  async searchGlobal(q: string): Promise<GlobalSearchResult> {
+    const res = await fetchWithTimeout(`/api/telegram/search/global?q=${encodeURIComponent(q)}`, {
+      headers: this.getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل البحث العام');
+    }
+    return {
+      contacts: data.contacts || [],
+      chats: data.chats || [],
+      messages: data.messages || [],
+    };
+  },
+
+  // --------------------------------
+  // Create Groups, Channels & Resolve Contacts
+  // --------------------------------
+  async createGroup(title: string, users: string[] = [], about: string = ''): Promise<any> {
+    const res = await fetchWithTimeout('/api/telegram/chat/create-group', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ title, users, about }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل إنشاء المجموعة');
+    }
+    return data;
+  },
+
+  async createChannel(title: string, about: string = ''): Promise<any> {
+    const res = await fetchWithTimeout('/api/telegram/chat/create-channel', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ title, about }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل إنشاء القناة');
+    }
+    return data;
+  },
+
+  async resolveContact(identifier: string): Promise<any> {
+    const res = await fetchWithTimeout('/api/telegram/contacts/resolve', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ identifier }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'تعذر العثور على المعرف');
+    }
+    return data;
+  },
+
+  // --------------------------------
+  // WebRTC Calls & Voice Chats
+  // --------------------------------
+  async sendCallSignal(signal: {
+    action: 'call_offer' | 'call_answer' | 'ice_candidate' | 'call_end' | 'call_reject';
+    callId: string;
+    peerId: string;
+    isVideo?: boolean;
+    sdp?: any;
+    candidate?: any;
+  }): Promise<any> {
+    const res = await fetchWithTimeout('/api/telegram/calls/signal', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(signal),
+    });
+    return res.json();
+  },
+
+  async getVoiceChat(chatId: string, title?: string, isChannel?: boolean): Promise<{ success: boolean; space: VoiceChatSpace }> {
+    const res = await fetchWithTimeout(`/api/telegram/voice-chat/${encodeURIComponent(chatId)}?title=${encodeURIComponent(title || '')}&isChannel=${isChannel ? '1' : '0'}`, {
+      headers: this.getHeaders(),
+    });
+    return res.json();
+  },
+
+  async joinVoiceChat(chatId: string, title?: string, isChannel?: boolean): Promise<{ success: boolean; space: VoiceChatSpace }> {
+    const res = await fetchWithTimeout(`/api/telegram/voice-chat/${encodeURIComponent(chatId)}/join`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ title, isChannel }),
+    });
+    return res.json();
+  },
+
+  async leaveVoiceChat(chatId: string): Promise<{ success: boolean; space: VoiceChatSpace }> {
+    const res = await fetchWithTimeout(`/api/telegram/voice-chat/${encodeURIComponent(chatId)}/leave`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    return res.json();
+  },
+
+  async updateVoiceChatState(chatId: string, state: {
+    isSpeaking?: boolean;
+    isMuted?: boolean;
+    isRaisedHand?: boolean;
+    isVideo?: boolean;
+  }): Promise<{ success: boolean; space: VoiceChatSpace }> {
+    const res = await fetchWithTimeout(`/api/telegram/voice-chat/${encodeURIComponent(chatId)}/state`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(state),
+    });
+    return res.json();
+  },
+
   /**
-   * Subscribe to real-time live Telegram events via SSE (NewMessage, EditMessage, DeleteMessages)
+   * Subscribe to real-time live Telegram events via SSE (NewMessage, EditMessage, DeleteMessages, TypingStatus, ReadReceipt, Calls, VoiceChats)
    */
   subscribeToEvents(handlers: {
     onNewMessage?: (data: { chatId: string; message: TelegramMessage }) => void;
     onEditMessage?: (data: { chatId: string; message: TelegramMessage }) => void;
     onDeleteMessages?: (data: { channelId?: string; messageIds: number[] }) => void;
+    onTypingStatus?: (data: TypingStatus) => void;
+    onReadReceipt?: (data: { chatId: string; maxId: number }) => void;
+    onCallIncoming?: (data: { callId: string; callerId: string; callerName: string; peerId: string; isVideo: boolean; sdp: any }) => void;
+    onCallAnswered?: (data: { callId: string; sdp: any }) => void;
+    onCallCandidate?: (data: { callId: string; candidate: any }) => void;
+    onCallEnded?: (data: { callId: string; reason?: string }) => void;
+    onVoiceChatUpdate?: (data: VoiceChatSpace) => void;
   }): () => void {
     const session = this.getSession();
     if (!session) return () => {};
@@ -488,6 +703,83 @@ export const telegramApi = {
           handlers.onDeleteMessages!(data);
         } catch (err) {
           console.error('Error parsing delete_messages event:', err);
+        }
+      });
+    }
+
+    if (handlers.onTypingStatus) {
+      eventSource.addEventListener('typing_status', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          handlers.onTypingStatus!(data);
+        } catch (err) {
+          console.error('Error parsing typing_status event:', err);
+        }
+      });
+    }
+
+    if (handlers.onReadReceipt) {
+      eventSource.addEventListener('read_receipt', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          handlers.onReadReceipt!(data);
+        } catch (err) {
+          console.error('Error parsing read_receipt event:', err);
+        }
+      });
+    }
+
+    if (handlers.onCallIncoming) {
+      eventSource.addEventListener('call_incoming', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          handlers.onCallIncoming!(data);
+        } catch (err) {
+          console.error('Error parsing call_incoming event:', err);
+        }
+      });
+    }
+
+    if (handlers.onCallAnswered) {
+      eventSource.addEventListener('call_answered', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          handlers.onCallAnswered!(data);
+        } catch (err) {
+          console.error('Error parsing call_answered event:', err);
+        }
+      });
+    }
+
+    if (handlers.onCallCandidate) {
+      eventSource.addEventListener('call_candidate', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          handlers.onCallCandidate!(data);
+        } catch (err) {
+          console.error('Error parsing call_candidate event:', err);
+        }
+      });
+    }
+
+    if (handlers.onCallEnded) {
+      eventSource.addEventListener('call_ended', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          handlers.onCallEnded!(data);
+        } catch (err) {
+          console.error('Error parsing call_ended event:', err);
+        }
+      });
+    }
+
+    if (handlers.onVoiceChatUpdate) {
+      eventSource.addEventListener('voice_chat_update', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          handlers.onVoiceChatUpdate!(data);
+        } catch (err) {
+          console.error('Error parsing voice_chat_update event:', err);
         }
       });
     }
