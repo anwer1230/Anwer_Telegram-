@@ -18,6 +18,7 @@ export interface TelegramDialog {
   isChannel: boolean;
   unreadCount: number;
   pinned: boolean;
+  muted?: boolean;
   date: number;
   lastMessage: {
     text: string;
@@ -33,6 +34,39 @@ export interface TelegramDialog {
   };
 }
 
+export interface TelegramStickerSet {
+  id: string;
+  accessHash: string;
+  title: string;
+  shortName: string;
+  count: number;
+  archived?: boolean;
+  official?: boolean;
+  animated?: boolean;
+  videos?: boolean;
+  thumbDocumentId?: string | null;
+}
+
+export interface TelegramStickerDocument {
+  id: string;
+  accessHash: string;
+  fileReference: string;
+  mimeType: string;
+  size: number;
+  altEmoji: string;
+  isAnimated: boolean;
+  isVideo: boolean;
+  format: 'webp' | 'lottie' | 'webm';
+}
+
+export interface TelegramGifItem {
+  id: string;
+  url: string;
+  previewUrl: string;
+  title: string;
+  type: string;
+}
+
 export interface TelegramMessageMediaInfo {
   type: string;
   mimeType?: string;
@@ -42,6 +76,7 @@ export interface TelegramMessageMediaInfo {
   height?: number;
   duration?: number;
   hasMedia: boolean;
+  altEmoji?: string;
 }
 
 export interface TelegramReaction {

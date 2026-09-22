@@ -1,5 +1,22 @@
-import React, { useState, useMemo } from 'react';
-import { Search, Pin, Check, CheckCheck, Users, Volume2, User, Sparkles, MessageSquare } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import {
+  Search,
+  Pin,
+  PinOff,
+  Bell,
+  BellOff,
+  Check,
+  CheckCheck,
+  Users,
+  Volume2,
+  User,
+  MessageSquare,
+  MoreVertical,
+  Trash2,
+  LogOut,
+  Loader2,
+  AlertTriangle,
+} from 'lucide-react';
 import { TelegramDialog } from '../types';
 
 interface ChatListProps {
@@ -7,6 +24,10 @@ interface ChatListProps {
   selectedChatId: string | null;
   onSelectChat: (dialog: TelegramDialog) => void;
   isLoading: boolean;
+  onPinChat?: (dialog: TelegramDialog, pinned: boolean) => Promise<void>;
+  onMuteChat?: (dialog: TelegramDialog, muted: boolean) => Promise<void>;
+  onClearHistory?: (dialog: TelegramDialog, revoke: boolean) => Promise<void>;
+  onLeaveChat?: (dialog: TelegramDialog) => Promise<void>;
 }
 
 type FilterTab = 'all' | 'users' | 'groups' | 'channels';
@@ -16,12 +37,41 @@ export const ChatList: React.FC<ChatListProps> = ({
   selectedChatId,
   onSelectChat,
   isLoading,
+  onPinChat,
+  onMuteChat,
+  onClearHistory,
+  onLeaveChat,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
 
+  // Context menu state
+  const [activeMenuChatId, setActiveMenuChatId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Modals state
+  const [chatToClear, setChatToClear] = useState<TelegramDialog | null>(null);
+  const [clearRevoke, setClearRevoke] = useState(true);
+  const [isClearing, setIsClearing] = useState(false);
+
+  const [chatToLeave, setChatToLeave] = useState<TelegramDialog | null>(null);
+  const [isLeaving, setIsLeaving] = useState(false);
+
+  // Close context menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setActiveMenuChatId(null);
+        setMenuPosition(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const filteredDialogs = useMemo(() => {
-    return dialogs.filter((dialog) => {
+    const filtered = dialogs.filter((dialog) => {
       // Filter by tab
       if (filterTab === 'users' && !dialog.isUser) return false;
       if (filterTab === 'groups' && !dialog.isGroup) return false;
@@ -34,6 +84,17 @@ export const ChatList: React.FC<ChatListProps> = ({
       const textMatch = (dialog.lastMessage?.text || '').toLowerCase().includes(term);
       const usernameMatch = (dialog.entity?.username || '').toLowerCase().includes(term);
       return titleMatch || textMatch || usernameMatch;
+    });
+
+    // Sort: Pinned chats at the top, then newest date
+    return filtered.sort((a, b) => {
+      const aPinned = !!a.pinned;
+      const bPinned = !!b.pinned;
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      const dateA = a.lastMessage?.date || a.date || 0;
+      const dateB = b.lastMessage?.date || b.date || 0;
+      return dateB - dateA;
     });
   }, [dialogs, filterTab, searchTerm]);
 
@@ -73,8 +134,45 @@ export const ChatList: React.FC<ChatListProps> = ({
     return colors[index];
   };
 
+  const handleOpenMenu = (dialog: TelegramDialog, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setActiveMenuChatId(dialog.id);
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setMenuPosition({
+      x: Math.min(window.innerWidth - 220, rect.left),
+      y: Math.min(window.innerHeight - 240, rect.bottom + 4),
+    });
+  };
+
+  const handleConfirmClear = async () => {
+    if (!chatToClear || !onClearHistory) return;
+    try {
+      setIsClearing(true);
+      await onClearHistory(chatToClear, clearRevoke);
+      setChatToClear(null);
+    } catch (err: any) {
+      alert(`فشل مسح المحادثة: ${err.message || 'خطأ غير متوقع'}`);
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
+  const handleConfirmLeave = async () => {
+    if (!chatToLeave || !onLeaveChat) return;
+    try {
+      setIsLeaving(true);
+      await onLeaveChat(chatToLeave);
+      setChatToLeave(null);
+    } catch (err: any) {
+      alert(`فشل مغادرة المحادثة: ${err.message || 'خطأ غير متوقع'}`);
+    } finally {
+      setIsLeaving(false);
+    }
+  };
+
   return (
-    <div className="w-full md:w-80 lg:w-96 bg-[#17212b] border-l border-[#242f3d] flex flex-col h-full shrink-0 select-none">
+    <div className="w-full md:w-80 lg:w-96 bg-[#17212b] border-l border-[#242f3d] flex flex-col h-full shrink-0 select-none relative">
       {/* Search Input */}
       <div className="p-3 border-b border-[#242f3d]/60">
         <div className="relative">
@@ -89,7 +187,7 @@ export const ChatList: React.FC<ChatListProps> = ({
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-1 mt-2.5 overflow-x-auto pb-0.5 text-[11px]">
+        <div className="flex items-center gap-1 mt-2.5 overflow-x-auto pb-0.5 text-[11px] scrollbar-none">
           <button
             onClick={() => setFilterTab('all')}
             className={`px-3 py-1 rounded-full whitespace-nowrap transition-colors cursor-pointer ${
@@ -159,7 +257,8 @@ export const ChatList: React.FC<ChatListProps> = ({
               <div
                 key={dialog.id}
                 onClick={() => onSelectChat(dialog)}
-                className={`flex items-center gap-3 p-3 transition-colors cursor-pointer relative ${
+                onContextMenu={(e) => handleOpenMenu(dialog, e)}
+                className={`group flex items-center gap-3 p-3 transition-colors cursor-pointer relative ${
                   isSelected
                     ? 'bg-[#2b5278] text-white'
                     : 'hover:bg-[#202b36] text-slate-200'
@@ -212,15 +311,37 @@ export const ChatList: React.FC<ChatListProps> = ({
                       {dialog.lastMessage?.text || 'لا توجد رسائل'}
                     </p>
 
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Pinned Icon */}
                       {dialog.pinned && (
-                        <Pin className="w-3 h-3 text-slate-400 rotate-45" />
+                        <span title="محادثة مثبتة">
+                          <Pin className="w-3.5 h-3.5 text-[#54a9eb] fill-[#54a9eb]/30 rotate-45" />
+                        </span>
                       )}
+
+                      {/* Muted Icon */}
+                      {dialog.muted && (
+                        <span title="الإشعارات مكتومة">
+                          <BellOff className="w-3.5 h-3.5 text-slate-400" />
+                        </span>
+                      )}
+
+                      {/* Unread badge */}
                       {dialog.unreadCount > 0 && (
                         <span className="px-1.5 py-0.5 min-w-5 h-5 rounded-full bg-[#54a9eb] text-white font-bold text-[10px] flex items-center justify-center">
                           {dialog.unreadCount}
                         </span>
                       )}
+
+                      {/* Context menu action trigger button (visible on hover) */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenMenu(dialog, e)}
+                        title="خيارات المحادثة"
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-white/10 text-slate-300 hover:text-white transition-opacity cursor-pointer"
+                      >
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -229,6 +350,213 @@ export const ChatList: React.FC<ChatListProps> = ({
           })
         )}
       </div>
+
+      {/* Chat Options Context Menu Dropdown */}
+      {activeMenuChatId && (
+        (() => {
+          const targetDialog = dialogs.find((d) => d.id === activeMenuChatId);
+          if (!targetDialog) return null;
+
+          return (
+            <div
+              ref={menuRef}
+              style={{
+                position: 'fixed',
+                top: menuPosition ? `${menuPosition.y}px` : '40%',
+                left: menuPosition ? `${menuPosition.x}px` : '20%',
+              }}
+              className="z-50 w-52 bg-[#1e2c3a] border border-[#2c3e50] rounded-2xl shadow-2xl py-1.5 text-xs text-slate-200 animate-in fade-in zoom-in-95 duration-100"
+              dir="rtl"
+            >
+              {/* Pin / Unpin */}
+              {onPinChat && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const willPin = !targetDialog.pinned;
+                    setActiveMenuChatId(null);
+                    await onPinChat(targetDialog, willPin);
+                  }}
+                  className="w-full px-3.5 py-2.5 flex items-center gap-2.5 hover:bg-[#242f3d] text-right transition-colors cursor-pointer"
+                >
+                  {targetDialog.pinned ? (
+                    <>
+                      <PinOff className="w-4 h-4 text-slate-400" />
+                      <span>إلغاء تثبيت المحادثة</span>
+                    </>
+                  ) : (
+                    <>
+                      <Pin className="w-4 h-4 text-[#54a9eb]" />
+                      <span>تثبيت المحادثة في الأعلى</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Mute / Unmute */}
+              {onMuteChat && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const willMute = !targetDialog.muted;
+                    setActiveMenuChatId(null);
+                    await onMuteChat(targetDialog, willMute);
+                  }}
+                  className="w-full px-3.5 py-2.5 flex items-center gap-2.5 hover:bg-[#242f3d] text-right transition-colors cursor-pointer"
+                >
+                  {targetDialog.muted ? (
+                    <>
+                      <Bell className="w-4 h-4 text-[#54a9eb]" />
+                      <span>تفعيل الإشعارات (إلغاء الكتم)</span>
+                    </>
+                  ) : (
+                    <>
+                      <BellOff className="w-4 h-4 text-slate-400" />
+                      <span>كتم الإشعارات (Mute)</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              <div className="h-px bg-white/5 my-1" />
+
+              {/* Clear History */}
+              {onClearHistory && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveMenuChatId(null);
+                    setChatToClear(targetDialog);
+                  }}
+                  className="w-full px-3.5 py-2.5 flex items-center gap-2.5 hover:bg-[#242f3d] text-amber-400 text-right transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4 text-amber-400" />
+                  <span>مسح سجل المحادثة (Clear History)</span>
+                </button>
+              )}
+
+              {/* Leave Chat / Group */}
+              {onLeaveChat && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveMenuChatId(null);
+                    setChatToLeave(targetDialog);
+                  }}
+                  className="w-full px-3.5 py-2.5 flex items-center gap-2.5 hover:bg-[#242f3d] text-rose-400 text-right transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4 text-rose-400" />
+                  <span>
+                    {targetDialog.isGroup
+                      ? 'مغادرة المجموعة'
+                      : targetDialog.isChannel
+                      ? 'مغادرة القناة'
+                      : 'حذف ومغادرة المحادثة'}
+                  </span>
+                </button>
+              )}
+            </div>
+          );
+        })()
+      )}
+
+      {/* Clear History Modal */}
+      {chatToClear && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-[#1e2c3a] border border-[#2c3e50] rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4" dir="rtl">
+            <div className="flex items-center gap-2.5 text-amber-400">
+              <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-semibold text-white">مسح سجل المحادثة</h3>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              هل أنت متأكد من مسح جميع الرسائل في محادثة{' '}
+              <span className="font-bold text-white">
+                "{chatToClear.title || chatToClear.name}"
+              </span>
+              ؟ لن تتمكن من استرجاعها بعد ذلك.
+            </p>
+
+            <label className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#17212b] border border-white/5 cursor-pointer hover:border-white/10 transition-colors">
+              <input
+                type="checkbox"
+                checked={clearRevoke}
+                onChange={(e) => setClearRevoke(e.target.checked)}
+                className="w-4 h-4 accent-[#54a9eb] rounded cursor-pointer"
+              />
+              <span className="text-xs text-slate-200">
+                مسح السجل أيضاً لدى الطرف الآخر (Revoke)
+              </span>
+            </label>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => setChatToClear(null)}
+                disabled={isClearing}
+                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmClear}
+                disabled={isClearing}
+                className="px-4 py-2 rounded-xl text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white flex items-center gap-1.5 shadow transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isClearing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>مسح السجل الآن</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Leave Chat Modal */}
+      {chatToLeave && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-[#1e2c3a] border border-[#2c3e50] rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4" dir="rtl">
+            <div className="flex items-center gap-2.5 text-rose-400">
+              <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-semibold text-white">
+                {chatToLeave.isGroup ? 'مغادرة المجموعة' : 'مغادرة المحادثة'}
+              </h3>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              هل أنت متأكد من مغادرة{' '}
+              <span className="font-bold text-white">
+                "{chatToLeave.title || chatToLeave.name}"
+              </span>
+              ؟ سيتم إزالتها من قائمة محادثاتك في تليجرام.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => setChatToLeave(null)}
+                disabled={isLeaving}
+                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmLeave}
+                disabled={isLeaving}
+                className="px-4 py-2 rounded-xl text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white flex items-center gap-1.5 shadow transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isLeaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>تأكيد المغادرة</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

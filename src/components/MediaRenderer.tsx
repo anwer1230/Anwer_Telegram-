@@ -53,7 +53,80 @@ export const MediaRenderer: React.FC<MediaRendererProps> = ({ message, peerId })
 
   return (
     <div className="my-2 select-none overflow-hidden rounded-xl bg-black/20 border border-white/5">
-      {/* 1. Photo rendering */}
+      {/* 1. Sticker rendering */}
+      {mediaType === 'sticker' && (
+        <div className="relative group max-w-[200px] flex flex-col items-center p-1.5">
+          {!loadError ? (
+            <img
+              src={viewUrl}
+              alt={mediaInfo?.altEmoji || 'ملصق'}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={() => setLoadError(true)}
+              className="w-40 h-40 object-contain transition-transform duration-200 group-hover:scale-105"
+            />
+          ) : (
+            <div className="w-32 h-32 flex flex-col items-center justify-center text-slate-400 gap-1 bg-[#242f3d]/40 rounded-xl p-2">
+              <span className="text-3xl">{mediaInfo?.altEmoji || '🎭'}</span>
+              <span className="text-[11px]">ملصق تليجرام</span>
+            </div>
+          )}
+
+          {mediaInfo?.altEmoji && (
+            <span className="text-xs text-slate-300 mt-1 opacity-75">{mediaInfo.altEmoji}</span>
+          )}
+
+          {/* Download WebP / Lottie Action Bar on Hover */}
+          <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-[#17212b]/95 backdrop-blur-xs p-1 rounded-xl border border-white/10 shadow-xl z-10">
+            <a
+              href={`${downloadUrl}&format=webp`}
+              download={`sticker_${message.id}.webp`}
+              title="تنزيل الملصق بصيغة WebP"
+              className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-[#54a9eb] text-[10px] text-white transition-colors"
+            >
+              WebP
+            </a>
+            <a
+              href={`${downloadUrl}&format=lottie`}
+              download={`sticker_${message.id}.tgs`}
+              title="تنزيل الملصق بصيغة Lottie المتحركة"
+              className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-emerald-500 text-[10px] text-emerald-300 hover:text-white transition-colors"
+            >
+              Lottie
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* 2. GIF rendering */}
+      {mediaType === 'gif' && (
+        <div className="relative group max-w-sm rounded-lg overflow-hidden bg-black/40">
+          <video
+            src={viewUrl}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full max-h-80 rounded-lg object-contain"
+            onError={() => setLoadError(true)}
+          />
+          <span className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-black/60 text-[9px] font-bold text-white tracking-wider backdrop-blur-xs">
+            GIF
+          </span>
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <a
+              href={downloadUrl}
+              download={`${fileName}.mp4`}
+              title="تنزيل صورة GIF"
+              className="p-1.5 rounded-full bg-[#242f3d]/90 text-white hover:bg-[#54a9eb] transition-colors shadow-lg block"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Photo rendering */}
       {mediaType === 'photo' && (
         <div className="relative group max-w-sm rounded-lg overflow-hidden bg-black/30">
           {!loadError ? (

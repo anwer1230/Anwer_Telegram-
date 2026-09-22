@@ -4,6 +4,7 @@ import { CustomFile } from 'telegram/client/uploads.js';
 import { NewMessage, Raw } from 'telegram/events/index.js';
 import { getPeerId } from 'telegram/Utils.js';
 import bigInt from 'big-integer';
+import zlib from 'zlib';
 
 // Official Telegram API Credentials provided by user
 export const TELEGRAM_API_ID = Number(process.env.TELEGRAM_API_ID || 22043994);
@@ -37,15 +38,41 @@ setInterval(() => {
 }, 60 * 1000);
 
 /**
+ * Get active user from in-memory cache instantly without network delay
+ */
+export function getFastActiveUser(sessionString?: string) {
+  if (!sessionString) return null;
+  const cleanKey = sessionString.trim();
+  const existing = activeSessions.get(cleanKey);
+  if (existing && existing.me) {
+    return formatUser(existing.me);
+  }
+  return null;
+}
+
+/**
  * Get or create an active TelegramClient instance for a given session string
  */
 export async function getClientForSession(sessionString: string): Promise<ActiveSession> {
   const cleanKey = sessionString.trim();
+  if (!cleanKey) {
+    throw new Error('رمز الجلسة فارغ');
+  }
+
   if (activeSessions.has(cleanKey)) {
     const existing = activeSessions.get(cleanKey)!;
     existing.lastActive = Date.now();
     if (!existing.client.connected) {
-      await existing.client.connect();
+      try {
+        const connectPromise = existing.client.connect();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('انتهت مهلة إعادة الاتصال')), 6000)
+        );
+        await Promise.race([connectPromise, timeoutPromise]);
+      } catch (reconnectErr) {
+        console.warn('Could not reconnect existing session, re-creating:', reconnectErr);
+        activeSessions.delete(cleanKey);
+      }
     }
     attachTelegramEventHandlers(existing);
     return existing;
@@ -53,11 +80,16 @@ export async function getClientForSession(sessionString: string): Promise<Active
 
   const stringSession = new StringSession(cleanKey);
   const client = new TelegramClient(stringSession, TELEGRAM_API_ID, TELEGRAM_API_HASH, {
-    connectionRetries: 5,
+    connectionRetries: 3,
+    timeout: 8,
     useWSS: false,
   });
 
-  await client.connect();
+  const connectPromise = client.connect();
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('انتهت مهلة الاتصال بسحابة تليجرام الرسمية')), 6000)
+  );
+  await Promise.race([connectPromise, timeoutPromise]);
 
   const sessionObj: ActiveSession = {
     client,
@@ -314,6 +346,9 @@ export async function getTelegramDialogs(sessionString: string, limit = 40) {
       lastText = '[وسائط / ملف]';
     }
 
+    const muteUntil = (d.dialog as any)?.notifySettings?.muteUntil;
+    const muted = !!(muteUntil && Number(muteUntil) > Math.floor(Date.now() / 1000));
+
     formattedDialogs.push({
       id: idStr,
       title: d.title || d.name || 'محادثة',
@@ -323,6 +358,7 @@ export async function getTelegramDialogs(sessionString: string, limit = 40) {
       isChannel: !!d.isChannel,
       unreadCount: d.unreadCount || 0,
       pinned: !!d.pinned,
+      muted,
       date: d.date || 0,
       lastMessage: {
         text: lastText,
@@ -366,6 +402,10 @@ export function formatTelegramMessage(m: any) {
       let height = 0;
       let duration = 0;
 
+      let isSticker = false;
+      let isAnimated = false;
+      let altEmoji = '';
+
       if (doc?.attributes && Array.isArray(doc.attributes)) {
         for (const attr of doc.attributes) {
           if (attr.fileName) fileName = attr.fileName;
@@ -374,10 +414,21 @@ export function formatTelegramMessage(m: any) {
             height = attr.h;
           }
           if (attr.duration) duration = attr.duration;
+          if (attr.className === 'DocumentAttributeSticker' || attr.alt) {
+            isSticker = true;
+            if (attr.alt) altEmoji = attr.alt;
+          }
+          if (attr.className === 'DocumentAttributeAnimated') {
+            isAnimated = true;
+          }
         }
       }
 
-      if (mime.includes('audio') || mime.includes('ogg')) {
+      if (isSticker || mime === 'application/x-tgsticker') {
+        mediaType = 'sticker';
+      } else if (isAnimated || mime === 'image/gif') {
+        mediaType = 'gif';
+      } else if (mime.includes('audio') || mime.includes('ogg')) {
         mediaType = 'voice';
       } else if (mime.includes('video')) {
         mediaType = 'video';
@@ -395,6 +446,8 @@ export function formatTelegramMessage(m: any) {
         width: width || undefined,
         height: height || undefined,
         duration: duration || undefined,
+        altEmoji: altEmoji || undefined,
+        isAnimated: isAnimated || mime === 'application/x-tgsticker',
         hasMedia: true,
       };
     } else if (className.includes('WebPage')) {
@@ -937,4 +990,539 @@ function formatUser(user: any) {
     verified: !!user.verified,
     premium: !!user.premium,
   };
+}
+
+// In-memory document and buffer caches for stickers
+const stickerDocCache = new Map<string, any>();
+const stickerBufferCache = new Map<string, { buffer: Buffer; mimeType: string }>();
+
+/**
+ * Toggle Pin / Unpin a chat/dialog in Telegram Cloud
+ */
+export async function toggleTelegramDialogPin(
+  sessionString: string,
+  peerId: string,
+  pinned: boolean
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+  let targetPeer: any = peerId;
+  if (session.entityCache.has(peerId)) {
+    targetPeer = session.entityCache.get(peerId);
+  } else {
+    try {
+      targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+    } catch (_) {
+      try {
+        targetPeer = await client.getEntity(bigInt(peerId));
+      } catch (e) {
+        targetPeer = peerId;
+      }
+    }
+  }
+
+  await client.invoke(
+    new Api.messages.ToggleDialogPin({
+      peer: new Api.InputDialogPeer({ peer: targetPeer }),
+      pinned: !!pinned,
+    })
+  );
+
+  return { success: true, peerId, pinned: !!pinned };
+}
+
+/**
+ * Mute / Unmute chat notifications
+ */
+export async function updateTelegramNotifySettings(
+  sessionString: string,
+  peerId: string,
+  mute: boolean
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+  let targetPeer: any = peerId;
+  if (session.entityCache.has(peerId)) {
+    targetPeer = session.entityCache.get(peerId);
+  } else {
+    try {
+      targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+    } catch (_) {
+      try {
+        targetPeer = await client.getEntity(bigInt(peerId));
+      } catch (e) {
+        targetPeer = peerId;
+      }
+    }
+  }
+
+  const muteUntil = mute ? 2147483647 : 0;
+  await client.invoke(
+    new Api.account.UpdateNotifySettings({
+      peer: new Api.InputNotifyPeer({ peer: targetPeer }),
+      settings: new Api.InputPeerNotifySettings({
+        muteUntil,
+      }),
+    })
+  );
+
+  return { success: true, peerId, muted: !!mute };
+}
+
+/**
+ * Leave a Telegram group or channel
+ */
+export async function leaveTelegramChat(
+  sessionString: string,
+  peerId: string
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+  let targetPeer: any = peerId;
+  if (session.entityCache.has(peerId)) {
+    targetPeer = session.entityCache.get(peerId);
+  } else {
+    try {
+      targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+    } catch (_) {
+      try {
+        targetPeer = await client.getEntity(bigInt(peerId));
+      } catch (e) {
+        targetPeer = peerId;
+      }
+    }
+  }
+
+  const cleanId = peerId.toString();
+  if (cleanId.startsWith('-100')) {
+    await client.invoke(
+      new Api.channels.LeaveChannel({
+        channel: targetPeer,
+      })
+    );
+  } else if (cleanId.startsWith('-')) {
+    const rawId = cleanId.replace('-', '');
+    await client.invoke(
+      new Api.messages.DeleteChatUser({
+        chatId: bigInt(rawId),
+        userId: new Api.InputUserSelf(),
+      })
+    );
+  } else {
+    await client.invoke(
+      new Api.messages.DeleteHistory({
+        peer: targetPeer,
+        maxId: 0,
+        revoke: true,
+      })
+    );
+  }
+
+  return { success: true, peerId };
+}
+
+/**
+ * Clear chat history / delete conversation
+ */
+export async function clearTelegramChatHistory(
+  sessionString: string,
+  peerId: string,
+  revoke: boolean = true
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+  let targetPeer: any = peerId;
+  if (session.entityCache.has(peerId)) {
+    targetPeer = session.entityCache.get(peerId);
+  } else {
+    try {
+      targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+    } catch (_) {
+      try {
+        targetPeer = await client.getEntity(bigInt(peerId));
+      } catch (e) {
+        targetPeer = peerId;
+      }
+    }
+  }
+
+  const cleanId = peerId.toString();
+  if (cleanId.startsWith('-100')) {
+    await client.invoke(
+      new Api.channels.DeleteHistory({
+        channel: targetPeer,
+        maxId: 0,
+      })
+    );
+  } else {
+    await client.invoke(
+      new Api.messages.DeleteHistory({
+        peer: targetPeer,
+        maxId: 0,
+        revoke: !!revoke,
+      })
+    );
+  }
+
+  return { success: true, peerId, revoke: !!revoke };
+}
+
+/**
+ * Fetch all installed sticker sets for the user
+ */
+export async function getTelegramAllStickers(sessionString: string) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let sets: any[] = [];
+  try {
+    const res: any = await client.invoke(
+      new Api.messages.GetAllStickers({
+        hash: bigInt(0),
+      })
+    );
+    if (res && res.sets) {
+      sets = res.sets;
+    }
+  } catch (err) {
+    console.warn('Could not fetch allStickers from Telegram:', err);
+  }
+
+  return sets.map((s: any) => ({
+    id: s.id.toString(),
+    accessHash: s.accessHash.toString(),
+    title: s.title || '',
+    shortName: s.shortName || '',
+    count: s.count || 0,
+    archived: !!s.archived,
+    official: !!s.official,
+    animated: !!s.animated,
+    videos: !!s.videos,
+    thumbDocumentId: s.thumbDocumentId?.toString() || null,
+  }));
+}
+
+/**
+ * Get all stickers inside a specific sticker set
+ */
+export async function getTelegramStickerSet(
+  sessionString: string,
+  setId: string,
+  accessHash: string
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  const res: any = await client.invoke(
+    new Api.messages.GetStickerSet({
+      stickerset: new Api.InputStickerSetID({
+        id: bigInt(setId),
+        accessHash: bigInt(accessHash),
+      }),
+      hash: 0,
+    })
+  );
+
+  const documents = (res.documents || []).map((doc: any) => {
+    const idStr = doc.id.toString();
+    const accessHashStr = doc.accessHash.toString();
+    const fileReference = doc.fileReference ? doc.fileReference.toString('base64') : '';
+
+    stickerDocCache.set(idStr, doc);
+
+    let altEmoji = '😀';
+    let isAnimated = false;
+    let isVideo = false;
+
+    if (doc.attributes) {
+      for (const attr of doc.attributes) {
+        if (attr.className === 'DocumentAttributeSticker' || attr.alt) {
+          if (attr.alt) altEmoji = attr.alt;
+        }
+        if (attr.className === 'DocumentAttributeAnimated') {
+          isAnimated = true;
+        }
+        if (attr.className === 'DocumentAttributeVideo') {
+          isVideo = true;
+        }
+      }
+    }
+
+    const mimeType = doc.mimeType || 'image/webp';
+    const isLottie = mimeType === 'application/x-tgsticker' || isAnimated;
+
+    return {
+      id: idStr,
+      accessHash: accessHashStr,
+      fileReference,
+      mimeType,
+      size: doc.size ? Number(doc.size) : 0,
+      altEmoji,
+      isAnimated: isLottie,
+      isVideo,
+      format: isLottie ? 'lottie' : mimeType === 'video/webm' ? 'webm' : 'webp',
+    };
+  });
+
+  return {
+    set: {
+      id: res.set.id.toString(),
+      accessHash: res.set.accessHash.toString(),
+      title: res.set.title || '',
+      shortName: res.set.shortName || '',
+      count: res.set.count || documents.length,
+    },
+    documents,
+  };
+}
+
+/**
+ * Download a sticker buffer in WebP or Lottie (TGS / JSON)
+ */
+export async function downloadTelegramStickerBuffer(
+  sessionString: string,
+  docId: string,
+  accessHash?: string,
+  fileReference?: string,
+  format?: 'webp' | 'lottie'
+): Promise<{ buffer: Buffer; mimeType: string; fileName: string; isLottieJson?: boolean }> {
+  const cached = stickerBufferCache.get(docId);
+  if (cached && (!format || (format === 'lottie' && cached.mimeType.includes('tgsticker')) || (format === 'webp' && cached.mimeType.includes('webp')))) {
+    return {
+      buffer: cached.buffer,
+      mimeType: cached.mimeType,
+      fileName: `sticker_${docId}.${cached.mimeType.includes('webp') ? 'webp' : 'tgs'}`,
+    };
+  }
+
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  const doc = stickerDocCache.get(docId);
+  let downloaded: any;
+
+  if (doc) {
+    downloaded = await client.downloadMedia(doc, {});
+  } else if (accessHash && fileReference) {
+    const loc = new Api.InputDocumentFileLocation({
+      id: bigInt(docId),
+      accessHash: bigInt(accessHash),
+      fileReference: Buffer.from(fileReference, 'base64'),
+      thumbSize: '',
+    });
+    downloaded = await client.downloadFile(loc, {});
+  } else {
+    throw new Error('بيانات الملصق غير مكتملة للتحميل');
+  }
+
+  if (!downloaded || downloaded.length === 0) {
+    throw new Error('فشل تنزيل ملف الملصق من تليجرام');
+  }
+
+  let buffer = Buffer.isBuffer(downloaded) ? downloaded : Buffer.from(downloaded);
+  const isLottie = format === 'lottie' || (doc && doc.mimeType === 'application/x-tgsticker');
+  let mimeType = isLottie ? 'application/x-tgsticker' : (doc?.mimeType || 'image/webp');
+  let isLottieJson = false;
+
+  // If requested lottie and user wants json, we can unpack gzipped TGS
+  if (format === 'lottie') {
+    try {
+      const decompressed = zlib.gunzipSync(buffer);
+      buffer = decompressed;
+      mimeType = 'application/json';
+      isLottieJson = true;
+    } catch (_) {
+      // Keep raw TGS
+    }
+  }
+
+  stickerBufferCache.set(docId, { buffer, mimeType });
+
+  return {
+    buffer,
+    mimeType,
+    fileName: `telegram_sticker_${docId}.${isLottieJson ? 'json' : isLottie ? 'tgs' : 'webp'}`,
+    isLottieJson,
+  };
+}
+
+/**
+ * Send a Telegram sticker into a chat using official MTProto InputDocument
+ */
+export async function sendTelegramSticker(
+  sessionString: string,
+  peerId: string,
+  documentId: string,
+  accessHash: string,
+  fileReference: string,
+  replyTo?: number
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetPeer: any = peerId;
+  if (session.entityCache.has(peerId)) {
+    targetPeer = session.entityCache.get(peerId);
+  } else {
+    try {
+      targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+    } catch (_) {
+      try {
+        targetPeer = await client.getEntity(bigInt(peerId));
+      } catch (e) {
+        targetPeer = peerId;
+      }
+    }
+  }
+
+  const inputDoc = new Api.InputDocument({
+    id: bigInt(documentId),
+    accessHash: bigInt(accessHash),
+    fileReference: Buffer.from(fileReference, 'base64'),
+  });
+
+  const sent: any = await (client as any).sendFile(targetPeer, {
+    file: inputDoc as any,
+    replyTo: replyTo ? Number(replyTo) : undefined,
+  });
+
+  return formatTelegramMessage(sent);
+}
+
+/**
+ * Search animated GIFs using Telegram MTProto inline bot and animated GIF sources
+ */
+export async function searchTelegramGifs(
+  sessionString: string,
+  query: string,
+  peerId?: string
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  const q = query.trim() || 'trending';
+  const results: any[] = [];
+
+  // Try inline bot @gif or @tenor
+  try {
+    let targetPeer: any = peerId || 'me';
+    if (peerId && session.entityCache.has(peerId)) {
+      targetPeer = session.entityCache.get(peerId);
+    } else {
+      try {
+        targetPeer = await client.getInputEntity(peerId && peerId.startsWith('-') ? bigInt(peerId) : (peerId || 'me'));
+      } catch (_) {
+        targetPeer = 'me';
+      }
+    }
+
+    const botPeer = await client.getInputEntity('gif');
+    const botRes: any = await client.invoke(
+      new Api.messages.GetInlineBotResults({
+        bot: botPeer,
+        peer: targetPeer,
+        query: q,
+        offset: '',
+      })
+    );
+
+    if (botRes && botRes.results && botRes.results.length > 0) {
+      for (const r of botRes.results) {
+        if (r.document) {
+          const doc = r.document;
+          results.push({
+            id: doc.id.toString(),
+            accessHash: doc.accessHash.toString(),
+            fileReference: doc.fileReference ? doc.fileReference.toString('base64') : '',
+            url: r.url || '',
+            previewUrl: r.thumb?.url || r.url || '',
+            title: r.title || 'GIF',
+            type: 'telegram_inline',
+          });
+        } else if (r.content) {
+          results.push({
+            id: r.id || String(Math.random()),
+            url: r.content.url || '',
+            previewUrl: r.thumb?.url || r.content.url || '',
+            title: r.title || 'GIF',
+            type: 'web_gif',
+          });
+        }
+      }
+    }
+  } catch (_) {}
+
+  // Fallback to high-quality animated GIFs from Tenor public search API if inline bot returns few/no results
+  if (results.length < 8) {
+    try {
+      const encoded = encodeURIComponent(q);
+      const res = await fetch(`https://g.tenor.com/v1/search?q=${encoded}&key=LIVDSRZULELA&limit=24`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.results && Array.isArray(data.results)) {
+          for (const item of data.results) {
+            const media = item.media?.[0];
+            const gifUrl = media?.gif?.url || media?.tinygif?.url || media?.mp4?.url;
+            const previewUrl = media?.tinygif?.url || media?.nanogif?.url || gifUrl;
+            if (gifUrl) {
+              results.push({
+                id: item.id || String(Math.random()),
+                url: gifUrl,
+                previewUrl,
+                title: item.content_description || item.title || 'GIF',
+                type: 'tenor_gif',
+              });
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  return results;
+}
+
+/**
+ * Send an animated GIF into a Telegram chat
+ */
+export async function sendTelegramGif(
+  sessionString: string,
+  peerId: string,
+  gifUrl: string,
+  replyTo?: number
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetPeer: any = peerId;
+  if (session.entityCache.has(peerId)) {
+    targetPeer = session.entityCache.get(peerId);
+  } else {
+    try {
+      targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+    } catch (_) {
+      try {
+        targetPeer = await client.getEntity(bigInt(peerId));
+      } catch (e) {
+        targetPeer = peerId;
+      }
+    }
+  }
+
+  const res = await fetch(gifUrl);
+  if (!res.ok) {
+    throw new Error('فشل جلب ملف الـ GIF للإرسال');
+  }
+  const arrayBuf = await res.arrayBuffer();
+  const buffer = Buffer.from(arrayBuf);
+
+  const customFile = new CustomFile('animation.mp4', buffer.length, '', buffer);
+
+  const sent: any = await client.sendFile(targetPeer, {
+    file: customFile,
+    forceDocument: false,
+    replyTo: replyTo ? Number(replyTo) : undefined,
+  });
+
+  return formatTelegramMessage(sent);
 }

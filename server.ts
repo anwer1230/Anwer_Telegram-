@@ -20,6 +20,17 @@ import {
   logoutTelegramSession,
   getTelegramMe,
   subscribeToTelegramEvents,
+  toggleTelegramDialogPin,
+  updateTelegramNotifySettings,
+  leaveTelegramChat,
+  clearTelegramChatHistory,
+  getTelegramAllStickers,
+  getTelegramStickerSet,
+  downloadTelegramStickerBuffer,
+  sendTelegramSticker,
+  searchTelegramGifs,
+  sendTelegramGif,
+  getFastActiveUser,
 } from './server/telegramClient.js';
 
 async function startServer() {
@@ -29,21 +40,12 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-  // Health and Telegram Connection Status endpoint
+  // Health and Telegram Connection Status endpoint (ultra-fast, non-blocking)
   app.get('/api/telegram/status', async (req, res) => {
     try {
       const authHeader = req.headers['x-telegram-session'] as string | undefined;
-      let user = null;
-      let authorized = false;
-
-      if (authHeader) {
-        try {
-          user = await getTelegramMe(authHeader);
-          authorized = true;
-        } catch (_) {
-          authorized = false;
-        }
-      }
+      const user = authHeader ? getFastActiveUser(authHeader) : null;
+      const authorized = !!user;
 
       res.json({
         success: true,
@@ -399,6 +401,264 @@ async function startServer() {
       res.status(500).json({
         success: false,
         error: err.errorMessage || err.message || 'فشل حذف الرسائل في تليجرام',
+      });
+    }
+  });
+
+  // ----------------------
+  // Chat Management Routes
+  // ----------------------
+
+  // Pin / Unpin Dialog
+  app.post('/api/telegram/chat/pin', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, pinned } = req.body;
+      if (!peerId) {
+        return res.status(400).json({ success: false, error: 'معرف المحادثة مطلوب' });
+      }
+      const result = await toggleTelegramDialogPin(sessionString, peerId, !!pinned);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error toggling pin:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل تثبيت/إلغاء تثبيت المحادثة',
+      });
+    }
+  });
+
+  // Mute / Unmute Dialog
+  app.post('/api/telegram/chat/mute', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, mute } = req.body;
+      if (!peerId) {
+        return res.status(400).json({ success: false, error: 'معرف المحادثة مطلوب' });
+      }
+      const result = await updateTelegramNotifySettings(sessionString, peerId, !!mute);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error updating mute settings:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل كتم/إلغاء كتم الإشعارات',
+      });
+    }
+  });
+
+  // Leave Group / Channel
+  app.post('/api/telegram/chat/leave', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId } = req.body;
+      if (!peerId) {
+        return res.status(400).json({ success: false, error: 'معرف المحادثة مطلوب' });
+      }
+      const result = await leaveTelegramChat(sessionString, peerId);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error leaving chat:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل مغادرة المحادثة',
+      });
+    }
+  });
+
+  // Clear Chat History
+  app.post('/api/telegram/chat/clear-history', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, revoke } = req.body;
+      if (!peerId) {
+        return res.status(400).json({ success: false, error: 'معرف المحادثة مطلوب' });
+      }
+      const result = await clearTelegramChatHistory(sessionString, peerId, revoke !== false);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error clearing chat history:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل مسح سجل المحادثة',
+      });
+    }
+  });
+
+  // --------------------------------
+  // Stickers & GIFs Picker Routes
+  // --------------------------------
+
+  // Get all installed sticker sets
+  app.get('/api/telegram/stickers/all', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const sets = await getTelegramAllStickers(sessionString);
+      res.json({ success: true, sets });
+    } catch (err: any) {
+      console.error('Error getting stickers:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل استرجاع حزم الملصقات',
+      });
+    }
+  });
+
+  // Get stickers in a specific set
+  app.get('/api/telegram/stickers/set/:setId/:accessHash', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { setId, accessHash } = req.params;
+      const data = await getTelegramStickerSet(sessionString, setId, accessHash);
+      res.json({ success: true, ...data });
+    } catch (err: any) {
+      console.error('Error getting sticker set:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل استرجاع ملصقات الحزمة',
+      });
+    }
+  });
+
+  // Download / View Sticker media buffer (supports WebP and Lottie JSON/TGS)
+  app.get('/api/telegram/stickers/media/:docId', async (req, res) => {
+    try {
+      const sessionString =
+        (req.headers['x-telegram-session'] as string) ||
+        (req.query.session as string);
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+
+      const { docId } = req.params;
+      const accessHash = req.query.accessHash as string | undefined;
+      const fileReference = req.query.fileReference as string | undefined;
+      const download = req.query.download === '1' || req.query.download === 'true';
+      const format = (req.query.format as 'webp' | 'lottie') || undefined;
+
+      const media = await downloadTelegramStickerBuffer(
+        sessionString,
+        docId,
+        accessHash,
+        fileReference,
+        format
+      );
+
+      res.setHeader('Content-Type', media.mimeType);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+
+      if (download) {
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="${media.fileName}"`
+        );
+      } else {
+        res.setHeader(
+          'Content-Disposition',
+          `inline; filename="${media.fileName}"`
+        );
+      }
+
+      res.send(media.buffer);
+    } catch (err: any) {
+      console.error('Error downloading sticker:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل تنزيل الملصق',
+      });
+    }
+  });
+
+  // Send Sticker into a Telegram chat
+  app.post('/api/telegram/send-sticker', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, documentId, accessHash, fileReference, replyTo } = req.body;
+      if (!peerId || !documentId || !accessHash) {
+        return res.status(400).json({
+          success: false,
+          error: 'معرف المحادثة وبيانات الملصق مطلوبة',
+        });
+      }
+
+      const sent = await sendTelegramSticker(
+        sessionString,
+        peerId,
+        documentId,
+        accessHash,
+        fileReference || '',
+        replyTo
+      );
+      res.json({ success: true, message: sent });
+    } catch (err: any) {
+      console.error('Error sending sticker:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل إرسال الملصق',
+      });
+    }
+  });
+
+  // Search animated GIFs
+  app.get('/api/telegram/gifs/search', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const q = (req.query.q as string) || '';
+      const peerId = (req.query.peerId as string) || undefined;
+      const results = await searchTelegramGifs(sessionString, q, peerId);
+      res.json({ success: true, results });
+    } catch (err: any) {
+      console.error('Error searching GIFs:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل البحث في صور GIF',
+      });
+    }
+  });
+
+  // Send an animated GIF
+  app.post('/api/telegram/send-gif', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const { peerId, gifUrl, replyTo } = req.body;
+      if (!peerId || !gifUrl) {
+        return res.status(400).json({ success: false, error: 'معرف المحادثة ورابط GIF مطلوبان' });
+      }
+
+      const sent = await sendTelegramGif(sessionString, peerId, gifUrl, replyTo);
+      res.json({ success: true, message: sent });
+    } catch (err: any) {
+      console.error('Error sending GIF:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل إرسال صورة GIF',
       });
     }
   });

@@ -15,15 +15,28 @@ import {
   Reply,
   Smile,
   Pencil,
+  Pin,
+  PinOff,
+  Bell,
+  BellOff,
+  MoreVertical,
+  LogOut,
+  AlertTriangle,
+  Sticker,
 } from 'lucide-react';
-import { TelegramDialog, TelegramMessage } from '../types';
+import { TelegramDialog, TelegramMessage, TelegramStickerDocument } from '../types';
 import { telegramApi } from '../api/telegramApi';
 import { MediaRenderer } from './MediaRenderer';
+import { StickersAndGifsPicker } from './StickersAndGifsPicker';
 
 interface ChatViewProps {
   chat: TelegramDialog | null;
   onBackMobile: () => void;
   onMessageSent: () => void;
+  onPinChat?: (dialog: TelegramDialog, pinned: boolean) => Promise<void>;
+  onMuteChat?: (dialog: TelegramDialog, muted: boolean) => Promise<void>;
+  onClearHistory?: (dialog: TelegramDialog, revoke: boolean) => Promise<void>;
+  onLeaveChat?: (dialog: TelegramDialog) => Promise<void>;
 }
 
 interface PendingAttachment {
@@ -36,7 +49,15 @@ interface PendingAttachment {
 
 const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉', '👏', '😂', '😮', '😢'];
 
-export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessageSent }) => {
+export const ChatView: React.FC<ChatViewProps> = ({
+  chat,
+  onBackMobile,
+  onMessageSent,
+  onPinChat,
+  onMuteChat,
+  onClearHistory,
+  onLeaveChat,
+}) => {
   const [messages, setMessages] = useState<TelegramMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -48,6 +69,17 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
   const [messageToDelete, setMessageToDelete] = useState<TelegramMessage | null>(null);
   const [deleteRevoke, setDeleteRevoke] = useState(true);
   const [deleting, setDeleting] = useState(false);
+
+  // Sticker & GIF picker state
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
+
+  // Header options & modals state
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const [clearRevokeChat, setClearRevokeChat] = useState(true);
+  const [clearingChat, setClearingChat] = useState(false);
+  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
+  const [leavingChat, setLeavingChat] = useState(false);
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -148,8 +180,12 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
   }, [chat?.id, onMessageSent]);
 
   // Scroll to bottom on new messages
-  useEffect(() => {
+  const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
   }, [messages]);
 
   // Convert File / Blob to Base64
@@ -547,6 +583,117 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
     recorder.stop();
   };
 
+  const handleSendSticker = async (doc: TelegramStickerDocument) => {
+    if (!chat) return;
+    try {
+      const replyToId = replyingTo?.id;
+      setReplyingTo(null);
+      setShowStickerPicker(false);
+
+      const optimisticMsg: TelegramMessage = {
+        id: Date.now(),
+        text: '',
+        date: Math.floor(Date.now() / 1000),
+        out: true,
+        senderId: 'me',
+        mediaType: 'sticker',
+        mediaInfo: {
+          type: 'sticker',
+          mimeType: doc.mimeType,
+          altEmoji: doc.altEmoji,
+          size: doc.size,
+          hasMedia: true,
+        },
+        replyToMsgId: replyToId,
+        views: null,
+        forwards: null,
+      };
+
+      setMessages((prev) => [...prev, optimisticMsg]);
+      scrollToBottom();
+
+      const sent = await telegramApi.sendSticker(
+        chat.id,
+        doc.id,
+        doc.accessHash,
+        doc.fileReference,
+        replyToId
+      );
+
+      setMessages((prev) =>
+        prev.map((m) => (m.id === optimisticMsg.id ? { ...m, id: sent.id, date: sent.date } : m))
+      );
+      onMessageSent();
+    } catch (err: any) {
+      alert(`فشل إرسال الملصق إلى تليجرام: ${err.message || 'خطأ'}`);
+    }
+  };
+
+  const handleSendGif = async (gifUrl: string) => {
+    if (!chat) return;
+    try {
+      const replyToId = replyingTo?.id;
+      setReplyingTo(null);
+      setShowStickerPicker(false);
+
+      const optimisticMsg: TelegramMessage = {
+        id: Date.now(),
+        text: '',
+        date: Math.floor(Date.now() / 1000),
+        out: true,
+        senderId: 'me',
+        mediaType: 'gif',
+        mediaInfo: {
+          type: 'gif',
+          mimeType: 'video/mp4',
+          hasMedia: true,
+        },
+        replyToMsgId: replyToId,
+        views: null,
+        forwards: null,
+      };
+
+      setMessages((prev) => [...prev, optimisticMsg]);
+      scrollToBottom();
+
+      const sent = await telegramApi.sendGif(chat.id, gifUrl, replyToId);
+
+      setMessages((prev) =>
+        prev.map((m) => (m.id === optimisticMsg.id ? { ...m, id: sent.id, date: sent.date } : m))
+      );
+      onMessageSent();
+    } catch (err: any) {
+      alert(`فشل إرسال صورة GIF إلى تليجرام: ${err.message || 'خطأ'}`);
+    }
+  };
+
+  const handleConfirmClearChat = async () => {
+    if (!chat || !onClearHistory) return;
+    try {
+      setClearingChat(true);
+      await onClearHistory(chat, clearRevokeChat);
+      setMessages([]);
+      setConfirmClearOpen(false);
+    } catch (err: any) {
+      alert(`فشل مسح سجل المحادثة: ${err.message || 'خطأ'}`);
+    } finally {
+      setClearingChat(false);
+    }
+  };
+
+  const handleConfirmLeaveChat = async () => {
+    if (!chat || !onLeaveChat) return;
+    try {
+      setLeavingChat(true);
+      await onLeaveChat(chat);
+      setConfirmLeaveOpen(false);
+    } catch (err: any) {
+      alert(`فشل مغادرة المحادثة: ${err.message || 'خطأ'}`);
+    } finally {
+      setLeavingChat(false);
+    }
+  };
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -627,10 +774,99 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <span className="hidden sm:inline-block px-2.5 py-1 rounded-md bg-[#242f3d] text-[10px] font-mono text-[#54a9eb]">
+        <div className="flex items-center gap-1.5 text-xs text-slate-400">
+          <span className="hidden sm:inline-block px-2 py-1 rounded-md bg-[#242f3d] text-[10px] font-mono text-[#54a9eb]">
             MTProto ID: {chat.id}
           </span>
+
+          {/* Pin / Unpin Button */}
+          {onPinChat && (
+            <button
+              type="button"
+              onClick={() => onPinChat(chat, !chat.pinned)}
+              title={chat.pinned ? 'إلغاء تثبيت المحادثة' : 'تثبيت المحادثة في الأعلى'}
+              className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                chat.pinned
+                  ? 'text-[#54a9eb] bg-[#54a9eb]/15 hover:bg-[#54a9eb]/25'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              {chat.pinned ? (
+                <Pin className="w-4 h-4 fill-[#54a9eb]/30" />
+              ) : (
+                <PinOff className="w-4 h-4" />
+              )}
+            </button>
+          )}
+
+          {/* Mute / Unmute Button */}
+          {onMuteChat && (
+            <button
+              type="button"
+              onClick={() => onMuteChat(chat, !chat.muted)}
+              title={chat.muted ? 'تفعيل الإشعارات (إلغاء الكتم)' : 'كتم الإشعارات (Mute)'}
+              className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                chat.muted
+                  ? 'text-amber-400 bg-amber-400/15 hover:bg-amber-400/25'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              {chat.muted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+            </button>
+          )}
+
+          {/* 3-dots Menu for Clear History and Leave */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowHeaderMenu((prev) => !prev)}
+              title="خيارات إضافية"
+              className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+
+            {showHeaderMenu && (
+              <div
+                className="absolute left-0 top-full mt-1.5 w-48 bg-[#1e2c3a] border border-[#2c3e50] rounded-xl shadow-2xl py-1 text-xs text-slate-200 z-50 animate-in fade-in duration-100"
+                dir="rtl"
+              >
+                {onClearHistory && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowHeaderMenu(false);
+                      setConfirmClearOpen(true);
+                    }}
+                    className="w-full px-3.5 py-2.5 flex items-center gap-2 hover:bg-[#242f3d] text-amber-400 text-right cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>مسح سجل المحادثة</span>
+                  </button>
+                )}
+
+                {onLeaveChat && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowHeaderMenu(false);
+                      setConfirmLeaveOpen(true);
+                    }}
+                    className="w-full px-3.5 py-2.5 flex items-center gap-2 hover:bg-[#242f3d] text-rose-400 text-right cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>
+                      {chat.isGroup
+                        ? 'مغادرة المجموعة'
+                        : chat.isChannel
+                        ? 'مغادرة القناة'
+                        : 'حذف المحادثة'}
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -949,6 +1185,21 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
 
       {/* Message Composer Bar */}
       <div className="bg-[#17212b] border-t border-[#242f3d] p-3 z-10 shrink-0">
+        {/* Floating Sticker & GIF Picker */}
+        {showStickerPicker && (
+          <div className="absolute bottom-20 right-4 z-40">
+            <StickersAndGifsPicker
+              peerId={chat.id}
+              onSelectEmoji={(emoji) => {
+                setInputText((prev) => prev + emoji);
+              }}
+              onSendSticker={handleSendSticker}
+              onSendGif={handleSendGif}
+              onClose={() => setShowStickerPicker(false)}
+            />
+          </div>
+        )}
+
         {isRecording ? (
           /* Live Voice Recording UI */
           <div className="flex items-center justify-between max-w-4xl mx-auto bg-[#1e2c3a] rounded-2xl px-4 py-2 border border-rose-500/30 shadow-inner">
@@ -1000,6 +1251,23 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
                 className="p-2.5 text-slate-400 hover:text-[#54a9eb] hover:bg-[#242f3d] rounded-full transition-colors cursor-pointer shrink-0 disabled:opacity-40"
               >
                 <Paperclip className="w-5 h-5" />
+              </button>
+            )}
+
+            {/* Stickers, GIFs & Emojis Picker Button */}
+            {!editingMessage && (
+              <button
+                type="button"
+                onClick={() => setShowStickerPicker((prev) => !prev)}
+                disabled={sending}
+                title="الملصقات والصور المتحركة والوجوه التعبيرية"
+                className={`p-2.5 rounded-full transition-colors cursor-pointer shrink-0 disabled:opacity-40 ${
+                  showStickerPicker
+                    ? 'text-[#54a9eb] bg-[#242f3d]'
+                    : 'text-slate-400 hover:text-[#54a9eb] hover:bg-[#242f3d]'
+                }`}
+              >
+                <Smile className="w-5 h-5" />
               </button>
             )}
 
@@ -1130,6 +1398,97 @@ export const ChatView: React.FC<ChatViewProps> = ({ chat, onBackMobile, onMessag
               >
                 {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <span>حذف</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Chat History Modal */}
+      {confirmClearOpen && chat && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-[#1e2c3a] border border-[#2c3e50] rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4" dir="rtl">
+            <div className="flex items-center gap-2.5 text-amber-400">
+              <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-semibold text-white">مسح سجل المحادثة</h3>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              هل أنت متأكد من مسح جميع الرسائل في محادثة{' '}
+              <span className="font-bold text-white">"{chatTitle}"</span>؟
+            </p>
+
+            <label className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#17212b] border border-white/5 cursor-pointer hover:border-white/10 transition-colors">
+              <input
+                type="checkbox"
+                checked={clearRevokeChat}
+                onChange={(e) => setClearRevokeChat(e.target.checked)}
+                className="w-4 h-4 accent-[#54a9eb] rounded cursor-pointer"
+              />
+              <span className="text-xs text-slate-200">
+                مسح السجل أيضاً لدى الطرف الآخر (Revoke)
+              </span>
+            </label>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => setConfirmClearOpen(false)}
+                disabled={clearingChat}
+                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmClearChat}
+                disabled={clearingChat}
+                className="px-4 py-2 rounded-xl text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white flex items-center gap-1.5 shadow transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {clearingChat && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>مسح السجل الآن</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Leave Chat / Group Modal */}
+      {confirmLeaveOpen && chat && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-[#1e2c3a] border border-[#2c3e50] rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4" dir="rtl">
+            <div className="flex items-center gap-2.5 text-rose-400">
+              <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-semibold text-white">
+                {chat.isGroup ? 'مغادرة المجموعة' : chat.isChannel ? 'مغادرة القناة' : 'حذف المحادثة'}
+              </h3>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              هل أنت متأكد من مغادرة <span className="font-bold text-white">"{chatTitle}"</span>؟
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => setConfirmLeaveOpen(false)}
+                disabled={leavingChat}
+                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmLeaveChat}
+                disabled={leavingChat}
+                className="px-4 py-2 rounded-xl text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white flex items-center gap-1.5 shadow transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {leavingChat && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>تأكيد المغادرة</span>
               </button>
             </div>
           </div>

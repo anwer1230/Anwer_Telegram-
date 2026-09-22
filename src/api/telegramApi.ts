@@ -1,6 +1,28 @@
-import { TelegramDialog, TelegramMessage, TelegramServerStatus, TelegramUser } from '../types';
+import {
+  TelegramDialog,
+  TelegramMessage,
+  TelegramServerStatus,
+  TelegramUser,
+  TelegramStickerSet,
+  TelegramStickerDocument,
+  TelegramGifItem,
+} from '../types';
 
 const SESSION_STORAGE_KEY = 'telegram_mtproto_session';
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return res;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 export const telegramApi = {
   getSession(): string | null {
@@ -27,9 +49,9 @@ export const telegramApi = {
   },
 
   async getStatus(): Promise<TelegramServerStatus> {
-    const res = await fetch('/api/telegram/status', {
-      headers: this.getHeaders(),
-    });
+    const res = await fetchWithTimeout('/api/telegram/status', {
+      headers: { 'Content-Type': 'application/json' },
+    }, 4000);
     if (!res.ok) {
       throw new Error(`خطأ في جلب حالة الخادم: ${res.statusText}`);
     }
@@ -37,11 +59,11 @@ export const telegramApi = {
   },
 
   async sendCode(phone: string): Promise<{ success: boolean; phoneCodeHash: string; isCodeViaApp: boolean; timeout: number }> {
-    const res = await fetch('/api/telegram/auth/send-code', {
+    const res = await fetchWithTimeout('/api/telegram/auth/send-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone }),
-    });
+    }, 15000);
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'فشل إرسال كود التحقق');
@@ -50,11 +72,11 @@ export const telegramApi = {
   },
 
   async signIn(phone: string, code: string, phoneCodeHash: string): Promise<{ success: boolean; user?: TelegramUser; sessionString?: string; needsPassword?: boolean; hint?: string }> {
-    const res = await fetch('/api/telegram/auth/sign-in', {
+    const res = await fetchWithTimeout('/api/telegram/auth/sign-in', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone, code, phoneCodeHash }),
-    });
+    }, 15000);
     const data = await res.json();
     if (!res.ok && !data.needsPassword) {
       throw new Error(data.error || 'فشل تسجيل الدخول');
@@ -66,11 +88,11 @@ export const telegramApi = {
   },
 
   async checkPassword(phone: string, password: string): Promise<{ success: boolean; user?: TelegramUser; sessionString?: string }> {
-    const res = await fetch('/api/telegram/auth/check-password', {
+    const res = await fetchWithTimeout('/api/telegram/auth/check-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone, password }),
-    });
+    }, 15000);
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'كلمة المرور غير صحيحة');
@@ -82,11 +104,11 @@ export const telegramApi = {
   },
 
   async importSession(sessionString: string): Promise<{ success: boolean; user: TelegramUser; sessionString: string }> {
-    const res = await fetch('/api/telegram/auth/import-session', {
+    const res = await fetchWithTimeout('/api/telegram/auth/import-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionString }),
-    });
+    }, 15000);
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'الجلسة غير صالحة');
@@ -96,11 +118,11 @@ export const telegramApi = {
   },
 
   async botLogin(botToken: string): Promise<{ success: boolean; user: TelegramUser; sessionString: string }> {
-    const res = await fetch('/api/telegram/auth/bot-login', {
+    const res = await fetchWithTimeout('/api/telegram/auth/bot-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ botToken }),
-    });
+    }, 15000);
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'توكن البوت غير صالح');
@@ -110,9 +132,9 @@ export const telegramApi = {
   },
 
   async getMe(): Promise<TelegramUser> {
-    const res = await fetch('/api/telegram/me', {
+    const res = await fetchWithTimeout('/api/telegram/me', {
       headers: this.getHeaders(),
-    });
+    }, 6000);
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'فشل جلب بيانات المستخدم');
@@ -121,9 +143,9 @@ export const telegramApi = {
   },
 
   async getDialogs(limit = 40): Promise<TelegramDialog[]> {
-    const res = await fetch(`/api/telegram/dialogs?limit=${limit}`, {
+    const res = await fetchWithTimeout(`/api/telegram/dialogs?limit=${limit}`, {
       headers: this.getHeaders(),
-    });
+    }, 8000);
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'فشل جلب المحادثات');
@@ -257,6 +279,147 @@ export const telegramApi = {
     return `/api/telegram/media/${encodeURIComponent(peerId)}/${messageId}${queryString}`;
   },
 
+  async pinChat(peerId: string, pinned: boolean): Promise<{ success: boolean; pinned: boolean }> {
+    const res = await fetch('/api/telegram/chat/pin', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ peerId, pinned }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل تثبيت/إلغاء تثبيت المحادثة');
+    }
+    return data;
+  },
+
+  async muteChat(peerId: string, mute: boolean): Promise<{ success: boolean; muted: boolean }> {
+    const res = await fetch('/api/telegram/chat/mute', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ peerId, mute }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل كتم/إلغاء كتم الإشعارات');
+    }
+    return data;
+  },
+
+  async leaveChat(peerId: string): Promise<{ success: boolean }> {
+    const res = await fetch('/api/telegram/chat/leave', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ peerId }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل مغادرة المحادثة');
+    }
+    return data;
+  },
+
+  async clearChatHistory(peerId: string, revoke = true): Promise<{ success: boolean }> {
+    const res = await fetch('/api/telegram/chat/clear-history', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ peerId, revoke }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل مسح سجل المحادثة');
+    }
+    return data;
+  },
+
+  async getStickerSets(): Promise<TelegramStickerSet[]> {
+    const res = await fetch('/api/telegram/stickers/all', {
+      headers: this.getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل جلب حزم الملصقات');
+    }
+    return data.sets || [];
+  },
+
+  async getStickerSet(
+    setId: string,
+    accessHash: string
+  ): Promise<{ set: TelegramStickerSet; documents: TelegramStickerDocument[] }> {
+    const res = await fetch(`/api/telegram/stickers/set/${setId}/${accessHash}`, {
+      headers: this.getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل جلب ملصقات الحزمة');
+    }
+    return data;
+  },
+
+  getStickerUrl(
+    docId: string,
+    accessHash?: string,
+    fileReference?: string,
+    download = false,
+    format?: 'webp' | 'lottie'
+  ): string {
+    const session = this.getSession() || '';
+    const params = new URLSearchParams();
+    if (session) params.append('session', session);
+    if (accessHash) params.append('accessHash', accessHash);
+    if (fileReference) params.append('fileReference', fileReference);
+    if (download) params.append('download', '1');
+    if (format) params.append('format', format);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return `/api/telegram/stickers/media/${encodeURIComponent(docId)}${queryString}`;
+  },
+
+  async sendSticker(
+    peerId: string,
+    documentId: string,
+    accessHash: string,
+    fileReference: string,
+    replyTo?: number
+  ): Promise<TelegramMessage> {
+    const res = await fetch('/api/telegram/send-sticker', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ peerId, documentId, accessHash, fileReference, replyTo }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل إرسال الملصق');
+    }
+    return data.message;
+  },
+
+  async searchGifs(query: string, peerId?: string): Promise<TelegramGifItem[]> {
+    const params = new URLSearchParams();
+    if (query) params.append('q', query);
+    if (peerId) params.append('peerId', peerId);
+    const res = await fetch(`/api/telegram/gifs/search?${params.toString()}`, {
+      headers: this.getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل البحث في صور GIF');
+    }
+    return data.results || [];
+  },
+
+  async sendGif(peerId: string, gifUrl: string, replyTo?: number): Promise<TelegramMessage> {
+    const res = await fetch('/api/telegram/send-gif', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ peerId, gifUrl, replyTo }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل إرسال صورة GIF');
+    }
+    return data.message;
+  },
+
   async logout(): Promise<void> {
     try {
       await fetch('/api/telegram/auth/logout', {
@@ -280,6 +443,14 @@ export const telegramApi = {
 
     const url = `/api/telegram/events?session=${encodeURIComponent(session)}`;
     let eventSource: EventSource | null = new EventSource(url);
+
+    eventSource.onerror = () => {
+      // If server closes or connection drops, close cleanly to avoid console loop
+      if (eventSource && eventSource.readyState === EventSource.CLOSED) {
+        eventSource.close();
+        eventSource = null;
+      }
+    };
 
     if (handlers.onNewMessage) {
       eventSource.addEventListener('new_message', (e) => {
