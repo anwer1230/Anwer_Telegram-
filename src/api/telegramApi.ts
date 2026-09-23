@@ -7,6 +7,7 @@ import {
   TelegramStickerDocument,
   TelegramGifItem,
   TypingStatus,
+  TelegramMonitorMatch,
   ChatFolder,
   GlobalSearchResult,
   VoiceChatSpace,
@@ -715,6 +716,7 @@ export const telegramApi = {
    */
   subscribeToEvents(handlers: {
     onNewMessage?: (data: { chatId: string; message: TelegramMessage }) => void;
+    onMonitorMatch?: (data: TelegramMonitorMatch) => void;
     onEditMessage?: (data: { chatId: string; message: TelegramMessage }) => void;
     onDeleteMessages?: (data: { channelId?: string; messageIds: number[] }) => void;
     onTypingStatus?: (data: TypingStatus) => void;
@@ -746,6 +748,17 @@ export const telegramApi = {
           handlers.onNewMessage!(data);
         } catch (err) {
           console.error('Error parsing new_message event:', err);
+        }
+      });
+    }
+
+    if (handlers.onMonitorMatch) {
+      eventSource.addEventListener('monitor_match', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          handlers.onMonitorMatch!(data);
+        } catch (err) {
+          console.error('Error parsing monitor_match event:', err);
         }
       });
     }
