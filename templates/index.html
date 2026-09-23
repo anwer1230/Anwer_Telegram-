@@ -8604,7 +8604,7 @@ document.addEventListener('DOMContentLoaded', function() {
             notify(result.success ? 'success' : 'danger', result.message || '');
             if (result.success) setButtonState(true);
         } catch (error) { notify('danger', '❌ تعذر بدء الإرسال: ' + error.message); }
-        finally { if (button && !byId('stopMonitoringBtn')?.disabled) button.disabled = false; }
+        finally { if (button) button.disabled = false; }
     }
     async function handleStop() {
         try {
