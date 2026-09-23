@@ -80,7 +80,18 @@ async function startServer() {
   app.get('/api/telegram/status', async (req, res) => {
     try {
       const authHeader = req.headers['x-telegram-session'] as string | undefined;
-      const user = authHeader ? getFastActiveUser(authHeader) : null;
+      let user = authHeader ? getFastActiveUser(authHeader) : null;
+
+      // The in-memory cache is empty after a server restart. Rehydrate the
+      // client from the persisted session instead of forcing the user to log in again.
+      if (!user && authHeader) {
+        try {
+          user = await getTelegramMe(authHeader);
+        } catch (restoreError) {
+          console.warn('Could not restore Telegram session during status check:', restoreError);
+        }
+      }
+
       const authorized = !!user;
 
       res.json({
