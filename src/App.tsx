@@ -270,18 +270,20 @@ export default function App() {
   }, [isAuth, loadDialogs]);
 
   // Handle Authentication Success
+  // Do not toggle the initial bootstrap screen here: doing so made a successful
+  // login look like a full app reload and discarded the current UI state.
   const handleAuthSuccess = async () => {
-    setLoadingInitial(true);
     try {
       const currentUser = await telegramApi.getMe();
       setUser(currentUser);
+      setStatus((prev) => (prev ? { ...prev, authorized: true, user: currentUser } : prev));
       setIsAuth(true);
-      await loadDialogs();
-      await loadFolders();
+
+      // Load account data in the background while keeping the authenticated UI mounted.
+      void loadDialogs(true);
+      void loadFolders();
     } catch (err) {
       console.error('Post-auth fetch failed:', err);
-    } finally {
-      setLoadingInitial(false);
     }
   };
 
