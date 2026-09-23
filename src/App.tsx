@@ -162,6 +162,14 @@ export default function App() {
             loadDialogs(true);
             loadFolders();
           }
+        } else {
+          if (telegramApi.getSession()) {
+            telegramApi.clearSession();
+          }
+          if (isMounted) {
+            setIsAuth(false);
+            setUser(null);
+          }
         }
       } catch (err) {
         console.error('Initial bootstrap failed:', err);

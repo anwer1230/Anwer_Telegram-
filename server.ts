@@ -79,7 +79,15 @@ async function startServer() {
   // Health and Telegram Connection Status endpoint (ultra-fast, non-blocking)
   app.get('/api/telegram/status', async (req, res) => {
     try {
-      const authHeader = req.headers['x-telegram-session'] as string | undefined;
+      const rawAuthHeader = req.headers['x-telegram-session'];
+      const authHeader =
+        typeof rawAuthHeader === 'string' &&
+        rawAuthHeader.trim() &&
+        rawAuthHeader !== 'undefined' &&
+        rawAuthHeader !== 'null'
+          ? rawAuthHeader.trim()
+          : undefined;
+
       let user = authHeader ? getFastActiveUser(authHeader) : null;
 
       // The in-memory cache is empty after a server restart. Rehydrate the
@@ -87,8 +95,9 @@ async function startServer() {
       if (!user && authHeader) {
         try {
           user = await getTelegramMe(authHeader);
-        } catch (restoreError) {
-          console.warn('Could not restore Telegram session during status check:', restoreError);
+        } catch (_) {
+          // Expected when session string is unauthenticated, revoked, or expired.
+          user = null;
         }
       }
 

@@ -43,11 +43,19 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
 
 export const telegramApi = {
   getSession(): string | null {
-    return localStorage.getItem(SESSION_STORAGE_KEY);
+    const session = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!session || session === 'undefined' || session === 'null' || !session.trim()) {
+      return null;
+    }
+    return session.trim();
   },
 
   setSession(session: string): void {
-    localStorage.setItem(SESSION_STORAGE_KEY, session);
+    if (session && session !== 'undefined' && session !== 'null' && session.trim()) {
+      localStorage.setItem(SESSION_STORAGE_KEY, session.trim());
+    } else {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+    }
   },
 
   clearSession(): void {
