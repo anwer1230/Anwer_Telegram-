@@ -3407,3 +3407,80 @@ export async function sendBotCallbackAnswer(
   };
 }
 
+/**
+ * Get full profile info for a user, group, or channel (bio, participants count, username, etc.)
+ */
+export async function getTelegramChatInfo(sessionString: string, peerId: string) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetPeer: any = peerId;
+  if (session.entityCache.has(peerId)) {
+    targetPeer = session.entityCache.get(peerId);
+  } else {
+    try {
+      targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+    } catch (_) {
+      try {
+        targetPeer = await client.getEntity(bigInt(peerId));
+      } catch (e) {
+        targetPeer = peerId;
+      }
+    }
+  }
+
+  let entity: any = null;
+  try {
+    entity = await client.getEntity(targetPeer);
+  } catch (_) {
+    entity = session.entityCache.get(peerId) || null;
+  }
+
+  let about = '';
+  let participantsCount: number | undefined = undefined;
+
+  try {
+    if (entity?.className === 'User' || (!peerId.startsWith('-') && !entity?.broadcast)) {
+      const full: any = await client.invoke(new Api.users.GetFullUser({ id: targetPeer }));
+      about = full.fullUser?.about || '';
+    } else if (entity?.broadcast || entity?.megagroup || peerId.startsWith('-100')) {
+      const full: any = await client.invoke(new Api.channels.GetFullChannel({ channel: targetPeer }));
+      about = full.fullChat?.about || '';
+      participantsCount = full.fullChat?.participantsCount || undefined;
+    } else if (peerId.startsWith('-')) {
+      const full: any = await client.invoke(new Api.messages.GetFullChat({ chatId: bigInt(peerId.replace('-', '')) }));
+      about = full.fullChat?.about || '';
+      participantsCount = full.fullChat?.participants?.participants?.length || undefined;
+    }
+  } catch (err) {
+    // Fallback if full info cannot be fetched
+  }
+
+  const isChannel = !!entity?.broadcast;
+  const isGroup = !!(entity?.megagroup || (entity?.className === 'Chat') || (peerId.startsWith('-') && !isChannel));
+  const isUser = !isChannel && !isGroup;
+  const isBot = !!entity?.bot;
+
+  const title = isUser
+    ? `${entity?.firstName || ''} ${entity?.lastName || ''}`.trim() || entity?.username || `User ${peerId}`
+    : entity?.title || `Chat ${peerId}`;
+
+  return {
+    id: peerId,
+    title,
+    firstName: entity?.firstName || undefined,
+    lastName: entity?.lastName || undefined,
+    username: entity?.username || undefined,
+    phone: entity?.phone || undefined,
+    about: about || entity?.about || undefined,
+    verified: !!entity?.verified,
+    isChannel,
+    isGroup,
+    isUser,
+    isBot,
+    participantsCount,
+    restricted: !!entity?.restricted,
+    hasPhoto: !!(entity?.photo && entity.photo.className !== 'UserProfilePhotoEmpty' && entity.photo.className !== 'ChatPhotoEmpty'),
+  };
+}
+

@@ -37,6 +37,7 @@ import {
   ChevronDown,
   Filter,
   Sparkles,
+  Info,
 } from 'lucide-react';
 import {
   TelegramDialog,
@@ -55,6 +56,7 @@ import { ForwardModal } from './ForwardModal';
 import { CreatePollModal } from './CreatePollModal';
 import { RoundVideoRecorder } from './RoundVideoRecorder';
 import { MiniAppModal } from './MiniAppModal';
+import { ChatProfileModal } from './ChatProfileModal';
 
 interface ChatViewProps {
   chat: TelegramDialog | null;
@@ -128,6 +130,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   // Header options & modals state
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [clearRevokeChat, setClearRevokeChat] = useState(true);
   const [clearingChat, setClearingChat] = useState(false);
@@ -1240,42 +1243,49 @@ export const ChatView: React.FC<ChatViewProps> = ({
             <ArrowRight className="w-5 h-5" />
           </button>
 
-          <Avatar
-            peerId={chat.id}
-            name={chatTitle}
-            size="md"
-            isGroup={chat.isGroup}
-            isChannel={chat.isChannel}
-            customSrc={chat.photoUrl}
-          />
+          <div
+            onClick={() => setIsProfileModalOpen(true)}
+            className="flex items-center gap-3 cursor-pointer group hover:opacity-90 transition-opacity"
+            title="عرض الملف الشخصي ومعلومات المحادثة"
+          >
+            <Avatar
+              peerId={chat.id}
+              name={chatTitle}
+              size="md"
+              isGroup={chat.isGroup}
+              isChannel={chat.isChannel}
+              customSrc={chat.photoUrl}
+              className="group-hover:scale-105 transition-transform"
+            />
 
-          <div>
-            <h2 className="text-sm font-bold text-white leading-tight flex items-center gap-1.5">
-              <span>{chatTitle}</span>
-              {chat.entity?.verified && (
-                <Check className="w-3.5 h-3.5 text-[#54a9eb]" />
+            <div>
+              <h2 className="text-sm font-bold text-white leading-tight flex items-center gap-1.5 group-hover:text-[#54a9eb] transition-colors">
+                <span>{chatTitle}</span>
+                {chat.entity?.verified && (
+                  <Check className="w-3.5 h-3.5 text-[#54a9eb]" />
+                )}
+              </h2>
+              {typingStatus ? (
+                <div className="flex items-center gap-1.5 text-[11px] text-[#54a9eb] font-medium animate-pulse">
+                  <span className="flex gap-0.5 items-center">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#54a9eb] animate-bounce [animation-delay:-0.3s]"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#54a9eb] animate-bounce [animation-delay:-0.15s]"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#54a9eb] animate-bounce"></span>
+                  </span>
+                  <span>{typingStatus.actionText}</span>
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-400">
+                  {chat.isChannel
+                    ? 'قناة رسمية'
+                    : chat.isGroup
+                    ? 'مجموعة تليجرام'
+                    : chat.entity?.username
+                    ? `@${chat.entity.username}`
+                    : 'محادثة خاصة'}
+                </p>
               )}
-            </h2>
-            {typingStatus ? (
-              <div className="flex items-center gap-1.5 text-[11px] text-[#54a9eb] font-medium animate-pulse">
-                <span className="flex gap-0.5 items-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#54a9eb] animate-bounce [animation-delay:-0.3s]"></span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#54a9eb] animate-bounce [animation-delay:-0.15s]"></span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#54a9eb] animate-bounce"></span>
-                </span>
-                <span>{typingStatus.actionText}</span>
-              </div>
-            ) : (
-              <p className="text-[11px] text-slate-400">
-                {chat.isChannel
-                  ? 'قناة رسمية'
-                  : chat.isGroup
-                  ? 'مجموعة تليجرام'
-                  : chat.entity?.username
-                  ? `@${chat.entity.username}`
-                  : 'محادثة خاصة'}
-              </p>
-            )}
+            </div>
           </div>
         </div>
 
@@ -1389,6 +1399,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 className="absolute left-0 top-full mt-1.5 w-48 bg-[#1e2c3a] border border-[#2c3e50] rounded-xl shadow-2xl py-1 text-xs text-slate-200 z-50 animate-in fade-in duration-100"
                 dir="rtl"
               >
+                {/* Chat Details / Profile */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowHeaderMenu(false);
+                    setIsProfileModalOpen(true);
+                  }}
+                  className="w-full px-3.5 py-2.5 flex items-center gap-2 hover:bg-[#242f3d] text-slate-200 text-right cursor-pointer"
+                >
+                  <Info className="w-4 h-4 text-[#54a9eb]" />
+                  <span>معلومات المحادثة</span>
+                </button>
+
                 {/* Archive / Unarchive */}
                 {onArchiveChat && (
                   <button
@@ -2667,6 +2690,25 @@ export const ChatView: React.FC<ChatViewProps> = ({
         <MiniAppModal
           app={activeMiniApp}
           onClose={() => setActiveMiniApp(null)}
+        />
+      )}
+
+      {/* Chat Profile / Info Modal */}
+      {isProfileModalOpen && chat && (
+        <ChatProfileModal
+          chat={chat}
+          onClose={() => setIsProfileModalOpen(false)}
+          onMuteToggle={onMuteChat ? (muted) => onMuteChat(chat, muted) : undefined}
+          onPinToggle={onPinChat ? (pinned) => onPinChat(chat, pinned) : undefined}
+          onStartCall={onStartCall ? (video) => onStartCall(chat, video) : undefined}
+          onOpenVoiceChat={onOpenVoiceChat ? () => onOpenVoiceChat(chat) : undefined}
+          onOpenSearch={() => {
+            setIsProfileModalOpen(false);
+            setShowInChatSearch(true);
+            setTimeout(() => searchInputRef.current?.focus(), 150);
+          }}
+          onClearHistory={onClearHistory ? () => setConfirmClearOpen(true) : undefined}
+          onLeaveChat={onLeaveChat ? () => setConfirmLeaveOpen(true) : undefined}
         />
       )}
     </div>

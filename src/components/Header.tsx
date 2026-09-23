@@ -1,6 +1,7 @@
 import React from 'react';
 import { Send, LogOut, Info, RefreshCw, Users, Settings } from 'lucide-react';
 import { TelegramServerStatus, TelegramUser } from '../types';
+import { Avatar } from './Avatar';
 
 interface HeaderProps {
   status: TelegramServerStatus | null;
@@ -98,10 +99,14 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-2 pl-1 border-r border-[#242f3d] pr-2">
             <div
               onClick={onOpenSettings}
-              className="w-8 h-8 rounded-full bg-[#5288c1] hover:ring-2 hover:ring-[#54a9eb] flex items-center justify-center text-white text-xs font-bold uppercase shadow-inner cursor-pointer transition-all"
+              className="cursor-pointer transition-all hover:scale-105"
               title="تعديل الملف الشخصي"
             >
-              {user.firstName ? user.firstName.charAt(0) : 'U'}
+              <Avatar
+                peerId={user.id}
+                name={`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'User'}
+                size="sm"
+              />
             </div>
             <div
               onClick={onOpenSettings}

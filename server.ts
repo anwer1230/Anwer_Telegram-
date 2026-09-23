@@ -66,6 +66,7 @@ import {
   sendBotCallbackAnswer,
   searchTelegramChatMessages,
   getTelegramPeerAvatar,
+  getTelegramChatInfo,
 } from './server/telegramClient.js';
 
 async function startServer() {
@@ -360,6 +361,31 @@ async function startServer() {
     } catch (err: any) {
       res.setHeader('Cache-Control', 'public, max-age=180');
       return res.status(404).send('Avatar unavailable');
+    }
+  });
+
+  // --------------------------------
+  // Real Telegram Peer Full Info (Bio, Subscribers/Members, Username, etc.)
+  // --------------------------------
+  app.get('/api/telegram/chat-info/:peerId', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const peerId = req.params.peerId;
+      if (!peerId) {
+        return res.status(400).json({ success: false, error: 'peerId is required' });
+      }
+
+      const info = await getTelegramChatInfo(sessionString, peerId);
+      res.json({ success: true, info });
+    } catch (err: any) {
+      console.error('Error fetching chat info:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل جلب معلومات المحادثة',
+      });
     }
   });
 

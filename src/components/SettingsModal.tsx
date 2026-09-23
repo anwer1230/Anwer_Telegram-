@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { TelegramUser, TelegramActiveSession, TelegramPrivacySettings } from '../types';
 import { telegramApi } from '../api/telegramApi';
+import { Avatar } from './Avatar';
 
 interface SettingsModalProps {
   user: TelegramUser | null;
@@ -257,10 +258,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* Avatar Upload */}
               <div className="flex flex-col items-center gap-3 pb-2">
                 <div className="relative group">
-                  <div className="w-20 h-20 rounded-full bg-[#5288c1] flex items-center justify-center text-white text-2xl font-bold uppercase shadow-lg border-2 border-white/10">
-                    {firstName ? firstName.charAt(0) : 'U'}
-                  </div>
-                  <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white cursor-pointer transition-opacity">
+                  <Avatar
+                    peerId={user?.id}
+                    name={`${firstName || ''} ${lastName || ''}`.trim() || user?.username || 'User'}
+                    size="2xl"
+                    isBig
+                    className="border-2 border-white/10 shadow-lg"
+                  />
+                  <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white cursor-pointer transition-opacity z-10">
                     <Camera className="w-5 h-5 mb-0.5" />
                     <span className="text-[9px]">تغيير</span>
                     <input
@@ -272,7 +277,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     />
                   </label>
                   {uploadingPhoto && (
-                    <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center z-20">
                       <Loader2 className="w-6 h-6 animate-spin text-[#54a9eb]" />
                     </div>
                   )}

@@ -14,6 +14,7 @@ import {
   TelegramActiveSession,
   TelegramPrivacySettings,
   TelegramWebPage,
+  TelegramChatInfo,
 } from '../types';
 
 const SESSION_STORAGE_KEY = 'telegram_mtproto_session';
@@ -1173,5 +1174,19 @@ export const telegramApi = {
       count: data.count || (data.messages ? data.messages.length : 0),
       messages: data.messages || [],
     };
+  },
+
+  // --------------------------------
+  // Get Full Chat / Peer Info (Bio, Subscribers/Members, Username, etc.)
+  // --------------------------------
+  async getChatInfo(peerId: string): Promise<TelegramChatInfo> {
+    const res = await fetchWithTimeout(`/api/telegram/chat-info/${encodeURIComponent(peerId)}`, {
+      headers: this.getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل جلب معلومات المحادثة');
+    }
+    return data.info;
   },
 };

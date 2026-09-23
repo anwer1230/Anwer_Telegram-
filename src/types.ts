@@ -329,6 +329,24 @@ export interface TelegramServerStatus {
   serverTimestamp: string;
 }
 
+export interface TelegramChatInfo {
+  id: string;
+  title: string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  phone?: string;
+  about?: string;
+  verified?: boolean;
+  isChannel?: boolean;
+  isGroup?: boolean;
+  isUser?: boolean;
+  isBot?: boolean;
+  participantsCount?: number;
+  restricted?: boolean;
+  hasPhoto?: boolean;
+}
+
 export type AuthMode = 'phone' | 'session' | 'bot';
 
 export interface AuthState {
