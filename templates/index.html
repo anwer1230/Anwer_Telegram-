@@ -2251,51 +2251,124 @@
 
             <hr>
 
-            <!-- نموذج إضافة قاعدة جديدة -->
-            <div class="card border-info mb-3">
-              <div class="card-header bg-info bg-opacity-10 fw-bold">
-                <i class="fas fa-plus-circle me-1"></i> إضافة قاعدة رد جديدة
-              </div>
-              <div class="card-body">
-                <div class="mb-2">
-                  <label class="form-label small mb-1">الكلمة/النص المفتاحي</label>
-                  <input type="text" class="form-control" id="arNewKeyword" placeholder="مثال: السلام عليكم">
-                </div>
-                <div class="mb-2">
-                  <label class="form-label small mb-1">نص الرد</label>
-                  <textarea class="form-control" id="arNewReply" rows="2" placeholder="مثال: وعليكم السلام، أهلاً بك 🌹"></textarea>
-                </div>
-                <div class="row g-2">
-                  <div class="col-md-6">
-                    <label class="form-label small mb-1">نوع المطابقة</label>
-                    <select class="form-select" id="arNewMatch">
-                      <option value="contains">يحتوي على (افتراضي)</option>
-                      <option value="exact">مطابقة كاملة</option>
-                      <option value="regex">تعبير نمطي (Regex)</option>
-                    </select>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label small mb-1">نطاق التطبيق</label>
-                    <select class="form-select" id="arNewScope">
-                      <option value="all">كل المحادثات</option>
-                      <option value="private">المحادثات الخاصة فقط</option>
-                      <option value="groups">المجموعات/القنوات فقط</option>
-                    </select>
-                  </div>
-                </div>
-                <button class="btn btn-info text-white w-100 mt-3" id="arAddBtn">
-                  <i class="fas fa-plus me-1"></i> إضافة القاعدة
+            <!-- تبويبات الرد التلقائي: بالمعرف أو بالكلمات المفتاحية -->
+            <ul class="nav nav-pills nav-fill mb-3 p-1 bg-light rounded" id="autoReplyTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold py-2" id="ar-user-tab" data-bs-toggle="pill" data-bs-target="#ar-user-content" type="button" role="tab">
+                  <i class="fas fa-user-tag me-1 text-primary"></i> الرد حسب معرف المستخدم (خاص + مجموعة)
+                  <span class="badge bg-primary ms-1" id="arUserRulesCount">0</span>
                 </button>
-              </div>
-            </div>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold py-2" id="ar-keyword-tab" data-bs-toggle="pill" data-bs-target="#ar-keyword-content" type="button" role="tab">
+                  <i class="fas fa-key me-1 text-info"></i> الرد بالكلمات المفتاحية
+                  <span class="badge bg-info ms-1" id="arRulesCount">0</span>
+                </button>
+              </li>
+            </ul>
 
-            <!-- قائمة القواعد الموجودة -->
-            <h6 class="fw-bold mb-2">
-              <i class="fas fa-list me-1"></i> القواعد الحالية
-              (<span id="arRulesCount">0</span>)
-            </h6>
-            <div id="arRulesList">
-              <small class="text-muted">جارِ التحميل…</small>
+            <div class="tab-content" id="autoReplyTabContent">
+              <!-- تبويب 1: الرد حسب معرف المستخدم -->
+              <div class="tab-pane fade show active" id="ar-user-content" role="tabpanel">
+                <div class="alert alert-primary bg-primary bg-opacity-10 border-primary border-opacity-25 d-flex align-items-center mb-3 p-3 rounded-3">
+                  <i class="fas fa-user-check fa-2x text-primary me-3"></i>
+                  <div>
+                    <strong class="d-block text-primary">رد مخصص لأي شخص بمجرد إرساله أي رسالة:</strong>
+                    <small class="text-muted">عند قيام هذا الشخص بإرسال أي رسالة في أي مجموعة أو محادثة، يتم الرد فوراً على رسالته من حيث أرسلها، ويتم إرسال نفس الرد له بالخاص أيضاً 📩</small>
+                  </div>
+                </div>
+
+                <div class="card border-primary border-opacity-25 shadow-sm mb-3">
+                  <div class="card-header bg-primary text-white fw-bold d-flex align-items-center">
+                    <i class="fas fa-user-plus me-2"></i> إضافة معرف مستخدم ورسالة الرد الخاصة به
+                  </div>
+                  <div class="card-body">
+                    <div class="mb-3">
+                      <label class="form-label fw-bold small text-dark mb-1">
+                        <i class="fas fa-at text-primary me-1"></i> معرف المستخدم (Username أو ID):
+                      </label>
+                      <input type="text" class="form-control" id="arUserTarget" placeholder="مثال: @username أو username أو ID المستخدم" dir="ltr">
+                      <small class="text-muted">اكتب يوزرنيم الشخص (مع @ أو بدونها) أو المعرف الرقمي ID الخاص به.</small>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label fw-bold small text-dark mb-1">
+                        <i class="fas fa-comment-dots text-primary me-1"></i> رسالة الرد التلقائي (تحت المعرف):
+                      </label>
+                      <textarea class="form-control" id="arUserReply" rows="3" placeholder="اكتب نص الرد الذي سيتم إرساله للمستخدم..."></textarea>
+                      <small class="text-success fw-bold d-block mt-1">
+                        <i class="fas fa-reply-all me-1"></i> يتم الرد على رسالته مباشرة من حيث أرسلها + إرسالها له بالخاص أيضاً 📩
+                      </small>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                      <input class="form-check-input" type="checkbox" id="arUserSendDm" checked>
+                      <label class="form-check-label small fw-bold" for="arUserSendDm">
+                        إرسال نسخة بالخاص أيضاً عند مشاركته في المجموعات (مفعل افتراضياً)
+                      </label>
+                    </div>
+                    <button class="btn btn-primary w-100 fw-bold py-2 shadow-sm" id="arAddUserBtn">
+                      <i class="fas fa-plus-circle me-1"></i> حفظ وتفعيل الرد لهذا المستخدم
+                    </button>
+                  </div>
+                </div>
+
+                <h6 class="fw-bold mb-2">
+                  <i class="fas fa-users-cog me-1 text-primary"></i> المستخدمون المخصص لهم ردود تلقائية
+                  (<span id="arUserRulesCountBadge">0</span>)
+                </h6>
+                <div id="arUserRulesList">
+                  <small class="text-muted">جارِ التحميل…</small>
+                </div>
+              </div>
+
+              <!-- تبويب 2: الرد بالكلمات المفتاحية -->
+              <div class="tab-pane fade" id="ar-keyword-content" role="tabpanel">
+                <!-- نموذج إضافة قاعدة جديدة -->
+                <div class="card border-info mb-3">
+                  <div class="card-header bg-info bg-opacity-10 fw-bold">
+                    <i class="fas fa-plus-circle me-1"></i> إضافة قاعدة رد جديدة بالكلمات المفتاحية
+                  </div>
+                  <div class="card-body">
+                    <div class="mb-2">
+                      <label class="form-label small mb-1">الكلمة/النص المفتاحي</label>
+                      <input type="text" class="form-control" id="arNewKeyword" placeholder="مثال: السلام عليكم">
+                    </div>
+                    <div class="mb-2">
+                      <label class="form-label small mb-1">نص الرد</label>
+                      <textarea class="form-control" id="arNewReply" rows="2" placeholder="مثال: وعليكم السلام، أهلاً بك 🌹"></textarea>
+                    </div>
+                    <div class="row g-2">
+                      <div class="col-md-6">
+                        <label class="form-label small mb-1">نوع المطابقة</label>
+                        <select class="form-select" id="arNewMatch">
+                          <option value="contains">يحتوي على (افتراضي)</option>
+                          <option value="exact">مطابقة كاملة</option>
+                          <option value="regex">تعبير نمطي (Regex)</option>
+                        </select>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label small mb-1">نطاق التطبيق</label>
+                        <select class="form-select" id="arNewScope">
+                          <option value="all">كل المحادثات</option>
+                          <option value="private">المحادثات الخاصة فقط</option>
+                          <option value="groups">المجموعات/القنوات فقط</option>
+                        </select>
+                      </div>
+                    </div>
+                    <button class="btn btn-info text-white w-100 mt-3" id="arAddBtn">
+                      <i class="fas fa-plus me-1"></i> إضافة القاعدة
+                    </button>
+                  </div>
+                </div>
+
+                <!-- قائمة القواعد الموجودة -->
+                <h6 class="fw-bold mb-2">
+                  <i class="fas fa-list me-1"></i> قواعد الكلمات المفتاحية الحالية
+                  (<span id="arRulesCountBadge">0</span>)
+                </h6>
+                <div id="arRulesList">
+                  <small class="text-muted">جارِ التحميل…</small>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -3620,6 +3693,16 @@
       const arAddBtn         = document.getElementById('arAddBtn');
       const arRulesList      = document.getElementById('arRulesList');
       const arRulesCount     = document.getElementById('arRulesCount');
+      const arRulesCountBadge = document.getElementById('arRulesCountBadge');
+
+      // عناصر الرد التلقائي حسب معرف المستخدم
+      const arUserTarget          = document.getElementById('arUserTarget');
+      const arUserReply           = document.getElementById('arUserReply');
+      const arUserSendDm          = document.getElementById('arUserSendDm');
+      const arAddUserBtn          = document.getElementById('arAddUserBtn');
+      const arUserRulesList       = document.getElementById('arUserRulesList');
+      const arUserRulesCount      = document.getElementById('arUserRulesCount');
+      const arUserRulesCountBadge = document.getElementById('arUserRulesCountBadge');
 
       const ar_scopeLabel = (s) => ({
         'all': 'كل المحادثات', 'private': 'خاص فقط', 'groups': 'مجموعات/قنوات'
@@ -3630,13 +3713,14 @@
 
       function arRender(rules) {
         rules = rules || [];
-        arRulesCount.textContent = String(rules.length);
+        if (arRulesCount) arRulesCount.textContent = String(rules.length);
+        if (arRulesCountBadge) arRulesCountBadge.textContent = String(rules.length);
         if (!rules.length) {
-          arRulesList.innerHTML = '<div class="alert alert-secondary mb-0"><i class="fas fa-info-circle me-1"></i> لا توجد قواعد بعد. أضف أول قاعدة من الأعلى.</div>';
+          arRulesList.innerHTML = '<div class="alert alert-secondary mb-0"><i class="fas fa-info-circle me-1"></i> لا توجد قواعد كلمات مفتاحية بعد. أضف قاعدة من الأعلى.</div>';
           return;
         }
         arRulesList.innerHTML = rules.map((r, i) => `
-          <div class="border rounded p-2 mb-2">
+          <div class="border rounded p-2 mb-2 bg-white shadow-sm">
             <div class="d-flex justify-content-between align-items-start gap-2">
               <div style="min-width:0; flex:1;">
                 <div class="fw-bold text-info">
@@ -3671,15 +3755,80 @@
         });
       }
 
+      function arRenderUserRules(userRules) {
+        userRules = userRules || [];
+        if (arUserRulesCount) arUserRulesCount.textContent = String(userRules.length);
+        if (arUserRulesCountBadge) arUserRulesCountBadge.textContent = String(userRules.length);
+        if (!userRules.length) {
+          arUserRulesList.innerHTML = '<div class="alert alert-secondary mb-0"><i class="fas fa-info-circle me-1"></i> لا يوجد مستخدمون محددون بعد. أضف معرف أي مستخدم ونص الرد من الأعلى.</div>';
+          return;
+        }
+        arUserRulesList.innerHTML = userRules.map((u, i) => `
+          <div class="border rounded p-3 mb-2 bg-white shadow-sm" style="border-right: 4px solid ${u.enabled !== false ? '#0d6efd' : '#6c757d'} !important;">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <div style="min-width:0; flex:1;">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <span class="fw-bold fs-6 text-primary">
+                    <i class="fas fa-user-tag me-1"></i>${escapeHtml(u.display_username || ('@' + u.username))}
+                  </span>
+                  ${u.enabled !== false 
+                    ? '<span class="badge bg-success" style="font-size:0.7rem;">🟢 مفعل</span>' 
+                    : '<span class="badge bg-secondary" style="font-size:0.7rem;">⚪ معطل</span>'}
+                  <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25" style="font-size:0.7rem;">
+                    <i class="fas fa-reply-all me-1"></i>رد بالمحادثة ${u.send_dm !== false ? '+ بالخاص أيضاً' : ''}
+                  </span>
+                </div>
+                <div class="mt-2 p-2 rounded bg-light border text-dark" style="font-size:0.9rem;">
+                  <strong class="text-secondary d-block small mb-1"><i class="fas fa-quote-right me-1"></i>الرد التلقائي:</strong>
+                  ${escapeHtml(u.reply)}
+                </div>
+                <div class="mt-2 text-muted small">
+                  ${u.used_count ? `<span class="badge bg-success bg-opacity-75 me-1">تم الرد ${u.used_count}×</span>` : '<span class="badge bg-light text-muted border me-1">لم يُستخدم بعد</span>'}
+                  ${u.last_used ? `<span class="ms-1">آخر رد: ${escapeHtml(u.last_used)}</span>` : ''}
+                </div>
+              </div>
+              <div class="d-flex flex-column gap-1">
+                <button class="btn btn-sm ${u.enabled !== false ? 'btn-outline-warning' : 'btn-outline-success'}" data-ar-user-toggle="${i}" title="${u.enabled !== false ? 'تعطيل' : 'تفعيل'}">
+                  <i class="fas ${u.enabled !== false ? 'fa-pause' : 'fa-play'}"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" data-ar-user-del="${i}" title="حذف">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>`).join('');
+
+        arUserRulesList.querySelectorAll('[data-ar-user-del]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const idx = parseInt(btn.getAttribute('data-ar-user-del'));
+            if (!confirm('هل أنت متأكد من حذف الرد المخصص لهذا المستخدم؟')) return;
+            const r = await apiCall('/api/delete_user_auto_reply', 'POST', { index: idx });
+            if (r.success) arRenderUserRules(r.user_auto_replies);
+            else alert(r.message || 'تعذر الحذف');
+          });
+        });
+
+        arUserRulesList.querySelectorAll('[data-ar-user-toggle]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const idx = parseInt(btn.getAttribute('data-ar-user-toggle'));
+            const r = await apiCall('/api/toggle_user_auto_reply_rule', 'POST', { index: idx });
+            if (r.success) arRenderUserRules(r.user_auto_replies);
+            else alert(r.message || 'تعذر تغيير الحالة');
+          });
+        });
+      }
+
       async function arLoad() {
         try {
           const r = await apiCall('/api/get_auto_replies');
           if (r.success) {
             arEnabledToggle.checked = (r.enabled !== false);
             arRender(r.auto_replies);
+            arRenderUserRules(r.user_auto_replies);
           }
         } catch (e) {
           arRulesList.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message || 'فشل التحميل')}</div>`;
+          arUserRulesList.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message || 'فشل التحميل')}</div>`;
         }
       }
 
@@ -3687,6 +3836,46 @@
         await apiCall('/api/toggle_auto_reply', 'POST', { enabled: arEnabledToggle.checked });
       });
 
+      // إضافة رد حسب معرف المستخدم
+      if (arAddUserBtn) {
+        arAddUserBtn.addEventListener('click', async () => {
+          const username = (arUserTarget ? arUserTarget.value : '').trim();
+          const reply    = (arUserReply ? arUserReply.value : '').trim();
+          const send_dm  = arUserSendDm ? arUserSendDm.checked : true;
+
+          if (!username) {
+            alert('⚠️ يرجى إدخال معرف المستخدم (Username أو ID)');
+            if (arUserTarget) arUserTarget.focus();
+            return;
+          }
+          if (!reply) {
+            alert('⚠️ يرجى كتابة نص الرد تحت المعرف');
+            if (arUserReply) arUserReply.focus();
+            return;
+          }
+
+          arAddUserBtn.disabled = true;
+          arAddUserBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الحفظ...';
+
+          try {
+            const r = await apiCall('/api/add_user_auto_reply', 'POST', { username, reply, send_dm });
+            if (r.success) {
+              if (arUserTarget) arUserTarget.value = '';
+              if (arUserReply) arUserReply.value = '';
+              arRenderUserRules(r.user_auto_replies);
+            } else {
+              alert(r.message || 'تعذر إضافة رد المستخدم');
+            }
+          } catch (err) {
+            alert('خطأ أثناء الإضافة: ' + (err.message || err));
+          } finally {
+            arAddUserBtn.disabled = false;
+            arAddUserBtn.innerHTML = '<i class="fas fa-plus-circle me-1"></i> حفظ وتفعيل الرد لهذا المستخدم';
+          }
+        });
+      }
+
+      // إضافة رد بالكلمات المفتاحية
       arAddBtn.addEventListener('click', async () => {
         const keyword = arNewKeyword.value.trim();
         const reply   = arNewReply.value.trim();

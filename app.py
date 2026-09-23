@@ -1350,6 +1350,7 @@ def save_settings(user_id, settings, force=False):
             settings.setdefault('my_alerts_enabled', True)
             settings.setdefault('my_alerts_replies', True)
             settings.setdefault('my_alerts_actions', True)
+            settings.setdefault('user_auto_replies', [])
 
         if not force:
             existing = load_settings(user_id)
@@ -1381,6 +1382,7 @@ def load_settings(user_id):
                 database_settings.setdefault('my_alerts_enabled', True)
                 database_settings.setdefault('my_alerts_replies', True)
                 database_settings.setdefault('my_alerts_actions', True)
+                database_settings.setdefault('user_auto_replies', [])
                 return database_settings
         except Exception as _db_load_error:
             logger.warning("PostgreSQL settings read failed for %s: %s", user_id, _db_load_error)
@@ -1396,6 +1398,7 @@ def load_settings(user_id):
             data.setdefault('my_alerts_enabled', True)
             data.setdefault('my_alerts_replies', True)
             data.setdefault('my_alerts_actions', True)
+            data.setdefault('user_auto_replies', [])
             if _DB_READY:
                 _app_db.save_settings(user_id, data)
             return data
@@ -1409,6 +1412,7 @@ def load_settings(user_id):
             data.setdefault('my_alerts_enabled', True)
             data.setdefault('my_alerts_replies', True)
             data.setdefault('my_alerts_actions', True)
+            data.setdefault('user_auto_replies', [])
             # نقل البيانات للمجلد الجديد والقاعدة عند توفرها
             save_settings(user_id, data, force=True)
             return data
@@ -1417,7 +1421,8 @@ def load_settings(user_id):
             'monitoring_persistent': True,
             'my_alerts_enabled': True,
             'my_alerts_replies': True,
-            'my_alerts_actions': True
+            'my_alerts_actions': True,
+            'user_auto_replies': []
         }
     except Exception as e:
         logger.error(f"Error loading settings for {user_id}: {str(e)}")
@@ -1426,7 +1431,8 @@ def load_settings(user_id):
             'monitoring_persistent': True,
             'my_alerts_enabled': True,
             'my_alerts_replies': True,
-            'my_alerts_actions': True
+            'my_alerts_actions': True,
+            'user_auto_replies': []
         }
 
 # ترحيل كسول وآمن: لا يستبدل أي إعداد موجود في PostgreSQL
@@ -2280,6 +2286,94 @@ class TelegramClientManager:
             settings = load_settings(self.user_id)
             if not settings.get('auto_reply_enabled', True):
                 return
+
+            # ──────────────────────────────────────────────────────────
+            # 1) الرد التلقائي حسب معرف المستخدم (Target User Auto-Reply)
+            # الرد على رسالته من حيث أرسلها + إرسالها له بالخاص أيضاً
+            # ──────────────────────────────────────────────────────────
+            user_rules = settings.get('user_auto_replies', []) or []
+            if user_rules:
+                try:
+                    sender = await event.get_sender()
+                except Exception:
+                    sender = None
+
+                sender_id = getattr(event, 'sender_id', None)
+                if not sender_id and sender:
+                    sender_id = getattr(sender, 'id', None)
+
+                sender_username = (getattr(sender, 'username', '') or '').strip().lstrip('@').lower()
+                sender_id_str = str(sender_id) if sender_id else ''
+
+                for u_rule in user_rules:
+                    if not isinstance(u_rule, dict):
+                        continue
+                    if not u_rule.get('enabled', True):
+                        continue
+
+                    target_raw = (u_rule.get('username') or u_rule.get('target_user') or '').strip()
+                    target_clean = target_raw.lstrip('@').lower()
+                    reply_text = (u_rule.get('reply') or '').strip()
+
+                    if not target_clean or not reply_text:
+                        continue
+
+                    # فحص المطابقة: بالمعرف @username أو برقم الـ ID
+                    is_match = False
+                    if sender_username and (target_clean == sender_username):
+                        is_match = True
+                    elif sender_id_str and (target_clean == sender_id_str):
+                        is_match = True
+
+                    if is_match:
+                        # 1) الرد على رسالته من حيث أرسلها (المجموعة أو القناة أو المحادثة)
+                        try:
+                            await self.client.send_message(
+                                entity=event.chat_id,
+                                message=reply_text,
+                                reply_to=message.id
+                            )
+                            logger.info(f"✅ User auto-reply sent to @{target_clean} in {group_identifier}")
+                        except Exception as reply_err:
+                            logger.error(f"❌ Failed to reply in chat to @{target_clean}: {reply_err}")
+
+                        # 2) وبالخاص أيضاً (إذا لم تكن المحادثة خاصة بالفعل)
+                        send_dm = u_rule.get('send_dm', True)
+                        if send_dm and not event.is_private:
+                            try:
+                                dm_target = sender or sender_id or (int(target_clean) if target_clean.isdigit() else target_clean)
+                                await self.client.send_message(
+                                    entity=dm_target,
+                                    message=reply_text
+                                )
+                                logger.info(f"✅ User auto-reply DM sent to @{target_clean}")
+                            except Exception as dm_err:
+                                logger.warning(f"⚠️ Could not send DM to @{target_clean}: {dm_err}")
+
+                        # إشعار لواجهة المستخدم وتسجيل الإحصائيات
+                        try:
+                            _emit_log_update('INFO',
+                                f"👤 رد تلقائي للمستخدم @{target_clean} في {group_identifier} وبالخاص",
+                                self.user_id)
+                            socketio.emit('auto_reply_triggered', {
+                                "keyword": f"المستخدم: @{target_clean}",
+                                "reply": reply_text,
+                                "chat": f"{group_identifier} + خاص",
+                                "timestamp": time.strftime('%H:%M:%S')
+                            }, to=self.user_id)
+                        except Exception:
+                            pass
+
+                        try:
+                            u_rule['used_count'] = int(u_rule.get('used_count') or 0) + 1
+                            u_rule['last_used'] = time.strftime('%Y-%m-%d %H:%M:%S')
+                            settings['user_auto_replies'] = user_rules
+                            save_settings(self.user_id, settings)
+                        except Exception:
+                            pass
+
+                        return
+
             rules = settings.get('auto_replies', []) or []
             if not rules:
                 return
@@ -7930,8 +8024,89 @@ def api_get_auto_replies():
     return jsonify({
         "success": True,
         "enabled": settings.get('auto_reply_enabled', True),
-        "auto_replies": settings.get('auto_replies', []) or []
+        "auto_replies": settings.get('auto_replies', []) or [],
+        "user_auto_replies": settings.get('user_auto_replies', []) or []
     })
+
+def _normalize_user_auto_reply(rule):
+    if not isinstance(rule, dict):
+        return None
+    username = (rule.get('username') or rule.get('target_user') or '').strip()
+    reply = (rule.get('reply') or '').strip()
+    if not username or not reply:
+        return None
+    username_clean = username.lstrip('@')
+    return {
+        'username': username_clean,
+        'display_username': f"@{username_clean}" if not username_clean.isdigit() else username_clean,
+        'reply': reply,
+        'send_dm': bool(rule.get('send_dm', True)),
+        'enabled': bool(rule.get('enabled', True)),
+        'used_count': int(rule.get('used_count') or 0),
+        'last_used': rule.get('last_used') or '',
+    }
+
+@app.route("/api/add_user_auto_reply", methods=["POST"])
+def api_add_user_auto_reply():
+    user_id = session.get('user_id', 'user_1')
+    data = request.json or {}
+    rule = _normalize_user_auto_reply(data)
+    if not rule:
+        return jsonify({"success": False, "message": "❌ معرف المستخدم ونص الرد مطلوبان"})
+
+    settings = load_settings(user_id)
+    rules = settings.get('user_auto_replies', []) or []
+    rules.append(rule)
+    settings['user_auto_replies'] = rules
+    if save_settings(user_id, settings):
+        return jsonify({
+            "success": True,
+            "message": f"✅ تم إضافة رد تلقائي للمستخدم {rule['display_username']}",
+            "user_auto_replies": rules
+        })
+    return jsonify({"success": False, "message": "❌ فشل حفظ القاعدة"})
+
+@app.route("/api/delete_user_auto_reply", methods=["POST"])
+def api_delete_user_auto_reply():
+    user_id = session.get('user_id', 'user_1')
+    data = request.json or {}
+    try:
+        index = int(data.get('index', -1))
+    except (TypeError, ValueError):
+        index = -1
+    settings = load_settings(user_id)
+    rules = settings.get('user_auto_replies', []) or []
+    if 0 <= index < len(rules):
+        removed = rules.pop(index)
+        settings['user_auto_replies'] = rules
+        save_settings(user_id, settings)
+        return jsonify({
+            "success": True,
+            "message": f"🗑️ تم حذف رد المستخدم {removed.get('display_username', '')}",
+            "user_auto_replies": rules
+        })
+    return jsonify({"success": False, "message": "❌ فهرس غير صحيح"})
+
+@app.route("/api/toggle_user_auto_reply_rule", methods=["POST"])
+def api_toggle_user_auto_reply_rule():
+    user_id = session.get('user_id', 'user_1')
+    data = request.json or {}
+    try:
+        index = int(data.get('index', -1))
+    except (TypeError, ValueError):
+        index = -1
+    settings = load_settings(user_id)
+    rules = settings.get('user_auto_replies', []) or []
+    if 0 <= index < len(rules):
+        rules[index]['enabled'] = not rules[index].get('enabled', True)
+        settings['user_auto_replies'] = rules
+        save_settings(user_id, settings)
+        return jsonify({
+            "success": True,
+            "message": f"تم {'تفعيل' if rules[index]['enabled'] else 'تعطيل'} الرد للمستخدم {rules[index].get('display_username', '')}",
+            "user_auto_replies": rules
+        })
+    return jsonify({"success": False, "message": "❌ فهرس غير صحيح"})
 
 @app.route("/api/add_auto_reply", methods=["POST"])
 def api_add_auto_reply():
