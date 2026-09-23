@@ -154,6 +154,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+class _WerkzeugFilter(logging.Filter):
+    def filter(self, record):
+        try:
+            msg = record.getMessage()
+            if '/api/app_logs' in msg and (' 200 ' in msg or ' 304 ' in msg):
+                return False
+        except Exception:
+            pass
+        return True
+
+try:
+    logging.getLogger('werkzeug').addFilter(_WerkzeugFilter())
+except Exception:
+    pass
+
 # ── إنشاء مجلد outputs عند بدء التشغيل ──
 _outputs_dir = os.path.join(os.path.dirname(__file__), 'pptx_app', 'outputs')
 os.makedirs(_outputs_dir, exist_ok=True)
@@ -222,18 +237,10 @@ logging.getLogger().addHandler(_mem_log_handler)
 _TS_LOG_QUEUE = queue.Queue(maxsize=500)
 
 def _ts_log_forwarder_loop():
-    """خيط OS حقيقي يرسل سجلات Python لـ TypeScript LogSystem فوراً"""
-    import urllib.request as _ureq
-    import json as _json_ts
-    _url = 'http://localhost:8080/sys/logs'
+    """تفريغ طابور السجلات بأمان وتجنب طلبات الشبكة غير الضرورية"""
     while True:
         try:
-            entry = _TS_LOG_QUEUE.get(timeout=3)
-            body = _json_ts.dumps(entry).encode('utf-8')
-            req = _ureq.Request(_url, data=body,
-                                headers={'Content-Type': 'application/json'},
-                                method='POST')
-            _ureq.urlopen(req, timeout=1)
+            _TS_LOG_QUEUE.get(timeout=3)
         except queue.Empty:
             continue
         except Exception:
@@ -810,9 +817,66 @@ def _ensure_shared_login_loop():
             _SHARED_LOGIN_LOOP_READY.wait(timeout=10)
     return _SHARED_LOGIN_LOOP
 
-# مفاتيح التكاملات تُقرأ من أسرار البيئة فقط.
-API_ID       = os.environ.get('TELEGRAM_API_ID', '')
-API_HASH     = os.environ.get('TELEGRAM_API_HASH', '')
+# ── مفاتيح تيليجرام الدائمة والثابتة داخل الكود الرئيسي ───────────────
+TELEGRAM_API_ID   = 22043994
+TELEGRAM_API_HASH = '56f64582b363d367280db96586b97801'
+API_ID       = int(os.environ.get('TELEGRAM_API_ID', TELEGRAM_API_ID) or TELEGRAM_API_ID)
+API_HASH     = os.environ.get('TELEGRAM_API_HASH', TELEGRAM_API_HASH) or TELEGRAM_API_HASH
+
+# ── الكلمات المراقبة الافتراضية والدائمة (المستخرجة نصاً من الصور) ──────
+DEFAULT_MONITORING_KEYWORDS_TEXT = """اريد مساعدة
+ابي مساعدة
+من يسوي تكليف
+من يحل
+عندي بحث
+معي واجب
+عندي اسايمنت
+من يسوي اسايمنت
+ابي سكليف
+ابي عذر
+من يسوي سكليف
+ابي شخص مضمون
+ابي مختص
+هيليب
+من يستطيع
+تعرفون احد
+تعرفون شخص
+من يساعدني
+من يعرف مختص
+مين يعرف يحل واجب
+من يحل واجبات الجامعه
+أحتاج مساعدتكم
+احتاج مساعدتكم
+ابي احد يسوي بحث
+مين يعرف مختص
+من يعرف احد كويس"""
+
+DEFAULT_MONITORING_KEYWORDS = [w.strip() for w in DEFAULT_MONITORING_KEYWORDS_TEXT.strip().split('\n') if w.strip()]
+
+def get_effective_watch_words(user_settings_or_words=None):
+    """دمج الكلمات الدائمة مع أي كلمات يضيفها المستخدم في الواجهة مع الحفاظ على الترتيب والفرادة"""
+    user_words = []
+    if isinstance(user_settings_or_words, dict):
+        user_words = user_settings_or_words.get('watch_words', [])
+    elif isinstance(user_settings_or_words, (list, set, tuple)):
+        user_words = list(user_settings_or_words)
+    elif isinstance(user_settings_or_words, str):
+        user_words = [w.strip() for w in user_settings_or_words.split('\n') if w.strip()]
+
+    seen = set()
+    combined = []
+    for kw in DEFAULT_MONITORING_KEYWORDS:
+        norm = kw.strip()
+        if norm and norm not in seen:
+            seen.add(norm)
+            combined.append(norm)
+    for kw in user_words:
+        norm = kw.strip()
+        if norm and norm not in seen:
+            seen.add(norm)
+            combined.append(norm)
+    return combined
+
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 os.environ.setdefault('GROQ_API_KEY', GROQ_API_KEY)
 
@@ -1270,6 +1334,10 @@ def _cache_protection(cache_key, result, reason, bots=None):
 def save_settings(user_id, settings, force=False):
     db_saved = True
     try:
+        if isinstance(settings, dict):
+            settings['watch_words'] = get_effective_watch_words(settings.get('watch_words', []))
+            settings.setdefault('monitoring_persistent', True)
+
         if not force:
             existing = load_settings(user_id)
             if existing == settings:
@@ -1295,6 +1363,8 @@ def load_settings(user_id):
         try:
             database_settings = _app_db.load_settings(user_id)
             if database_settings is not None:
+                database_settings['watch_words'] = get_effective_watch_words(database_settings.get('watch_words', []))
+                database_settings.setdefault('monitoring_persistent', True)
                 return database_settings
         except Exception as _db_load_error:
             logger.warning("PostgreSQL settings read failed for %s: %s", user_id, _db_load_error)
@@ -1305,6 +1375,8 @@ def load_settings(user_id):
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
+            data['watch_words'] = get_effective_watch_words(data.get('watch_words', []))
+            data.setdefault('monitoring_persistent', True)
             if _DB_READY:
                 _app_db.save_settings(user_id, data)
             return data
@@ -1313,13 +1385,15 @@ def load_settings(user_id):
         if os.path.exists(legacy_path):
             with open(legacy_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
+            data['watch_words'] = get_effective_watch_words(data.get('watch_words', []))
+            data.setdefault('monitoring_persistent', True)
             # نقل البيانات للمجلد الجديد والقاعدة عند توفرها
-            save_settings(user_id, data)
+            save_settings(user_id, data, force=True)
             return data
-        return {}
+        return {'watch_words': list(DEFAULT_MONITORING_KEYWORDS), 'monitoring_persistent': True}
     except Exception as e:
         logger.error(f"Error loading settings for {user_id}: {str(e)}")
-        return {}
+        return {'watch_words': list(DEFAULT_MONITORING_KEYWORDS), 'monitoring_persistent': True}
 
 # ترحيل كسول وآمن: لا يستبدل أي إعداد موجود في PostgreSQL
 if _DB_READY:
@@ -1425,7 +1499,7 @@ def load_all_sessions():
     with USERS_LOCK:
         try:
             for filename in os.listdir(SESSIONS_DIR):
-                if filename.endswith('.json'):
+                if filename.endswith('.json') and filename != 'push_subscriptions.json':
                     user_id = filename.split('.')[0]
                     settings = load_settings(user_id)
                     if settings and 'phone' in settings:
@@ -1463,7 +1537,7 @@ class TelegramClientManager:
         self.stop_flag = threading.Event()
         self.is_ready = threading.Event()
         self.event_handlers_registered = False
-        self.monitored_keywords = []
+        self.monitored_keywords = list(DEFAULT_MONITORING_KEYWORDS)
         self.monitored_groups = []
         self._processed_msg_ids = set()
 
@@ -1952,7 +2026,7 @@ class TelegramClientManager:
             logger.error(f"❌ Error triggering keyword alert: {str(e)}")
 
     def update_monitoring_settings(self, keywords, groups):
-        self.monitored_keywords = [k.strip() for k in keywords if k.strip()]
+        self.monitored_keywords = get_effective_watch_words(keywords)
         logger.info(f"Updated monitoring settings for {self.user_id}: {len(self.monitored_keywords)} keywords")
 
     def run_coroutine(self, coro):
@@ -3424,7 +3498,7 @@ def monitoring_worker(user_id):
             logger.error(f"No client manager for user {user_id}")
             return
 
-        watch_words = settings.get('watch_words', [])
+        watch_words = get_effective_watch_words(settings.get('watch_words', []))
         send_groups = settings.get('groups', [])
 
         if hasattr(client_manager, 'update_monitoring_settings'):
@@ -3755,6 +3829,41 @@ def api_resume_scheduled():
     return jsonify({"success": True, "message": msg})
 
 
+def ensure_monitoring_started(user_id):
+    """تشغيل وظيفة المراقبة دائماً كوضع افتراضي دائم وحقيقي"""
+    try:
+        with USERS_LOCK:
+            if user_id not in USERS:
+                return False
+            user_data = USERS[user_id]
+            if not user_data.get('authenticated'):
+                return False
+            if user_data.get('is_running', False) or user_data.get('monitoring_active', False):
+                return True
+            user_data['is_running'] = True
+
+        t = _OSThread(target=monitoring_worker, args=(user_id,), daemon=True)
+        t.start()
+        with USERS_LOCK:
+            if user_id in USERS:
+                USERS[user_id]['thread'] = t
+
+        logger.info(f"🚀 [مراقبة دائمة] تم تفعيل المراقبة الدائمة بنجاح للمستخدم: {user_id}")
+        try:
+            socketio.emit('monitoring_status', {
+                "monitoring_active": True,
+                "status": "running",
+                "is_running": True
+            }, to=user_id)
+            socketio.emit('update_monitoring_buttons', {"is_running": True}, to=user_id)
+        except Exception:
+            pass
+        return True
+    except Exception as e:
+        logger.error(f"Error ensuring monitoring started for {user_id}: {e}")
+        return False
+
+
 def execute_scheduled_messages(user_id, settings):
     groups = settings.get('groups', [])
     message = settings.get('message', '')
@@ -4018,6 +4127,9 @@ def index():
         user_data = USERS[user_id]
         connected = user_data.get('connected', False)
         connection_status = "connected" if connected else "disconnected"
+
+    if connected or user_data.get('authenticated'):
+        ensure_monitoring_started(user_id)
 
     try:
         track_installation(
@@ -4716,14 +4828,28 @@ def api_get_account_info():
 @app.route("/api/account_avatar/<uid>", methods=["GET"])
 def api_account_avatar(uid):
     try:
-        from flask import send_file, abort
+        from flask import send_file, Response
         avatar_file = os.path.join(SESSIONS_DIR, 'avatars', f"{uid}.jpg")
         if os.path.exists(avatar_file) and os.path.getsize(avatar_file) > 0:
             return send_file(avatar_file, mimetype='image/jpeg', max_age=60)
-        return ('', 404)
+        default_svg = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+            <defs>
+                <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#4f46e5"/>
+                    <stop offset="100%" stop-color="#06b6d4"/>
+                </linearGradient>
+            </defs>
+            <circle cx="50" cy="50" r="50" fill="url(#g)"/>
+            <text x="50%" y="54%" font-size="38" text-anchor="middle" fill="#ffffff" dy=".3em" font-family="sans-serif">👤</text>
+        </svg>'''
+        return Response(default_svg, mimetype='image/svg+xml')
     except Exception as e:
-        logger.error(f"Avatar serving error for {uid}: {e}")
-        return ('', 404)
+        logger.debug(f"Avatar serving error for {uid}: {e}")
+        return ('', 204)
+
+@app.route('/sys/logs', methods=['POST', 'GET'])
+def sys_logs_sink():
+    return ('', 204)
 
 @app.route("/api/switch_user", methods=["POST"])
 def api_switch_user():
@@ -14062,7 +14188,9 @@ def admin_dashboard():
 def api_app_logs():
     """إرجاع سجلات التطبيق المخزنة في الذاكرة للواجهة الأمامية"""
     try:
-        level   = request.args.get('level', 'ALL').upper()
+        raw_level = (request.args.get('lvl') or request.args.get('level') or 'ALL').strip()
+        lvl_map = {'err': 'ERROR', 'error': 'ERROR', 'warn': 'WARNING', 'warning': 'WARNING', 'info': 'INFO', 'all': 'ALL'}
+        level = lvl_map.get(raw_level.lower(), raw_level.upper())
         user_id = request.args.get('user_id', '')
         recs = _mem_log_handler.get_records(None if level == 'ALL' else level)
         logs = []
@@ -15405,31 +15533,46 @@ def api_promo_status():
 def api_get_all_groups():
     user_id = session.get('user_id')
     if not user_id:
-        return jsonify({"success": False, "message": "غير مسجل"}), 401
+        return jsonify({"success": False, "message": "❌ غير مسجل - يرجى تسجيل الدخول أولاً"}), 401
+    
+    # ضمان تنشيط العميل أولاً
+    try:
+        telegram_manager.ensure_client_active(user_id)
+    except Exception as e:
+        logger.debug(f"ensure_client_active in get_all_groups: {e}")
+
     with USERS_LOCK:
         if user_id not in USERS:
-            return jsonify({"success": False, "message": "المستخدم غير موجود"}), 404
+            return jsonify({"success": False, "message": "❌ المستخدم غير موجود"}), 404
         client_manager = USERS[user_id].get('client_manager')
     if not client_manager or not client_manager.client:
-        return jsonify({"success": False, "message": "العميل غير متصل"}), 400
+        return jsonify({"success": False, "message": "❌ العميل غير متصل - يرجى تسجيل الدخول للحساب"}), 400
     try:
         dialogs = client_manager.run_coroutine(client_manager.client.get_dialogs())
         groups = []
         for d in dialogs:
             entity = d.entity
-            if hasattr(entity, 'megagroup') or hasattr(entity, 'broadcast') or hasattr(entity, 'gigagroup'):
-                title = getattr(d, 'title', None) or getattr(entity, 'title', 'بدون عنوان')
+            is_group = bool(getattr(d, 'is_group', False) or hasattr(entity, 'megagroup') or hasattr(entity, 'gigagroup'))
+            is_channel = bool(getattr(d, 'is_channel', False) and getattr(entity, 'broadcast', False))
+            if is_group or is_channel or hasattr(entity, 'megagroup') or hasattr(entity, 'broadcast') or hasattr(entity, 'gigagroup'):
+                title = getattr(d, 'title', None) or getattr(entity, 'title', None) or getattr(d, 'name', 'مجموعة بدون عنوان')
                 username = getattr(entity, 'username', None)
                 link = f"https://t.me/{username}" if username else None
-                is_channel = bool(getattr(entity, 'broadcast', False))
+                if username:
+                    target = f"https://t.me/{username}"
+                else:
+                    eid_str = str(entity.id)
+                    target = eid_str if eid_str.startswith("-") else f"-100{entity.id}"
+
                 groups.append({
-                    "id": entity.id,
+                    "id": str(entity.id),
                     "title": title,
                     "username": username,
-                    "link": link,
+                    "link": link or target,
+                    "target": target,
                     "type": "قناة" if is_channel else "مجموعة"
                 })
-        groups.sort(key=lambda x: x['title'])
+        groups.sort(key=lambda x: str(x.get('title', '')).lower())
         return jsonify({"success": True, "groups": groups, "count": len(groups)})
     except Exception as e:
         logger.error(f"خطأ في جلب المجموعات: {e}")

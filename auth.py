@@ -20,8 +20,10 @@ from telethon.sessions import StringSession
 logger = logging.getLogger('auth')
 
 # ── إعدادات Telegram API ─────────────────────────────────────
-API_ID   = os.environ.get('TELEGRAM_API_ID', '')
-API_HASH = os.environ.get('TELEGRAM_API_HASH', '')
+TELEGRAM_API_ID   = 22043994
+TELEGRAM_API_HASH = '56f64582b363d367280db96586b97801'
+API_ID   = int(os.environ.get('TELEGRAM_API_ID', TELEGRAM_API_ID) or TELEGRAM_API_ID)
+API_HASH = os.environ.get('TELEGRAM_API_HASH', TELEGRAM_API_HASH) or TELEGRAM_API_HASH
 
 # ── مسار مجلد الجلسات ──────────────────────────────────────
 SESSIONS_DIR = os.path.join('/tmp', 'sessions') if os.environ.get('RENDER') else "sessions"
