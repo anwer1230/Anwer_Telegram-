@@ -77,3 +77,4 @@ pywebpush==2.0.0
 requests==2.32.3
 Telethon==1.43.2
 Werkzeug==3.1.8
+psycopg[binary]==3.2.10
