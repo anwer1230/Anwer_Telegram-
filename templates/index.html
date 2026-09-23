@@ -2201,11 +2201,42 @@
                   إشعارات الردود على رسائلي في المجموعات
                 </label>
               </div>
-              <div class="form-check form-switch">
+              <div class="form-check form-switch mb-3">
                 <input class="form-check-input" type="checkbox" id="toggleMyAlertsActions" checked>
                 <label class="form-check-label" for="toggleMyAlertsActions">
                   إشعارات الحظر والتقييد والترقية والتحذيرات
                 </label>
+              </div>
+
+              <!-- مفتاح تبديل الإشعار الصوتي واختيار النغمة -->
+              <div class="p-3 bg-white rounded-3 border border-warning border-opacity-50 mb-2">
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="toggleMyAlertsReplySound" checked>
+                  <label class="form-check-label fw-bold text-dark" for="toggleMyAlertsReplySound">
+                    <i class="fas fa-volume-up text-warning me-1"></i> تفعيل إشعار صوتي خاص عند اكتشاف رد على رسائلك
+                  </label>
+                  <div class="small text-muted mt-1">تشغيل نغمة تنبيه صوتية مميزة فوراً عند قيام أي شخص بالرد على رسائلك في أي مجموعة.</div>
+                </div>
+
+                <div id="replySoundToneContainer" class="mt-3 pt-2 border-top">
+                  <label class="form-label small fw-bold mb-1 text-dark" for="selectMyAlertsReplyTone">
+                    <i class="fas fa-music text-primary me-1"></i> اختيار نغمة التنبيه للردود:
+                  </label>
+                  <div class="input-group">
+                    <select class="form-select" id="selectMyAlertsReplyTone">
+                      <option value="chime">🔔 رنين كريستال أنيق (Chime - الافتراضي)</option>
+                      <option value="telegram">✈️ نغمة تيليجرام الكلاسيكية (Pop / Ping)</option>
+                      <option value="bell">🛎️ جرس التنبيه الذهبي (Ding Bell)</option>
+                      <option value="crystal">✨ رنين الكريستال المتلألئ (Crystal)</option>
+                      <option value="two_tone">🎶 تنبيه ثنائي النغمات (Two-Tone Soft)</option>
+                      <option value="marimba">🪵 ماريمبا دافئ وسريع (Marimba)</option>
+                    </select>
+                    <button type="button" class="btn btn-outline-primary fw-bold" id="btnPreviewReplyTone" title="استماع للنغمة">
+                      <i class="fas fa-play me-1"></i> استماع للنغمة
+                    </button>
+                  </div>
+                  <small class="text-muted d-block mt-1">اضغط «استماع للنغمة» لتجربة صوت النغمة المختارة الآن.</small>
+                </div>
               </div>
             </div>
 
@@ -3909,9 +3940,97 @@
       const toggleMyAlertsEnabled = document.getElementById('toggleMyAlertsEnabled');
       const toggleMyAlertsReplies = document.getElementById('toggleMyAlertsReplies');
       const toggleMyAlertsActions = document.getElementById('toggleMyAlertsActions');
+      const toggleMyAlertsReplySound = document.getElementById('toggleMyAlertsReplySound');
+      const selectMyAlertsReplyTone = document.getElementById('selectMyAlertsReplyTone');
+      const btnPreviewReplyTone = document.getElementById('btnPreviewReplyTone');
+      const replySoundToneContainer = document.getElementById('replySoundToneContainer');
       const btnSaveMyAlertsSettings = document.getElementById('btnSaveMyAlertsSettings');
       const btnTestMyAlert = document.getElementById('btnTestMyAlert');
       const myAlertsStatusMsg = document.getElementById('myAlertsStatusMsg');
+
+      // ── دالة توليد نغمات الإشعار الصوتي للردود عبر Web Audio API ──
+      function playReplyAlertSound(tone) {
+        try {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) return;
+          const ctx = new AudioContextClass();
+          const t0 = ctx.currentTime;
+
+          const tonesMap = {
+            'chime': [
+              { freq: 523.25, type: 'sine', start: 0.00, dur: 0.35, gain: 0.30 }, // C5
+              { freq: 659.25, type: 'sine', start: 0.12, dur: 0.35, gain: 0.30 }, // E5
+              { freq: 783.99, type: 'sine', start: 0.24, dur: 0.40, gain: 0.35 }, // G5
+              { freq: 1046.50, type: 'sine', start: 0.36, dur: 0.60, gain: 0.40 } // C6
+            ],
+            'telegram': [
+              { freq: 784.00, type: 'triangle', start: 0.00, dur: 0.12, gain: 0.35 },
+              { freq: 1046.50, type: 'sine', start: 0.08, dur: 0.38, gain: 0.45 }
+            ],
+            'bell': [
+              { freq: 880.00, type: 'sine', start: 0.00, dur: 0.70, gain: 0.35 },
+              { freq: 1760.00, type: 'sine', start: 0.00, dur: 0.45, gain: 0.15 }
+            ],
+            'crystal': [
+              { freq: 1174.66, type: 'sine', start: 0.00, dur: 0.22, gain: 0.25 },
+              { freq: 1479.98, type: 'sine', start: 0.07, dur: 0.25, gain: 0.25 },
+              { freq: 1760.00, type: 'sine', start: 0.15, dur: 0.50, gain: 0.30 }
+            ],
+            'two_tone': [
+              { freq: 587.33, type: 'sine', start: 0.00, dur: 0.25, gain: 0.35 },
+              { freq: 880.00, type: 'sine', start: 0.20, dur: 0.45, gain: 0.40 }
+            ],
+            'marimba': [
+              { freq: 523.25, type: 'triangle', start: 0.00, dur: 0.18, gain: 0.40 },
+              { freq: 659.25, type: 'triangle', start: 0.10, dur: 0.18, gain: 0.40 },
+              { freq: 783.99, type: 'triangle', start: 0.20, dur: 0.25, gain: 0.45 }
+            ]
+          };
+
+          const notes = tonesMap[tone] || tonesMap['chime'];
+          let maxDur = 0.5;
+
+          notes.forEach(n => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = n.type || 'sine';
+            osc.frequency.setValueAtTime(n.freq, t0 + n.start);
+
+            gain.gain.setValueAtTime(0.0001, t0 + n.start);
+            gain.gain.exponentialRampToValueAtTime(n.gain || 0.3, t0 + n.start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t0 + n.start + n.dur);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(t0 + n.start);
+            osc.stop(t0 + n.start + n.dur + 0.05);
+
+            if (n.start + n.dur > maxDur) maxDur = n.start + n.dur;
+          });
+
+          setTimeout(() => {
+            try { ctx.close(); } catch(e){}
+          }, (maxDur + 0.5) * 1000);
+        } catch(e) {
+          console.debug('playReplyAlertSound error:', e);
+        }
+      }
+
+      // زر الاستماع للنغمة ومعاينتها فوراً
+      if (btnPreviewReplyTone) {
+        btnPreviewReplyTone.addEventListener('click', () => {
+          const tone = selectMyAlertsReplyTone ? selectMyAlertsReplyTone.value : 'chime';
+          playReplyAlertSound(tone);
+        });
+      }
+
+      // إظهار/إخفاء حاوية النغمة حسب حالة المفتاح
+      if (toggleMyAlertsReplySound && replySoundToneContainer) {
+        toggleMyAlertsReplySound.addEventListener('change', () => {
+          replySoundToneContainer.style.display = toggleMyAlertsReplySound.checked ? 'block' : 'none';
+        });
+      }
 
       async function loadMyAlertsSettings() {
         try {
@@ -3920,6 +4039,15 @@
             if (toggleMyAlertsEnabled) toggleMyAlertsEnabled.checked = (res.settings.my_alerts_enabled !== false);
             if (toggleMyAlertsReplies) toggleMyAlertsReplies.checked = (res.settings.my_alerts_replies !== false);
             if (toggleMyAlertsActions) toggleMyAlertsActions.checked = (res.settings.my_alerts_actions !== false);
+            if (toggleMyAlertsReplySound) {
+              toggleMyAlertsReplySound.checked = (res.settings.my_alerts_reply_sound_enabled !== false);
+              if (replySoundToneContainer) {
+                replySoundToneContainer.style.display = toggleMyAlertsReplySound.checked ? 'block' : 'none';
+              }
+            }
+            if (selectMyAlertsReplyTone && res.settings.my_alerts_reply_sound_tone) {
+              selectMyAlertsReplyTone.value = res.settings.my_alerts_reply_sound_tone;
+            }
           }
         } catch (e) {
           console.debug('Failed to load my alerts settings:', e);
@@ -3938,7 +4066,9 @@
             const res = await apiCall('/api/my_alerts/settings', 'POST', {
               my_alerts_enabled: toggleMyAlertsEnabled ? toggleMyAlertsEnabled.checked : true,
               my_alerts_replies: toggleMyAlertsReplies ? toggleMyAlertsReplies.checked : true,
-              my_alerts_actions: toggleMyAlertsActions ? toggleMyAlertsActions.checked : true
+              my_alerts_actions: toggleMyAlertsActions ? toggleMyAlertsActions.checked : true,
+              my_alerts_reply_sound_enabled: toggleMyAlertsReplySound ? toggleMyAlertsReplySound.checked : true,
+              my_alerts_reply_sound_tone: selectMyAlertsReplyTone ? selectMyAlertsReplyTone.value : 'chime'
             });
             if (myAlertsStatusMsg) {
               myAlertsStatusMsg.style.display = 'block';
@@ -3982,6 +4112,65 @@
           }
         });
       }
+
+      // ── إشعار منبثق أنيق عند وصول رد على رسائلك ──
+      function showMyAlertToast(alertData) {
+        try {
+          let container = document.getElementById('myAlertsToastContainer');
+          if (!container) {
+            container = document.createElement('div');
+            container.id = 'myAlertsToastContainer';
+            container.style.position = 'fixed';
+            container.style.bottom = '20px';
+            container.style.left = '20px';
+            container.style.zIndex = '99999';
+            container.style.maxWidth = '380px';
+            document.body.appendChild(container);
+          }
+          const toastEl = document.createElement('div');
+          toastEl.className = 'card border-warning shadow-lg mb-2 text-dark';
+          toastEl.style.borderRadius = '12px';
+          toastEl.style.overflow = 'hidden';
+          toastEl.style.border = '2px solid #f59e0b';
+          toastEl.innerHTML = `
+            <div class="card-header bg-warning text-dark py-2 px-3 d-flex justify-content-between align-items-center">
+              <span class="fw-bold small"><i class="fas fa-reply-all me-1"></i> ${alertData.is_test ? 'اختبار نغمة التنبيه الصوتي 🔔' : 'رد جديد على رسالتك!'}</span>
+              <button type="button" class="btn-close btn-close-dark btn-sm" onclick="this.closest('.card').remove()"></button>
+            </div>
+            <div class="card-body p-3 bg-white">
+              <div class="small fw-bold text-primary mb-1"><i class="fas fa-user me-1"></i>${escapeHtml(alertData.sender || 'مستخدم')} في <strong>${escapeHtml(alertData.group || 'مجموعة')}</strong></div>
+              <div class="small text-muted p-2 rounded bg-light border mb-2" style="max-height:80px; overflow:hidden;">${escapeHtml(alertData.text || '')}</div>
+              <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted"><i class="far fa-clock me-1"></i>${escapeHtml(alertData.time || '')}</small>
+                ${alertData.link && alertData.link !== '#' ? `<a href="${escapeHtml(alertData.link)}" target="_blank" class="btn btn-sm btn-outline-warning text-dark fw-bold py-0 px-2" style="font-size:0.75rem;"><i class="fas fa-external-link-alt me-1"></i>فتح الرسالة</a>` : ''}
+              </div>
+            </div>
+          `;
+          container.appendChild(toastEl);
+          setTimeout(() => { if (toastEl.parentNode) toastEl.remove(); }, 10000);
+        } catch(e){}
+      }
+
+      // ── ربط أحداث تنبيهاتي مع Socket.IO ──
+      function initMyAlertsSocket() {
+        if (!window.socket) {
+          setTimeout(initMyAlertsSocket, 600);
+          return;
+        }
+        window.socket.off('my_alert_event');
+        window.socket.on('my_alert_event', function(alertData) {
+          if (!alertData) return;
+          if (alertData.type === 'reply') {
+            const soundEnabled = toggleMyAlertsReplySound ? toggleMyAlertsReplySound.checked : (alertData.sound_enabled !== false);
+            if (soundEnabled) {
+              const tone = selectMyAlertsReplyTone ? selectMyAlertsReplyTone.value : (alertData.sound_tone || 'chime');
+              playReplyAlertSound(tone);
+            }
+            showMyAlertToast(alertData);
+          }
+        });
+      }
+      initMyAlertsSocket();
     </script>
 
     <!-- ===== مودال التحليل الإحصائي ===== -->

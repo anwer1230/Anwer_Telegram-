@@ -1350,6 +1350,8 @@ def save_settings(user_id, settings, force=False):
             settings.setdefault('my_alerts_enabled', True)
             settings.setdefault('my_alerts_replies', True)
             settings.setdefault('my_alerts_actions', True)
+            settings.setdefault('my_alerts_reply_sound_enabled', True)
+            settings.setdefault('my_alerts_reply_sound_tone', 'chime')
             settings.setdefault('user_auto_replies', [])
 
         if not force:
@@ -1382,6 +1384,8 @@ def load_settings(user_id):
                 database_settings.setdefault('my_alerts_enabled', True)
                 database_settings.setdefault('my_alerts_replies', True)
                 database_settings.setdefault('my_alerts_actions', True)
+                database_settings.setdefault('my_alerts_reply_sound_enabled', True)
+                database_settings.setdefault('my_alerts_reply_sound_tone', 'chime')
                 database_settings.setdefault('user_auto_replies', [])
                 return database_settings
         except Exception as _db_load_error:
@@ -1398,6 +1402,8 @@ def load_settings(user_id):
             data.setdefault('my_alerts_enabled', True)
             data.setdefault('my_alerts_replies', True)
             data.setdefault('my_alerts_actions', True)
+            data.setdefault('my_alerts_reply_sound_enabled', True)
+            data.setdefault('my_alerts_reply_sound_tone', 'chime')
             data.setdefault('user_auto_replies', [])
             if _DB_READY:
                 _app_db.save_settings(user_id, data)
@@ -1412,6 +1418,8 @@ def load_settings(user_id):
             data.setdefault('my_alerts_enabled', True)
             data.setdefault('my_alerts_replies', True)
             data.setdefault('my_alerts_actions', True)
+            data.setdefault('my_alerts_reply_sound_enabled', True)
+            data.setdefault('my_alerts_reply_sound_tone', 'chime')
             data.setdefault('user_auto_replies', [])
             # نقل البيانات للمجلد الجديد والقاعدة عند توفرها
             save_settings(user_id, data, force=True)
@@ -1422,6 +1430,8 @@ def load_settings(user_id):
             'my_alerts_enabled': True,
             'my_alerts_replies': True,
             'my_alerts_actions': True,
+            'my_alerts_reply_sound_enabled': True,
+            'my_alerts_reply_sound_tone': 'chime',
             'user_auto_replies': []
         }
     except Exception as e:
@@ -1432,6 +1442,8 @@ def load_settings(user_id):
             'my_alerts_enabled': True,
             'my_alerts_replies': True,
             'my_alerts_actions': True,
+            'my_alerts_reply_sound_enabled': True,
+            'my_alerts_reply_sound_tone': 'chime',
             'user_auto_replies': []
         }
 
@@ -2024,7 +2036,9 @@ class TelegramClientManager:
                     "sender": sender_name,
                     "time": current_time,
                     "link": direct_msg_link,
-                    "text": reply_preview
+                    "text": reply_preview,
+                    "sound_enabled": bool(settings.get('my_alerts_reply_sound_enabled', True)),
+                    "sound_tone": str(settings.get('my_alerts_reply_sound_tone', 'chime'))
                 }, to=self.user_id)
                 return
 
@@ -5215,6 +5229,13 @@ def api_my_alerts_settings():
             settings['my_alerts_replies'] = bool(data['my_alerts_replies'])
         if 'my_alerts_actions' in data:
             settings['my_alerts_actions'] = bool(data['my_alerts_actions'])
+        if 'my_alerts_reply_sound_enabled' in data:
+            settings['my_alerts_reply_sound_enabled'] = bool(data['my_alerts_reply_sound_enabled'])
+        if 'my_alerts_reply_sound_tone' in data:
+            tone = str(data['my_alerts_reply_sound_tone']).strip().lower()
+            allowed_tones = ['chime', 'telegram', 'bell', 'crystal', 'two_tone', 'marimba']
+            if tone in allowed_tones:
+                settings['my_alerts_reply_sound_tone'] = tone
         save_settings(user_id, settings, force=True)
         socketio.emit('log_update', {"message": "🔔 تم تحديث إعدادات «تنبيهاتي» بنجاح"}, to=user_id)
         return jsonify({
@@ -5223,7 +5244,9 @@ def api_my_alerts_settings():
             "settings": {
                 "my_alerts_enabled": settings.get('my_alerts_enabled', True),
                 "my_alerts_replies": settings.get('my_alerts_replies', True),
-                "my_alerts_actions": settings.get('my_alerts_actions', True)
+                "my_alerts_actions": settings.get('my_alerts_actions', True),
+                "my_alerts_reply_sound_enabled": settings.get('my_alerts_reply_sound_enabled', True),
+                "my_alerts_reply_sound_tone": settings.get('my_alerts_reply_sound_tone', 'chime')
             }
         })
     return jsonify({
@@ -5231,7 +5254,9 @@ def api_my_alerts_settings():
         "settings": {
             "my_alerts_enabled": settings.get('my_alerts_enabled', True),
             "my_alerts_replies": settings.get('my_alerts_replies', True),
-            "my_alerts_actions": settings.get('my_alerts_actions', True)
+            "my_alerts_actions": settings.get('my_alerts_actions', True),
+            "my_alerts_reply_sound_enabled": settings.get('my_alerts_reply_sound_enabled', True),
+            "my_alerts_reply_sound_tone": settings.get('my_alerts_reply_sound_tone', 'chime')
         }
     })
 
@@ -5240,6 +5265,7 @@ def api_my_alerts_test():
     if 'user_id' not in session:
         return jsonify({"success": False, "message": "❌ الجلسة غير صالحة"}), 401
     user_id = session['user_id']
+    settings = load_settings(user_id)
     cm = telegram_manager.get_client_manager(user_id)
     if not cm:
         return jsonify({"success": False, "message": "❌ تعذر العثور على عميل تيليجرام للحساب"})
@@ -5249,12 +5275,24 @@ def api_my_alerts_test():
         "━━━━━━━━━━━━━━━━━━\n"
         "✅ **الحالة:** نظام التنبيهات يعمل بنجاح وجاهز لاستقبال الردود والإشعارات!\n"
         f"⏰ **الوقت:** {time.strftime('%Y-%m-%d %I:%M:%S %p')}\n"
-        "📌 **النوع:** إشعار تجريبي لاختبار التوصيل إلى الرسائل المحفوظة."
+        "📌 **النوع:** إشعار تجريبي لاختبار التوصيل إلى الرسائل المحفوظة والصوت في المتصفح."
     )
     sent = cm.run_coroutine(cm.send_to_saved_messages(test_msg))
     if sent:
         socketio.emit('log_update', {"message": "🔔 تم إرسال تنبيه تجريبي إلى رسائلك المحفوظة بنجاح"}, to=user_id)
-        return jsonify({"success": True, "message": "✅ تم إرسال تنبيه تجريبي إلى «الرسائل المحفوظة» في تيليجرام بنجاح!"})
+        # إرسال حدث اختباري للواجهة لتشغيل الصوت المختار مباشرة
+        socketio.emit('my_alert_event', {
+            "type": "reply",
+            "group": "مجموعة تجريبية (اختبار)",
+            "sender": "تجربة التنبيه الصوتي",
+            "time": time.strftime('%I:%M:%S %p'),
+            "link": "#",
+            "text": "هذا رد تجريبي لاختبار الصوت ونغمة التنبيه في المتصفح 🔔",
+            "sound_enabled": bool(settings.get('my_alerts_reply_sound_enabled', True)),
+            "sound_tone": str(settings.get('my_alerts_reply_sound_tone', 'chime')),
+            "is_test": True
+        }, to=user_id)
+        return jsonify({"success": True, "message": "✅ تم إرسال تنبيه تجريبي إلى «الرسائل المحفوظة» وتشغيل الصوت بنجاح!"})
     else:
         return jsonify({"success": False, "message": "⚠️ فشل إرسال التنبيه التجريبي. تأكد من أن الحساب متصل حالياً بتيليجرام."})
 
