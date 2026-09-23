@@ -609,7 +609,7 @@
                             </span>
                             <div class="text-end" style="text-align: right;">
                                 <div class="fw-bold fs-6 mb-0 text-white">الأدوات والوظائف السريعة</div>
-                                <small class="text-white-50" style="font-size: 0.75rem;">انقر لإظهار أو إخفاء الأيقونات (9 وظائف)</small>
+                                <small class="text-white-50" style="font-size: 0.75rem;">انقر لإظهار أو إخفاء الأيقونات (10 وظائف)</small>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-2">
@@ -622,6 +622,13 @@
                     <div class="collapse" id="dropdownFeaturesCollapse">
                         <div class="card-body bg-light p-3 border-top">
                             <div class="row g-2">
+                                <div class="col-6 col-md-4">
+                                    <button type="button" class="btn btn-outline-warning w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center position-relative shadow-sm" id="btnMyAlerts" data-bs-toggle="modal" data-bs-target="#myAlertsModal">
+                                        <i class="fas fa-bell fa-2x mb-2 text-warning"></i>
+                                        <span class="small fw-bold">تنبيهاتي</span>
+                                        <span class="badge bg-success mt-1" style="font-size:0.6rem;">🟢 نشط دائماً</span>
+                                    </button>
+                                </div>
                                 <div class="col-6 col-md-4">
                                     <button type="button" class="btn btn-outline-primary w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnLearningSystem" data-bs-toggle="modal" data-bs-target="#learningModal">
                                         <i class="fas fa-brain fa-2x mb-2"></i>
@@ -2136,6 +2143,87 @@
       </div>
     </div>
 
+    <!-- نافذة تنبيهاتي -->
+    <div class="modal fade" id="myAlertsModal" tabindex="-1" aria-labelledby="myAlertsModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content shadow border-0" style="border-radius: 16px;">
+          <div class="modal-header text-white" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 16px 16px 0 0;">
+            <h5 class="modal-title fw-bold" id="myAlertsModalLabel">
+              <i class="fas fa-bell me-2"></i>وظيفة تنبيهاتي (إشعارات الرسائل المحفوظة)
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="alert alert-success d-flex align-items-center mb-3 p-3 shadow-sm rounded-3" role="alert">
+              <i class="fas fa-check-circle fa-2x me-3 text-success"></i>
+              <div>
+                <div class="fw-bold fs-6">الوظيفة تعمل تلقائياً وبشكل دائم ومستمر!</div>
+                <small class="text-muted">يتم إرسال كافة التنبيهات والردود والتحذيرات فوراً إلى <strong>«الرسائل المحفوظة» (Saved Messages)</strong> في حسابك على تيليجرام برابط مباشر.</small>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <div class="card h-100 border-primary border-opacity-25 bg-primary bg-opacity-10 shadow-sm p-3 rounded-3">
+                  <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-reply-all text-primary fa-lg me-2"></i>
+                    <h6 class="fw-bold mb-0 text-primary">تنبيهات الردود على رسائلك</h6>
+                  </div>
+                  <p class="small text-muted mb-0">
+                    أي شخص يقوم بالرد على أي رسالة من رسائلك في أي مجموعة، يرسل لك إشعاراً فورياً باسم الشخص والمجموعة والوقت ورابط مباشر يفتح رسالة الرد مباشرة.
+                  </p>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card h-100 border-danger border-opacity-25 bg-danger bg-opacity-10 shadow-sm p-3 rounded-3">
+                  <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-shield-alt text-danger fa-lg me-2"></i>
+                    <h6 class="fw-bold mb-0 text-danger">تنبيهات الحظر والتقييد والتحذير</h6>
+                  </div>
+                  <p class="small text-muted mb-0">
+                    يتم إشعارك فوراً عند حظرك من أي مجموعة، أو تقييدك من الكتابة، أو ترقيتك لمشرف، أو إعطائك تحذيراً من أي بوت أو مشرف مع رابط مباشر لرسالة التحذير.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="card border p-3 mb-3 bg-light rounded-3 shadow-sm">
+              <h6 class="fw-bold mb-3"><i class="fas fa-sliders-h me-2 text-secondary"></i>إعدادات التنبيهات:</h6>
+              <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="toggleMyAlertsEnabled" checked>
+                <label class="form-check-label fw-bold" for="toggleMyAlertsEnabled">
+                  تفعيل نظام «تنبيهاتي» العام (مفعل دائماً وافتراضياً)
+                </label>
+              </div>
+              <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="toggleMyAlertsReplies" checked>
+                <label class="form-check-label" for="toggleMyAlertsReplies">
+                  إشعارات الردود على رسائلي في المجموعات
+                </label>
+              </div>
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="toggleMyAlertsActions" checked>
+                <label class="form-check-label" for="toggleMyAlertsActions">
+                  إشعارات الحظر والتقييد والترقية والتحذيرات
+                </label>
+              </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+              <button type="button" class="btn btn-outline-primary" id="btnTestMyAlert">
+                <i class="fas fa-paper-plane me-1"></i> إرسال تنبيه تجريبي إلى رسائلي المحفوظة
+              </button>
+              <button type="button" class="btn btn-success" id="btnSaveMyAlertsSettings">
+                <i class="fas fa-save me-1"></i> حفظ الإعدادات
+              </button>
+            </div>
+
+            <div id="myAlertsStatusMsg" class="mt-3" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 7) الردود التلقائية -->
     <div class="modal fade" id="autoRepliesModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -3624,6 +3712,87 @@
       const _arModalEl = document.getElementById('autoRepliesModal');
       if (_arModalEl) _arModalEl.addEventListener('show.bs.modal', arLoad);
       arLoad();
+
+      // ══════════════════════════════════════════════════════════
+      // وظيفة «تنبيهاتي» (My Alerts)
+      // ══════════════════════════════════════════════════════════
+      const myAlertsModal = document.getElementById('myAlertsModal');
+      const toggleMyAlertsEnabled = document.getElementById('toggleMyAlertsEnabled');
+      const toggleMyAlertsReplies = document.getElementById('toggleMyAlertsReplies');
+      const toggleMyAlertsActions = document.getElementById('toggleMyAlertsActions');
+      const btnSaveMyAlertsSettings = document.getElementById('btnSaveMyAlertsSettings');
+      const btnTestMyAlert = document.getElementById('btnTestMyAlert');
+      const myAlertsStatusMsg = document.getElementById('myAlertsStatusMsg');
+
+      async function loadMyAlertsSettings() {
+        try {
+          const res = await apiCall('/api/my_alerts/settings', 'GET');
+          if (res && res.success && res.settings) {
+            if (toggleMyAlertsEnabled) toggleMyAlertsEnabled.checked = (res.settings.my_alerts_enabled !== false);
+            if (toggleMyAlertsReplies) toggleMyAlertsReplies.checked = (res.settings.my_alerts_replies !== false);
+            if (toggleMyAlertsActions) toggleMyAlertsActions.checked = (res.settings.my_alerts_actions !== false);
+          }
+        } catch (e) {
+          console.debug('Failed to load my alerts settings:', e);
+        }
+      }
+
+      if (myAlertsModal) {
+        myAlertsModal.addEventListener('show.bs.modal', loadMyAlertsSettings);
+      }
+      loadMyAlertsSettings();
+
+      if (btnSaveMyAlertsSettings) {
+        btnSaveMyAlertsSettings.addEventListener('click', async () => {
+          btnSaveMyAlertsSettings.disabled = true;
+          try {
+            const res = await apiCall('/api/my_alerts/settings', 'POST', {
+              my_alerts_enabled: toggleMyAlertsEnabled ? toggleMyAlertsEnabled.checked : true,
+              my_alerts_replies: toggleMyAlertsReplies ? toggleMyAlertsReplies.checked : true,
+              my_alerts_actions: toggleMyAlertsActions ? toggleMyAlertsActions.checked : true
+            });
+            if (myAlertsStatusMsg) {
+              myAlertsStatusMsg.style.display = 'block';
+              myAlertsStatusMsg.className = res.success ? 'alert alert-success' : 'alert alert-danger';
+              myAlertsStatusMsg.textContent = res.message || 'تم حفظ إعدادات تنبيهاتي بنجاح';
+              setTimeout(() => { myAlertsStatusMsg.style.display = 'none'; }, 4000);
+            }
+          } catch (err) {
+            if (myAlertsStatusMsg) {
+              myAlertsStatusMsg.style.display = 'block';
+              myAlertsStatusMsg.className = 'alert alert-danger';
+              myAlertsStatusMsg.textContent = err.message || 'حدث خطأ أثناء حفظ الإعدادات';
+            }
+          } finally {
+            btnSaveMyAlertsSettings.disabled = false;
+          }
+        });
+      }
+
+      if (btnTestMyAlert) {
+        btnTestMyAlert.addEventListener('click', async () => {
+          btnTestMyAlert.disabled = true;
+          btnTestMyAlert.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الإرسال...';
+          try {
+            const res = await apiCall('/api/my_alerts/test', 'POST');
+            if (myAlertsStatusMsg) {
+              myAlertsStatusMsg.style.display = 'block';
+              myAlertsStatusMsg.className = res.success ? 'alert alert-success' : 'alert alert-warning';
+              myAlertsStatusMsg.textContent = res.message || 'تم إرسال التنبيه التجريبي بنجاح';
+              setTimeout(() => { myAlertsStatusMsg.style.display = 'none'; }, 5000);
+            }
+          } catch (err) {
+            if (myAlertsStatusMsg) {
+              myAlertsStatusMsg.style.display = 'block';
+              myAlertsStatusMsg.className = 'alert alert-danger';
+              myAlertsStatusMsg.textContent = err.message || 'تعذر إرسال التنبيه التجريبي';
+            }
+          } finally {
+            btnTestMyAlert.disabled = false;
+            btnTestMyAlert.innerHTML = '<i class="fas fa-paper-plane me-1"></i> إرسال تنبيه تجريبي إلى رسائلي المحفوظة';
+          }
+        });
+      }
     </script>
 
     <!-- ===== مودال التحليل الإحصائي ===== -->

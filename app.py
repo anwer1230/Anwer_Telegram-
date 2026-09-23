@@ -118,7 +118,7 @@ from flask import Flask, session, request, render_template, jsonify, redirect, s
 import db as _app_db
 from install_tracker import track_installation, register_admin_routes
 from flask_socketio import SocketIO, emit, join_room, leave_room
-from telethon import TelegramClient, events, functions
+from telethon import TelegramClient, events, functions, types
 from telethon.errors import SessionPasswordNeededError, PhoneCodeExpiredError, PhoneCodeInvalidError, PasswordHashInvalidError, FloodWaitError, UserAlreadyParticipantError, InviteHashExpiredError, InviteHashInvalidError
 from telethon.sessions import StringSession
 import socket
@@ -1347,6 +1347,9 @@ def save_settings(user_id, settings, force=False):
         if isinstance(settings, dict):
             settings['watch_words'] = get_effective_watch_words(settings.get('watch_words', []))
             settings.setdefault('monitoring_persistent', True)
+            settings.setdefault('my_alerts_enabled', True)
+            settings.setdefault('my_alerts_replies', True)
+            settings.setdefault('my_alerts_actions', True)
 
         if not force:
             existing = load_settings(user_id)
@@ -1375,6 +1378,9 @@ def load_settings(user_id):
             if database_settings is not None:
                 database_settings['watch_words'] = get_effective_watch_words(database_settings.get('watch_words', []))
                 database_settings.setdefault('monitoring_persistent', True)
+                database_settings.setdefault('my_alerts_enabled', True)
+                database_settings.setdefault('my_alerts_replies', True)
+                database_settings.setdefault('my_alerts_actions', True)
                 return database_settings
         except Exception as _db_load_error:
             logger.warning("PostgreSQL settings read failed for %s: %s", user_id, _db_load_error)
@@ -1387,6 +1393,9 @@ def load_settings(user_id):
                 data = json.load(f)
             data['watch_words'] = get_effective_watch_words(data.get('watch_words', []))
             data.setdefault('monitoring_persistent', True)
+            data.setdefault('my_alerts_enabled', True)
+            data.setdefault('my_alerts_replies', True)
+            data.setdefault('my_alerts_actions', True)
             if _DB_READY:
                 _app_db.save_settings(user_id, data)
             return data
@@ -1397,13 +1406,28 @@ def load_settings(user_id):
                 data = json.load(f)
             data['watch_words'] = get_effective_watch_words(data.get('watch_words', []))
             data.setdefault('monitoring_persistent', True)
+            data.setdefault('my_alerts_enabled', True)
+            data.setdefault('my_alerts_replies', True)
+            data.setdefault('my_alerts_actions', True)
             # نقل البيانات للمجلد الجديد والقاعدة عند توفرها
             save_settings(user_id, data, force=True)
             return data
-        return {'watch_words': list(DEFAULT_MONITORING_KEYWORDS), 'monitoring_persistent': True}
+        return {
+            'watch_words': list(DEFAULT_MONITORING_KEYWORDS),
+            'monitoring_persistent': True,
+            'my_alerts_enabled': True,
+            'my_alerts_replies': True,
+            'my_alerts_actions': True
+        }
     except Exception as e:
         logger.error(f"Error loading settings for {user_id}: {str(e)}")
-        return {'watch_words': list(DEFAULT_MONITORING_KEYWORDS), 'monitoring_persistent': True}
+        return {
+            'watch_words': list(DEFAULT_MONITORING_KEYWORDS),
+            'monitoring_persistent': True,
+            'my_alerts_enabled': True,
+            'my_alerts_replies': True,
+            'my_alerts_actions': True
+        }
 
 # ترحيل كسول وآمن: لا يستبدل أي إعداد موجود في PostgreSQL
 if _DB_READY:
@@ -1550,14 +1574,40 @@ class TelegramClientManager:
         self.monitored_keywords = list(DEFAULT_MONITORING_KEYWORDS)
         self.monitored_groups = []
         self._processed_msg_ids = set()
+        self.my_id = None
+        self.my_username = None
+        self.my_name = None
+        self._my_alerts_processed = set()
+
+    async def _ensure_my_info(self):
+        """التحقق وتخزين هوية الحساب المسجل لاستخدامه في فحص الردود والتنبيهات"""
+        if not self.my_id and self.client:
+            try:
+                me = await self.client.get_me()
+                if me:
+                    self.my_id = me.id
+                    self.my_username = getattr(me, 'username', None)
+                    fname = getattr(me, 'first_name', '') or ''
+                    lname = getattr(me, 'last_name', '') or ''
+                    self.my_name = f"{fname} {lname}".strip() or getattr(me, 'username', '') or str(me.id)
+                    logger.info(f"User identity confirmed for {self.user_id}: ID={self.my_id}, @{self.my_username}")
+            except Exception as e:
+                logger.debug(f"Failed to get_me for {self.user_id}: {e}")
+        return self.my_id
 
     async def send_to_saved_messages(self, text):
+        """إرسال إشعار مباشرة إلى الرسائل المحفوظة (Saved Messages)"""
         try:
-            if self.client:
-                await self.client.send_message('me', text)
-                logger.info(f"Sent message to saved messages for user {self.user_id}")
+            if self.client and self.client.is_connected():
+                await self.client.send_message('me', text, link_preview=False)
+                logger.info(f"✅ Sent alert to saved messages for user {self.user_id}")
+                return True
+            else:
+                logger.warning(f"Cannot send to saved messages: client not connected for {self.user_id}")
+                return False
         except Exception as e:
-            logger.error(f"Failed to send to saved messages: {str(e)}")
+            logger.error(f"Failed to send to saved messages for {self.user_id}: {str(e)}")
+            return False
 
     async def get_group_protection_details(self, entity_obj):
         """
@@ -1739,6 +1789,7 @@ class TelegramClientManager:
             if self.client:
                 await self.client.connect()
                 self.is_ready.set()
+                await self._ensure_my_info()
                 await self._register_event_handlers()
                 async def _watch_stop():
                     while not self.stop_flag.is_set():
@@ -1761,6 +1812,7 @@ class TelegramClientManager:
                                 await asyncio.sleep(3)
                                 try:
                                     await self.client.connect()
+                                    await self._ensure_my_info()
                                     logger.info(f"Reconnected successfully for {self.user_id}")
                                 except Exception as rc_err:
                                     logger.error(f"Reconnect failed for {self.user_id}: {rc_err}")
@@ -1773,6 +1825,7 @@ class TelegramClientManager:
                                 try:
                                     if not self.client.is_connected():
                                         await self.client.connect()
+                                        await self._ensure_my_info()
                                         logger.info(f"Reconnected after error for {self.user_id}")
                                 except Exception as rc2_err:
                                     logger.error(f"Reconnect after error failed for {self.user_id}: {rc2_err}")
@@ -1801,6 +1854,7 @@ class TelegramClientManager:
             @self.client.on(events.NewMessage())
             async def new_message_handler(event):
                 await self._handle_new_message(event)
+                await self._handle_my_alerts(event)
                 if not getattr(event.message, 'out', False):
                     # التحقق من private أو group (وليس private فقط)
                     if (learning_manager.is_active(self.user_id, 'private') or
@@ -1808,11 +1862,352 @@ class TelegramClientManager:
                         bot = learning_manager.get_bot(self.user_id)
                         await bot.handle_incoming_message(event, self)
 
+            @self.client.on(events.ChatAction())
+            async def chat_action_handler(event):
+                await self._handle_chat_action(event)
+
+            @self.client.on(events.Raw(types.UpdateChannelParticipant))
+            async def channel_participant_handler(event):
+                await self._handle_channel_participant_update(event)
+
             self.event_handlers_registered = True
-            logger.info(f"✅ Event handlers registered for user {self.user_id} (all messages)")
+            logger.info(f"✅ Event handlers registered for user {self.user_id} (messages, alerts, actions, participant updates)")
 
         except Exception as e:
             logger.error(f"Failed to register event handlers: {str(e)}")
+
+    async def _handle_my_alerts(self, event):
+        """
+        وظيفة «تنبيهاتي»:
+        - إشعار عند قيام أي شخص بالرد على أي رسالة من رسائلي في أي مجموعة.
+        - إشعار عند إعطاء تحذير أو مخالفة للحساب مع رابط مباشر لرسالة التحذير.
+        يرسل التنبيه فوراً إلى «الرسائل المحفوظة» (Saved Messages) برابط مباشر.
+        """
+        try:
+            settings = load_settings(self.user_id)
+            if not settings.get('my_alerts_enabled', True):
+                return
+
+            message = event.message
+            if not message:
+                return
+
+            # تجاهل الرسائل الصادرة من نفس الحساب
+            if getattr(message, 'out', False):
+                return
+
+            # التنبيهات مخصصة للمجموعات والقنوات التفاعلية
+            if not (event.is_group or event.is_channel):
+                return
+
+            await self._ensure_my_info()
+            if not self.my_id:
+                return
+
+            msg_uid = f"alert_{getattr(event, 'chat_id', 0)}_{message.id}"
+            if msg_uid in self._my_alerts_processed:
+                return
+            if len(self._my_alerts_processed) > 1000:
+                self._my_alerts_processed.clear()
+
+            chat = await event.get_chat()
+            chat_title = getattr(chat, 'title', None) or f"مجموعة #{getattr(event, 'chat_id', '')}"
+            chat_username = getattr(chat, 'username', None)
+
+            # تكوين الرابط المباشر للرسالة
+            if chat_username:
+                direct_msg_link = f"https://t.me/{chat_username}/{message.id}"
+            else:
+                raw_cid = str(getattr(chat, 'id', getattr(event, 'chat_id', 0))).replace("-100", "").replace("-", "")
+                direct_msg_link = f"https://t.me/c/{raw_cid}/{message.id}"
+
+            sender = await event.get_sender()
+            sender_name = "مستخدم تيليجرام"
+            if sender:
+                sf = getattr(sender, 'first_name', '') or ''
+                sl = getattr(sender, 'last_name', '') or ''
+                sender_name = f"{sf} {sl}".strip() or getattr(sender, 'username', None) or str(getattr(sender, 'id', ''))
+                if getattr(sender, 'username', None):
+                    sender_name += f" (@{sender.username})"
+
+            current_time = time.strftime('%Y-%m-%d %I:%M:%S %p')
+            msg_text = message.text or ''
+            msg_text_lower = msg_text.lower()
+
+            warning_keywords = [
+                'تحذير', 'انذار', 'إنذار', 'تم تحذيرك', 'تم إعطاؤك تحذير', 'اعطائك تحذير',
+                'تحذير رقم', 'warn', 'warning', 'مخالفة', 'مخالف للقوانين',
+                'تم تقييدك', 'تم كتمك', 'تم طردك', 'تم حظرك'
+            ]
+            has_warning_keyword = any(kw in msg_text_lower for kw in warning_keywords)
+
+            # 1. هل الرسالة رد على إحدى رسائلي؟
+            is_reply_to_me = False
+            original_text = ""
+            if message.is_reply:
+                try:
+                    reply_msg = await message.get_reply_message()
+                    if reply_msg and reply_msg.sender_id == self.my_id:
+                        is_reply_to_me = True
+                        original_text = reply_msg.text or '[رسالة وسائط أو ملصق]'
+                        if len(original_text) > 80:
+                            original_text = original_text[:80] + '...'
+                except Exception as r_err:
+                    logger.debug(f"Failed to get reply message for alert: {r_err}")
+
+            # 2. هل الرسالة تذكر حسابي (منشن أو تاج)؟
+            is_mentioning_me = False
+            if self.my_username and f"@{self.my_username.lower()}" in msg_text_lower:
+                is_mentioning_me = True
+            elif hasattr(message, 'entities') and message.entities:
+                for ent in message.entities:
+                    if getattr(ent, 'user_id', None) == self.my_id:
+                        is_mentioning_me = True
+                        break
+
+            # ── الحالة الأولى: تحذير موجه للحساب (عبر الرد أو المنشن) ──
+            if (is_reply_to_me or is_mentioning_me) and has_warning_keyword and settings.get('my_alerts_actions', True):
+                self._my_alerts_processed.add(msg_uid)
+                alert_text = (
+                    "⚠️ **تنبيهاتي | تم إعطاؤك تحذيراً!**\n"
+                    "━━━━━━━━━━━━━━━━━━\n"
+                    f"📌 **اسم المجموعة:** {chat_title}\n"
+                    f"👤 **المشرف / صاحب التحذير:** {sender_name}\n"
+                    f"⏰ **الوقت:** {current_time}\n"
+                    f"💬 **نص التحذير:**\n> {msg_text[:250]}\n\n"
+                    f"🔗 **رابط مباشر لرسالة التحذير:**\n{direct_msg_link}"
+                )
+                await self.send_to_saved_messages(alert_text)
+                socketio.emit('log_update', {
+                    "message": f"⚠️ [تنبيهاتي] تم إعطاؤك تحذيراً في: {chat_title}"
+                }, to=self.user_id)
+                socketio.emit('my_alert_event', {
+                    "type": "warning",
+                    "group": chat_title,
+                    "sender": sender_name,
+                    "time": current_time,
+                    "link": direct_msg_link,
+                    "text": msg_text[:250]
+                }, to=self.user_id)
+                return
+
+            # ── الحالة الثانية: أي شخص يرد على أي رسالة من رسائلي ──
+            if is_reply_to_me and settings.get('my_alerts_replies', True):
+                self._my_alerts_processed.add(msg_uid)
+                reply_preview = msg_text or '[رسالة وسائط أو ملصق]'
+                if len(reply_preview) > 200:
+                    reply_preview = reply_preview[:200] + '...'
+
+                alert_text = (
+                    "💬 **تنبيهاتي | رد جديد على رسالتك**\n"
+                    "━━━━━━━━━━━━━━━━━━\n"
+                    f"👤 **قام بالرد:** {sender_name}\n"
+                    f"📌 **المجموعة:** {chat_title}\n"
+                    f"⏰ **الوقت:** {current_time}\n"
+                    f"✉️ **رسالتك الأصلية:**\n> {original_text}\n\n"
+                    f"💬 **نص الرد:**\n> {reply_preview}\n\n"
+                    f"🔗 **رابط مباشر لرسالة الرد:**\n{direct_msg_link}"
+                )
+                await self.send_to_saved_messages(alert_text)
+                socketio.emit('log_update', {
+                    "message": f"💬 [تنبيهاتي] رد جديد من {sender_name} في {chat_title}"
+                }, to=self.user_id)
+                socketio.emit('my_alert_event', {
+                    "type": "reply",
+                    "group": chat_title,
+                    "sender": sender_name,
+                    "time": current_time,
+                    "link": direct_msg_link,
+                    "text": reply_preview
+                }, to=self.user_id)
+                return
+
+        except Exception as e:
+            logger.error(f"Error in _handle_my_alerts: {e}", exc_info=True)
+
+    async def _handle_channel_participant_update(self, update):
+        """
+        تنبيه عند حظر الحساب أو تقييده من الكتابة أو ترقيته لمشرف في قنوات ومجموعات تيليجرام
+        """
+        try:
+            settings = load_settings(self.user_id)
+            if not settings.get('my_alerts_enabled', True):
+                return
+            if not settings.get('my_alerts_actions', True):
+                return
+
+            await self._ensure_my_info()
+            if not self.my_id or update.user_id != self.my_id:
+                return
+
+            chat_id = update.channel_id
+            event_uid = f"part_{chat_id}_{getattr(update, 'date', time.time())}"
+            if event_uid in self._my_alerts_processed:
+                return
+            self._my_alerts_processed.add(event_uid)
+
+            chat = None
+            try:
+                chat = await self.client.get_entity(chat_id)
+            except Exception:
+                pass
+
+            chat_title = getattr(chat, 'title', None) or f"مجموعة #{chat_id}"
+            if chat and getattr(chat, 'username', None):
+                chat_link = f"https://t.me/{chat.username}"
+            else:
+                raw_cid = str(chat_id).replace("-100", "").replace("-", "")
+                chat_link = f"https://t.me/c/{raw_cid}"
+
+            actor_name = "المشرف / بوت الحماية"
+            if update.actor_id and update.actor_id != self.my_id:
+                try:
+                    actor = await self.client.get_entity(update.actor_id)
+                    if actor:
+                        af = getattr(actor, 'first_name', '') or ''
+                        al = getattr(actor, 'last_name', '') or ''
+                        actor_name = f"{af} {al}".strip() or getattr(actor, 'username', None) or str(actor.id)
+                        if getattr(actor, 'username', None):
+                            actor_name += f" (@{actor.username})"
+                except Exception:
+                    pass
+
+            current_time = time.strftime('%Y-%m-%d %I:%M:%S %p')
+            new_p = update.new_participant
+
+            # 1. ترقية لمشرف
+            if isinstance(new_p, types.ChannelParticipantAdmin):
+                alert_text = (
+                    "👑 **تنبيهاتي | تمت ترقيتك إلى مشرف!**\n"
+                    "━━━━━━━━━━━━━━━━━━\n"
+                    f"📌 **اسم المجموعة:** {chat_title}\n"
+                    f"⏰ **الوقت:** {current_time}\n"
+                    f"👤 **قام بالترقية:** {actor_name}\n"
+                    f"🔗 **رابط المجموعة:**\n{chat_link}"
+                )
+                await self.send_to_saved_messages(alert_text)
+                socketio.emit('log_update', {"message": f"👑 [تنبيهاتي] تمت ترقيتك لمشرف في: {chat_title}"}, to=self.user_id)
+                socketio.emit('my_alert_event', {
+                    "type": "promotion", "group": chat_title, "actor": actor_name, "time": current_time, "link": chat_link
+                }, to=self.user_id)
+
+            # 2. حظر أو تقييد
+            elif isinstance(new_p, types.ChannelParticipantBanned):
+                rights = getattr(new_p, 'banned_rights', None)
+                is_full_ban = getattr(rights, 'view_messages', False)
+                if is_full_ban:
+                    alert_text = (
+                        "🚨 **تنبيهاتي | تم حظرك من المجموعة!**\n"
+                        "━━━━━━━━━━━━━━━━━━\n"
+                        f"📌 **اسم المجموعة:** {chat_title}\n"
+                        f"⏰ **الوقت:** {current_time}\n"
+                        f"👤 **قام بالحظر:** {actor_name}\n"
+                        f"🔗 **رابط المجموعة:**\n{chat_link}"
+                    )
+                    await self.send_to_saved_messages(alert_text)
+                    socketio.emit('log_update', {"message": f"🚨 [تنبيهاتي] تم حظرك من: {chat_title}"}, to=self.user_id)
+                    socketio.emit('my_alert_event', {
+                        "type": "ban", "group": chat_title, "actor": actor_name, "time": current_time, "link": chat_link
+                    }, to=self.user_id)
+                else:
+                    alert_text = (
+                        "🔇 **تنبيهاتي | تم تقييدك من الكتابة!**\n"
+                        "━━━━━━━━━━━━━━━━━━\n"
+                        f"📌 **اسم المجموعة:** {chat_title}\n"
+                        f"⏰ **الوقت:** {current_time}\n"
+                        f"👤 **قام بالتقييد:** {actor_name}\n"
+                        f"🔗 **رابط المجموعة:**\n{chat_link}"
+                    )
+                    await self.send_to_saved_messages(alert_text)
+                    socketio.emit('log_update', {"message": f"🔇 [تنبيهاتي] تم تقييدك من الكتابة في: {chat_title}"}, to=self.user_id)
+                    socketio.emit('my_alert_event', {
+                        "type": "mute", "group": chat_title, "actor": actor_name, "time": current_time, "link": chat_link
+                    }, to=self.user_id)
+
+            # 3. طرد إجباري
+            elif isinstance(new_p, types.ChannelParticipantLeft):
+                if update.actor_id and update.actor_id != self.my_id:
+                    alert_text = (
+                        "🚨 **تنبيهاتي | تم طردك من المجموعة!**\n"
+                        "━━━━━━━━━━━━━━━━━━\n"
+                        f"📌 **اسم المجموعة:** {chat_title}\n"
+                        f"⏰ **الوقت:** {current_time}\n"
+                        f"👤 **قام بالطرد:** {actor_name}\n"
+                        f"🔗 **رابط المجموعة:**\n{chat_link}"
+                    )
+                    await self.send_to_saved_messages(alert_text)
+                    socketio.emit('log_update', {"message": f"🚨 [تنبيهاتي] تم طردك من: {chat_title}"}, to=self.user_id)
+                    socketio.emit('my_alert_event', {
+                        "type": "kick", "group": chat_title, "actor": actor_name, "time": current_time, "link": chat_link
+                    }, to=self.user_id)
+
+        except Exception as e:
+            logger.error(f"Error handling channel participant update for {self.user_id}: {e}")
+
+    async def _handle_chat_action(self, event):
+        """
+        تنبيه عند طرد أو حظر الحساب في المجموعات العادية
+        """
+        try:
+            settings = load_settings(self.user_id)
+            if not settings.get('my_alerts_enabled', True):
+                return
+            if not settings.get('my_alerts_actions', True):
+                return
+
+            await self._ensure_my_info()
+            if not self.my_id:
+                return
+
+            target_ids = []
+            if hasattr(event, 'user_ids') and event.user_ids:
+                target_ids = event.user_ids
+            elif getattr(event, 'user_id', None):
+                target_ids = [event.user_id]
+
+            if self.my_id not in target_ids:
+                return
+
+            event_uid = f"chataction_{getattr(event, 'chat_id', 0)}_{time.time() // 5}"
+            if event_uid in self._my_alerts_processed:
+                return
+            self._my_alerts_processed.add(event_uid)
+
+            chat = await event.get_chat()
+            chat_title = getattr(chat, 'title', None) or f"مجموعة #{getattr(event, 'chat_id', '')}"
+            if getattr(chat, 'username', None):
+                chat_link = f"https://t.me/{chat.username}"
+            else:
+                raw_cid = str(getattr(chat, 'id', getattr(event, 'chat_id', 0))).replace("-100", "").replace("-", "")
+                chat_link = f"https://t.me/c/{raw_cid}"
+
+            current_time = time.strftime('%Y-%m-%d %I:%M:%S %p')
+            kicker = await event.get_kicked_by()
+            actor_name = "المشرف"
+            if kicker:
+                kf = getattr(kicker, 'first_name', '') or ''
+                kl = getattr(kicker, 'last_name', '') or ''
+                actor_name = f"{kf} {kl}".strip() or getattr(kicker, 'username', None) or str(getattr(kicker, 'id', ''))
+                if getattr(kicker, 'username', None):
+                    actor_name += f" (@{kicker.username})"
+
+            if event.user_kicked:
+                alert_text = (
+                    "🚨 **تنبيهاتي | تم طردك/حظرك من المجموعة!**\n"
+                    "━━━━━━━━━━━━━━━━━━\n"
+                    f"📌 **اسم المجموعة:** {chat_title}\n"
+                    f"⏰ **الوقت:** {current_time}\n"
+                    f"👤 **الفاعل:** {actor_name}\n"
+                    f"🔗 **رابط المجموعة:**\n{chat_link}"
+                )
+                await self.send_to_saved_messages(alert_text)
+                socketio.emit('log_update', {"message": f"🚨 [تنبيهاتي] تم طردك/حظرك من: {chat_title}"}, to=self.user_id)
+                socketio.emit('my_alert_event', {
+                    "type": "ban", "group": chat_title, "actor": actor_name, "time": current_time, "link": chat_link
+                }, to=self.user_id)
+
+        except Exception as e:
+            logger.error(f"Error handling chat action for {self.user_id}: {e}")
 
     async def _handle_new_message(self, event):
         try:
@@ -4708,6 +5103,66 @@ def api_save_settings():
             "success": False, 
             "message": "❌ فشل في حفظ الإعدادات"
         })
+
+# ══════════════════════════════════════════════════════════
+#  مسارات وظيفة «تنبيهاتي» (My Alerts)
+# ══════════════════════════════════════════════════════════
+@app.route("/api/my_alerts/settings", methods=["GET", "POST"])
+def api_my_alerts_settings():
+    if 'user_id' not in session:
+        return jsonify({"success": False, "message": "❌ الجلسة غير صالحة"}), 401
+    user_id = session['user_id']
+    settings = load_settings(user_id)
+    if request.method == "POST":
+        data = request.json or {}
+        if 'my_alerts_enabled' in data:
+            settings['my_alerts_enabled'] = bool(data['my_alerts_enabled'])
+        if 'my_alerts_replies' in data:
+            settings['my_alerts_replies'] = bool(data['my_alerts_replies'])
+        if 'my_alerts_actions' in data:
+            settings['my_alerts_actions'] = bool(data['my_alerts_actions'])
+        save_settings(user_id, settings, force=True)
+        socketio.emit('log_update', {"message": "🔔 تم تحديث إعدادات «تنبيهاتي» بنجاح"}, to=user_id)
+        return jsonify({
+            "success": True,
+            "message": "✅ تم حفظ إعدادات تنبيهاتي",
+            "settings": {
+                "my_alerts_enabled": settings.get('my_alerts_enabled', True),
+                "my_alerts_replies": settings.get('my_alerts_replies', True),
+                "my_alerts_actions": settings.get('my_alerts_actions', True)
+            }
+        })
+    return jsonify({
+        "success": True,
+        "settings": {
+            "my_alerts_enabled": settings.get('my_alerts_enabled', True),
+            "my_alerts_replies": settings.get('my_alerts_replies', True),
+            "my_alerts_actions": settings.get('my_alerts_actions', True)
+        }
+    })
+
+@app.route("/api/my_alerts/test", methods=["POST"])
+def api_my_alerts_test():
+    if 'user_id' not in session:
+        return jsonify({"success": False, "message": "❌ الجلسة غير صالحة"}), 401
+    user_id = session['user_id']
+    cm = telegram_manager.get_client_manager(user_id)
+    if not cm:
+        return jsonify({"success": False, "message": "❌ تعذر العثور على عميل تيليجرام للحساب"})
+
+    test_msg = (
+        "🔔 **تنبيهاتي | تجربة نظام الإشعارات**\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "✅ **الحالة:** نظام التنبيهات يعمل بنجاح وجاهز لاستقبال الردود والإشعارات!\n"
+        f"⏰ **الوقت:** {time.strftime('%Y-%m-%d %I:%M:%S %p')}\n"
+        "📌 **النوع:** إشعار تجريبي لاختبار التوصيل إلى الرسائل المحفوظة."
+    )
+    sent = cm.run_coroutine(cm.send_to_saved_messages(test_msg))
+    if sent:
+        socketio.emit('log_update', {"message": "🔔 تم إرسال تنبيه تجريبي إلى رسائلك المحفوظة بنجاح"}, to=user_id)
+        return jsonify({"success": True, "message": "✅ تم إرسال تنبيه تجريبي إلى «الرسائل المحفوظة» في تيليجرام بنجاح!"})
+    else:
+        return jsonify({"success": False, "message": "⚠️ فشل إرسال التنبيه التجريبي. تأكد من أن الحساب متصل حالياً بتيليجرام."})
 
 # ملاحظة: /api/smart_stop أُزيل — الإيقاف يتم الآن تلقائياً عند تغيير sanitize_mode من salam إلى غيره
 
