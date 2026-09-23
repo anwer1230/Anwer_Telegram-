@@ -160,9 +160,11 @@ class _WerkzeugFilter(logging.Filter):
             msg = record.getMessage()
             if '/api/app_logs' in msg and (' 200 ' in msg or ' 304 ' in msg):
                 return False
-            if 'Request timed out' in msg or 'TimeoutError' in msg:
+            if 'Request timed out' in msg or 'TimeoutError' in msg or 'timed out' in msg:
                 return False
             if 'BrokenPipeError' in msg or 'ConnectionResetError' in msg:
+                return False
+            if 'Invalid session' in msg:
                 return False
         except Exception:
             pass
@@ -171,10 +173,11 @@ class _WerkzeugFilter(logging.Filter):
 _wf = _WerkzeugFilter()
 for _h in _log_handlers:
     _h.addFilter(_wf)
-try:
-    logging.getLogger('werkzeug').addFilter(_wf)
-except Exception:
-    pass
+for _lg in ['werkzeug', 'engineio', 'engineio.server', 'socketio']:
+    try:
+        logging.getLogger(_lg).addFilter(_wf)
+    except Exception:
+        pass
 
 # ── إنشاء مجلد outputs عند بدء التشغيل ──
 _outputs_dir = os.path.join(os.path.dirname(__file__), 'pptx_app', 'outputs')
