@@ -540,6 +540,11 @@
                                     </button>
                                 </div>
                             </div>
+                            <div class="mt-2 text-center">
+                                <button type="button" class="btn btn-link btn-sm text-decoration-none text-muted" id="cancelVerifyBtn">
+                                    <i class="fas fa-arrow-right me-1"></i>الرجوع لتعديل رقم الهاتف أو المحاولة مجدداً
+                                </button>
+                            </div>
                             <small class="text-muted d-block mt-2 text-center">
                                 <i class="fas fa-info-circle me-1"></i>
                                 الكود يصل أولاً داخل تطبيق تيليجرام. اضغط "إرسال عبر SMS" لاستلامه كرسالة نصية.
@@ -557,6 +562,11 @@
                                 <i class="fas fa-unlock me-2"></i>
                                 تأكيد كلمة المرور
                             </button>
+                            <div class="mt-2 text-center">
+                                <button type="button" class="btn btn-link btn-sm text-decoration-none text-muted" id="cancelPasswordBtn">
+                                    <i class="fas fa-arrow-right me-1"></i>الرجوع لتعديل رقم الهاتف
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -583,88 +593,108 @@
                     </div>
                 </div>
 
-                <!-- الوظائف الجديدة -->
-                <div class="card mt-3">
-                    <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #1e3c78 0%, #2a5298 100%);">
-                        <h5 class="mb-0">
-                            <i class="fas fa-rocket me-2"></i>
-                            الوظائف الجديدة
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-2">
-                            <div class="col-6 col-md-4">
-                                <button type="button" class="btn btn-outline-primary w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnLearningSystem" data-bs-toggle="modal" data-bs-target="#learningModal">
-                                    <i class="fas fa-brain fa-2x mb-2"></i>
-                                    <span class="small fw-bold">نظام التعلم الذكي</span>
-                                </button>
+                <!-- قائمة الوظائف والأدوات المنسدلة -->
+                <div class="card mt-3 shadow-sm border-0 overflow-hidden" id="dropdownFeaturesCard">
+                    <button type="button" 
+                            class="btn w-100 p-3 d-flex align-items-center justify-content-between text-white border-0 shadow-none text-decoration-none" 
+                            style="background: linear-gradient(135deg, #1e3c78 0%, #2a5298 100%); border-radius: inherit; transition: all 0.25s ease;"
+                            data-bs-toggle="collapse" 
+                            data-bs-target="#dropdownFeaturesCollapse" 
+                            aria-expanded="false" 
+                            aria-controls="dropdownFeaturesCollapse"
+                            id="btnToggleDropdownFeatures">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="d-inline-flex align-items-center justify-content-center bg-white bg-opacity-20 rounded-circle" style="width: 40px; height: 40px; min-width: 40px;">
+                                <i class="fas fa-th-large text-warning fa-lg"></i>
+                            </span>
+                            <div class="text-end" style="text-align: right;">
+                                <div class="fw-bold fs-6 mb-0 text-white">الأدوات والوظائف السريعة</div>
+                                <small class="text-white-50" style="font-size: 0.75rem;">انقر لإظهار أو إخفاء الأيقونات (9 وظائف)</small>
                             </div>
-                            <div class="col-6 col-md-4">
-                                <button type="button" class="btn btn-outline-success w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnRotatingSystem" data-bs-toggle="modal" data-bs-target="#rotatingModal">
-                                    <i class="fas fa-sync-alt fa-2x mb-2"></i>
-                                    <span class="small fw-bold">النشر الدوري</span>
-                                </button>
-                            </div>
-                            <div class="col-6 col-md-4">
-                              <button type="button" class="btn btn-outline-warning w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnSearchMyLinksDropdown" onclick="openSearchMyLinksTab('global')" style="min-height:90px;">
-                                  <i class="fas fa-search fa-2x mb-2"></i>
-                                  <span class="small fw-bold">البحث في روابطي</span>
-                                  <span style="font-size:0.62rem;opacity:0.7;margin-top:3px;">بحث · رسائل · دول</span>
-                              </button>
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <button type="button" class="btn btn-outline-danger w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnAutoJoinAdvanced" data-bs-toggle="modal" data-bs-target="#autoJoinAdvancedModal">
-                                    <i class="fas fa-bolt fa-2x mb-2"></i>
-                                    <span class="small fw-bold">الانضمام المتقدم</span>
-                                </button>
-                            </div>
-                            <div class="col-6 col-md-4">
-                              <div class="w-100 h-100">
-                                <button type="button" class="btn btn-outline-secondary w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnSystemHealth" onclick="checkSystemHealth()">
-                                    <i class="fas fa-heartbeat fa-2x mb-2"></i>
-                                    <span class="small fw-bold">صحة النظام</span>
-                                </button>
-                              </div>
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <button type="button" class="btn btn-outline-info w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnAutoReplies" data-bs-toggle="modal" data-bs-target="#autoRepliesModal">
-                                    <i class="fas fa-reply-all fa-2x mb-2"></i>
-                                    <span class="small fw-bold">الردود التلقائية</span>
-                                </button>
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <button type="button" class="btn btn-outline-info w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#sentMessagesModal">
-                                    <i class="fas fa-envelope fa-2x mb-2"></i>
-                                    <span class="small fw-bold">📨 رسائلي</span>
-                                    <span id="sentBatchesCount" class="badge bg-primary mt-1" style="font-size:0.6rem;display:none;">0</span>
-                                </button>
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <button type="button" class="btn btn-outline-primary w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" onclick="window.open('/saved_links','_blank')">
-                                    <i class="fas fa-bookmark fa-2x mb-2"></i>
-                                    <span class="small fw-bold">الروابط المحفوظة</span>
-                                </button>
-                            </div>
-                            <div class="col-6 col-md-4" id="sysLogsCardCol">
-                              <div class="position-relative w-100 h-100">
-                                <button type="button" class="btn btn-outline-dark w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnSystemLogs" data-bs-toggle="modal" data-bs-target="#systemLogsModal">
-                                    <i class="fas fa-terminal fa-2x mb-2"></i>
-                                    <span class="small fw-bold">سجلات النظام</span>
-                                    <span id="logsLiveBadge" class="badge bg-success mt-1" style="font-size:0.55rem;display:none;">● مباشر</span>
-                                </button>
-                                <!-- عداد الأخطاء -->
-                                <span id="diagErrorBadge"
-                                      class="position-absolute top-0 end-0 translate-middle badge rounded-pill bg-danger"
-                                      style="font-size:0.6rem;display:none;z-index:3;"></span>
-                                <!-- زر الإغلاق في الطرف -->
-                                <button type="button" id="sysLogsCloseBtn"
-                                        class="btn btn-sm position-absolute"
-                                        style="top:4px;right:4px;padding:1px 6px;font-size:0.7rem;line-height:1.4;background:rgba(0,0,0,0.18);color:#888;border:none;z-index:3;"
-                                        title="إخفاء"
-                                        onclick="document.getElementById('sysLogsCardCol').style.display='none'">
-                                  ✕
-                                </button>
-                              </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-light text-dark rounded-pill px-2 py-1 shadow-sm" id="featuresToggleBadge" style="font-size: 0.72rem;">
+                                <i class="fas fa-bars me-1"></i> إظهار
+                            </span>
+                            <i class="fas fa-chevron-down text-white" id="dropdownFeaturesChevron" style="transition: transform 0.3s ease; font-size: 1.1rem;"></i>
+                        </div>
+                    </button>
+                    <div class="collapse" id="dropdownFeaturesCollapse">
+                        <div class="card-body bg-light p-3 border-top">
+                            <div class="row g-2">
+                                <div class="col-6 col-md-4">
+                                    <button type="button" class="btn btn-outline-primary w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnLearningSystem" data-bs-toggle="modal" data-bs-target="#learningModal">
+                                        <i class="fas fa-brain fa-2x mb-2"></i>
+                                        <span class="small fw-bold">نظام التعلم الذكي</span>
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <button type="button" class="btn btn-outline-success w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnRotatingSystem" data-bs-toggle="modal" data-bs-target="#rotatingModal">
+                                        <i class="fas fa-sync-alt fa-2x mb-2"></i>
+                                        <span class="small fw-bold">النشر الدوري</span>
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                  <button type="button" class="btn btn-outline-warning w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnSearchMyLinksDropdown" onclick="openSearchMyLinksTab('global')" style="min-height:90px;">
+                                      <i class="fas fa-search fa-2x mb-2"></i>
+                                      <span class="small fw-bold">البحث في روابطي</span>
+                                      <span style="font-size:0.62rem;opacity:0.7;margin-top:3px;">بحث · رسائل · دول</span>
+                                  </button>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <button type="button" class="btn btn-outline-danger w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnAutoJoinAdvanced" data-bs-toggle="modal" data-bs-target="#autoJoinAdvancedModal">
+                                        <i class="fas fa-bolt fa-2x mb-2"></i>
+                                        <span class="small fw-bold">الانضمام المتقدم</span>
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                  <div class="w-100 h-100">
+                                    <button type="button" class="btn btn-outline-secondary w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnSystemHealth" onclick="checkSystemHealth()">
+                                        <i class="fas fa-heartbeat fa-2x mb-2"></i>
+                                        <span class="small fw-bold">صحة النظام</span>
+                                    </button>
+                                  </div>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <button type="button" class="btn btn-outline-info w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnAutoReplies" data-bs-toggle="modal" data-bs-target="#autoRepliesModal">
+                                        <i class="fas fa-reply-all fa-2x mb-2"></i>
+                                        <span class="small fw-bold">الردود التلقائية</span>
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <button type="button" class="btn btn-outline-info w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#sentMessagesModal">
+                                        <i class="fas fa-envelope fa-2x mb-2"></i>
+                                        <span class="small fw-bold">📨 رسائلي</span>
+                                        <span id="sentBatchesCount" class="badge bg-primary mt-1" style="font-size:0.6rem;display:none;">0</span>
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <button type="button" class="btn btn-outline-primary w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" onclick="window.open('/saved_links','_blank')">
+                                        <i class="fas fa-bookmark fa-2x mb-2"></i>
+                                        <span class="small fw-bold">الروابط المحفوظة</span>
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4" id="sysLogsCardCol">
+                                  <div class="position-relative w-100 h-100">
+                                    <button type="button" class="btn btn-outline-dark w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnSystemLogs" data-bs-toggle="modal" data-bs-target="#systemLogsModal">
+                                        <i class="fas fa-terminal fa-2x mb-2"></i>
+                                        <span class="small fw-bold">سجلات النظام</span>
+                                        <span id="logsLiveBadge" class="badge bg-success mt-1" style="font-size:0.55rem;display:none;">● مباشر</span>
+                                    </button>
+                                    <!-- عداد الأخطاء -->
+                                    <span id="diagErrorBadge"
+                                          class="position-absolute top-0 end-0 translate-middle badge rounded-pill bg-danger"
+                                          style="font-size:0.6rem;display:none;z-index:3;"></span>
+                                    <!-- زر الإغلاق في الطرف -->
+                                    <button type="button" id="sysLogsCloseBtn"
+                                            class="btn btn-sm position-absolute"
+                                            style="top:4px;right:4px;padding:1px 6px;font-size:0.7rem;line-height:1.4;background:rgba(0,0,0,0.18);color:#888;border:none;z-index:3;"
+                                            title="إخفاء"
+                                            onclick="document.getElementById('sysLogsCardCol').style.display='none'">
+                                      ✕
+                                    </button>
+                                  </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -4298,6 +4328,60 @@
             });
         }
 
+        let _loginPollingTimer = null;
+        let _loginPollingStartTime = 0;
+
+        function stopLoginPolling() {
+            if (_loginPollingTimer) {
+                clearInterval(_loginPollingTimer);
+                _loginPollingTimer = null;
+            }
+        }
+
+        function startLoginPolling() {
+            stopLoginPolling();
+            _loginPollingStartTime = Date.now();
+            _loginPollingTimer = setInterval(async () => {
+                try {
+                    const elapsed = Math.floor((Date.now() - _loginPollingStartTime) / 1000);
+                    if (elapsed > 0 && elapsed % 3 === 0) {
+                        showLoginMessage(`⏳ جاري الاتصال بتيليجرام وإرسال الكود... (${elapsed} ثانية)`, 'info');
+                    }
+
+                    if (elapsed >= 50) {
+                        stopLoginPolling();
+                        setLoginBusy(false);
+                        showLoginMessage('⚠️ استغرق إرسال الكود وقتاً أطول من المعتاد. إذا وصلتك رسالة تيليجرام يمكنك إدخال الكود، أو اضغط إعادة المحاولة.', 'warning');
+                        showCodeForm();
+                        return;
+                    }
+
+                    const response = await fetch('/api/get_login_status', { credentials: 'same-origin' });
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    if (!data) return;
+
+                    if (data.awaiting_code) {
+                        stopLoginPolling();
+                        setLoginBusy(false);
+                        showCodeForm();
+                    } else if (data.awaiting_password) {
+                        stopLoginPolling();
+                        setLoginBusy(false);
+                        showPasswordForm();
+                    } else if (data.logged_in) {
+                        stopLoginPolling();
+                        setLoginBusy(false);
+                        showLoggedIn();
+                    } else if (data.login_error) {
+                        stopLoginPolling();
+                        setLoginBusy(false);
+                        showLoginMessage(data.login_error, 'danger');
+                    }
+                } catch (_) {}
+            }, 1000);
+        }
+
         function setLoginBusy(busy) {
             const btn = byId('loginBtn');
             if (!btn) return;
@@ -4312,6 +4396,8 @@
         }
 
         function showCodeForm() {
+            stopLoginPolling();
+            setLoginBusy(false);
             const verifyForm = byId('verifyForm');
             const passwordForm = byId('passwordForm');
             const loginButton = byId('loginButtonContainer');
@@ -4327,10 +4413,14 @@
         }
 
         function showPasswordForm() {
+            stopLoginPolling();
+            setLoginBusy(false);
             const verifyForm = byId('verifyForm');
             const passwordForm = byId('passwordForm');
+            const loginButton = byId('loginButtonContainer');
             if (verifyForm) verifyForm.style.display = 'none';
             if (passwordForm) passwordForm.style.display = '';
+            if (loginButton) loginButton.style.display = 'none';
             const password = byId('twoFactorPassword');
             if (password) {
                 password.value = '';
@@ -4340,6 +4430,7 @@
         }
 
         function showLoggedIn() {
+            stopLoginPolling();
             setConnectionStatus(true);
             setLoginBusy(false);
             const loginButton = byId('loginButtonContainer');
@@ -4354,10 +4445,16 @@
         }
 
         function showLoggedOut() {
+            stopLoginPolling();
             setConnectionStatus(false);
+            setLoginBusy(false);
             const sessionControls = byId('sessionControls');
             const loginButton = byId('loginButtonContainer');
+            const verifyForm = byId('verifyForm');
+            const passwordForm = byId('passwordForm');
             if (sessionControls) sessionControls.style.display = 'none';
+            if (verifyForm) verifyForm.style.display = 'none';
+            if (passwordForm) passwordForm.style.display = 'none';
             if (loginButton) loginButton.style.display = '';
         }
 
@@ -4398,18 +4495,25 @@
                 });
 
                 if (!result.success) {
+                    stopLoginPolling();
                     setLoginBusy(false);
                     setConnectionStatus(false);
                     showLoginMessage(result.message || '❌ تعذر بدء تسجيل الدخول.', 'danger');
                 } else if (result.code_required) {
+                    stopLoginPolling();
+                    setLoginBusy(false);
                     showCodeForm();
                 } else if (result.pending) {
                     setConnectionStatus(true);
                     showLoginMessage('⏳ تم بدء الاتصال. انتظر وصول كود التحقق...', 'info');
+                    startLoginPolling();
                 } else {
+                    stopLoginPolling();
+                    setLoginBusy(false);
                     showLoggedIn();
                 }
             } catch (error) {
+                stopLoginPolling();
                 setLoginBusy(false);
                 showLoginMessage('❌ تعذر الاتصال بالخادم: ' + (error.message || error), 'danger');
             }
@@ -4484,9 +4588,16 @@
 
         function handleLoginResult(data) {
             if (!data) return;
-            if (data.status === 'code_required') showCodeForm();
-            else if (data.status === 'success') showLoggedIn();
-            else if (data.status === 'error') {
+            if (data.status === 'code_required') {
+                stopLoginPolling();
+                setLoginBusy(false);
+                showCodeForm();
+            } else if (data.status === 'success') {
+                stopLoginPolling();
+                setLoginBusy(false);
+                showLoggedIn();
+            } else if (data.status === 'error') {
+                stopLoginPolling();
                 setLoginBusy(false);
                 showLoginMessage(data.message || '❌ فشل تسجيل الدخول.', 'danger');
             }
@@ -4495,9 +4606,23 @@
         function handleLoginStatus(data) {
             if (!data) return;
             if (data.connected) setConnectionStatus(true);
-            if (data.awaiting_code) showCodeForm();
-            else if (data.awaiting_password) showPasswordForm();
-            else if (data.logged_in) showLoggedIn();
+            if (data.awaiting_code) {
+                stopLoginPolling();
+                setLoginBusy(false);
+                showCodeForm();
+            } else if (data.awaiting_password) {
+                stopLoginPolling();
+                setLoginBusy(false);
+                showPasswordForm();
+            } else if (data.logged_in) {
+                stopLoginPolling();
+                setLoginBusy(false);
+                showLoggedIn();
+            } else if (data.login_error) {
+                stopLoginPolling();
+                setLoginBusy(false);
+                showLoginMessage(data.login_error, 'danger');
+            }
         }
 
         function bindLoginSocket() {
@@ -4519,6 +4644,14 @@
             if (passwordForm) passwordForm.addEventListener('submit', submitPassword);
             byId('resendCodeBtn')?.addEventListener('click', () => resendCode(false));
             byId('resendSmsBtn')?.addEventListener('click', () => resendCode(true));
+            byId('cancelVerifyBtn')?.addEventListener('click', () => {
+                showLoggedOut();
+                showLoginMessage('يمكنك تعديل رقم الهاتف ثم الضغط على تسجيل الدخول.', 'info');
+            });
+            byId('cancelPasswordBtn')?.addEventListener('click', () => {
+                showLoggedOut();
+                showLoginMessage('يمكنك تعديل رقم الهاتف ثم الضغط على تسجيل الدخول.', 'info');
+            });
             bindLoginSocket();
             if (window.socket) window.socket.on('connect', bindLoginSocket);
 
@@ -9179,6 +9312,23 @@ document.addEventListener('DOMContentLoaded', function() {
         bindSocket();
     });
 })();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var collapseEl = document.getElementById('dropdownFeaturesCollapse');
+    var chevronEl = document.getElementById('dropdownFeaturesChevron');
+    var badgeEl = document.getElementById('featuresToggleBadge');
+    if (collapseEl && chevronEl) {
+        collapseEl.addEventListener('show.bs.collapse', function () {
+            chevronEl.style.transform = 'rotate(180deg)';
+            if (badgeEl) badgeEl.innerHTML = '<i class="fas fa-eye-slash me-1"></i> إخفاء';
+        });
+        collapseEl.addEventListener('hide.bs.collapse', function () {
+            chevronEl.style.transform = 'rotate(0deg)';
+            if (badgeEl) badgeEl.innerHTML = '<i class="fas fa-bars me-1"></i> إظهار';
+        });
+    }
+});
 </script>
 </body>
 </html>

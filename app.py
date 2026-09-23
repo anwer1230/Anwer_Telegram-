@@ -2596,6 +2596,10 @@ class TelegramManager:
                     connected = login.start()  # ينتظر حتى 30 ثانية
                     if not connected:
                         logger.error(f"Login connection failed for {user_id}")
+                        with USERS_LOCK:
+                            if user_id in USERS:
+                                USERS[user_id]['login_pending'] = False
+                                USERS[user_id]['login_error'] = "❌ فشل الاتصال بخوادم تيليجرام - تحقق من الإنترنت"
                         socketio.emit('login_result', {
                             "status": "error",
                             "message": "❌ فشل الاتصال بخوادم تيليجرام - تحقق من الإنترنت"
@@ -2618,6 +2622,8 @@ class TelegramManager:
                                 USERS[user_id]['authenticated'] = True
                                 USERS[user_id]['awaiting_code'] = False
                                 USERS[user_id]['awaiting_password'] = False
+                                USERS[user_id]['login_pending'] = False
+                                USERS[user_id]['login_error'] = None
                         socketio.emit('login_status', {
                             "logged_in": True, "connected": True,
                             "awaiting_code": False, "awaiting_password": False, "is_running": False
@@ -2634,9 +2640,14 @@ class TelegramManager:
 
                     result = login.send_code(phone_number)
                     if not result["success"]:
-                        socketio.emit('log_update', {"message": f"❌ {result['message']}"}, to=user_id)
-                        socketio.emit('login_result', {"status": "error", "message": result["message"]}, to=user_id)
-                        log_user_event(user_id, 'ERROR', f"❌ فشل إرسال الكود: {result['message']}")
+                        err_msg = result.get('message', 'فشل إرسال الكود')
+                        with USERS_LOCK:
+                            if user_id in USERS:
+                                USERS[user_id]['login_pending'] = False
+                                USERS[user_id]['login_error'] = err_msg
+                        socketio.emit('log_update', {"message": f"❌ {err_msg}"}, to=user_id)
+                        socketio.emit('login_result', {"status": "error", "message": err_msg}, to=user_id)
+                        log_user_event(user_id, 'ERROR', f"❌ فشل إرسال الكود: {err_msg}")
                         return
 
                     with USERS_LOCK:
@@ -2644,6 +2655,9 @@ class TelegramManager:
                             USERS[user_id]['awaiting_code'] = True
                             USERS[user_id]['awaiting_password'] = False
                             USERS[user_id]['connected'] = True
+                            USERS[user_id]['phone_code_hash'] = result.get('phone_code_hash')
+                            USERS[user_id]['login_pending'] = False
+                            USERS[user_id]['login_error'] = None
 
                     socketio.emit('login_status', {
                         "logged_in": False, "connected": True,
@@ -2661,6 +2675,10 @@ class TelegramManager:
                         msg = "⚠️ يرجى الانتظار قبل طلب كود جديد"
                     else:
                         msg = f"❌ خطأ: {error_message}"
+                    with USERS_LOCK:
+                        if user_id in USERS:
+                            USERS[user_id]['login_pending'] = False
+                            USERS[user_id]['login_error'] = msg
                     socketio.emit('log_update', {"message": msg}, to=user_id)
                     socketio.emit('login_result', {"status": "error", "message": msg}, to=user_id)
 
@@ -4480,6 +4498,8 @@ def api_save_login():
                 'awaiting_code': False,
                 'awaiting_password': False,
                 'phone_code_hash': None,
+                'login_pending': True,
+                'login_error': None,
                 'monitoring_active': False,
                 'event_handlers_registered': False,
                 'sent_batches': settings.get('sent_batches', []) or []
@@ -5505,7 +5525,14 @@ def api_get_stats():
 def api_get_login_status():
     user_id = session.get('user_id')
     if not user_id:
-        return jsonify({"logged_in": False, "connected": False})
+        return jsonify({
+            "logged_in": False, 
+            "connected": False,
+            "awaiting_code": False,
+            "awaiting_password": False,
+            "login_pending": False,
+            "login_error": None
+        })
 
     with USERS_LOCK:
         if user_id in USERS:
@@ -5513,6 +5540,22 @@ def api_get_login_status():
             client_manager = user_data.get('client_manager')
             authenticated = user_data.get('authenticated', False)
             connected = user_data.get('connected', False)
+            awaiting_code = user_data.get('awaiting_code', False)
+            awaiting_password = user_data.get('awaiting_password', False)
+            login_pending = user_data.get('login_pending', False)
+            login_error = user_data.get('login_error')
+
+            # التحقق أيضاً من مدير تسجيل الدخول النشط telegram_manager
+            login_mgr = telegram_manager.login_managers.get(user_id)
+            if login_mgr:
+                if getattr(login_mgr, 'awaiting_code', False):
+                    awaiting_code = True
+                if getattr(login_mgr, 'awaiting_password', False):
+                    awaiting_password = True
+                if getattr(login_mgr, 'authenticated', False):
+                    authenticated = True
+                if getattr(login_mgr, 'connected', False):
+                    connected = True
 
             if not authenticated and 'settings' in user_data and 'phone' in user_data['settings']:
                 session_file = os.path.join(SESSIONS_DIR, f"{user_id}_session.session")
@@ -5525,10 +5568,22 @@ def api_get_login_status():
             return jsonify({
                 "logged_in": authenticated, 
                 "connected": connected,
+                "awaiting_code": awaiting_code,
+                "awaiting_password": awaiting_password,
+                "login_pending": login_pending,
+                "login_error": login_error,
                 "is_running": user_data.get('is_running', False)
             })
 
-    return jsonify({"logged_in": False, "connected": False, "is_running": False})
+    return jsonify({
+        "logged_in": False, 
+        "connected": False, 
+        "awaiting_code": False, 
+        "awaiting_password": False,
+        "login_pending": False,
+        "login_error": None,
+        "is_running": False
+    })
 
 @app.route("/api/get_user_info", methods=["GET"])
 def api_get_user_info():
