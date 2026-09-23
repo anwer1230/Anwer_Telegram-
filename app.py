@@ -160,12 +160,19 @@ class _WerkzeugFilter(logging.Filter):
             msg = record.getMessage()
             if '/api/app_logs' in msg and (' 200 ' in msg or ' 304 ' in msg):
                 return False
+            if 'Request timed out' in msg or 'TimeoutError' in msg:
+                return False
+            if 'BrokenPipeError' in msg or 'ConnectionResetError' in msg:
+                return False
         except Exception:
             pass
         return True
 
+_wf = _WerkzeugFilter()
+for _h in _log_handlers:
+    _h.addFilter(_wf)
 try:
-    logging.getLogger('werkzeug').addFilter(_WerkzeugFilter())
+    logging.getLogger('werkzeug').addFilter(_wf)
 except Exception:
     pass
 
