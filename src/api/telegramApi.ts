@@ -66,7 +66,8 @@ export const telegramApi = {
 
   async getStatus(): Promise<TelegramServerStatus> {
     const res = await fetchWithTimeout('/api/telegram/status', {
-      headers: { 'Content-Type': 'application/json' },
+      // Include the persisted session so a browser reload restores the account.
+      headers: this.getHeaders(),
     }, 4000);
     if (!res.ok) {
       throw new Error(`خطأ في جلب حالة الخادم: ${res.statusText}`);
