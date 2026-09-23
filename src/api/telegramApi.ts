@@ -1145,4 +1145,33 @@ export const telegramApi = {
     }
     return data;
   },
+
+  // --------------------------------
+  // In-Chat Search via Cloud MTProto API
+  // --------------------------------
+  async searchChatMessages(
+    chatId: string,
+    query: string = '',
+    options: { minDate?: number; maxDate?: number; limit?: number } = {}
+  ): Promise<{ count: number; messages: TelegramMessage[] }> {
+    const params = new URLSearchParams({
+      chatId,
+      q: query || '',
+      minDate: (options.minDate || 0).toString(),
+      maxDate: (options.maxDate || 0).toString(),
+      limit: (options.limit || 50).toString(),
+    });
+
+    const res = await fetchWithTimeout(`/api/telegram/search/chat?${params.toString()}`, {
+      headers: this.getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'فشل البحث في رسائل المحادثة');
+    }
+    return {
+      count: data.count || (data.messages ? data.messages.length : 0),
+      messages: data.messages || [],
+    };
+  },
 };

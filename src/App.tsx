@@ -296,11 +296,128 @@ export default function App() {
     }
   };
 
-  // Handle selecting chat
+  // Handle selecting chat with history state
   const handleSelectChat = (dialog: TelegramDialog) => {
     setSelectedChat(dialog);
     setMobileView('chat');
+    try {
+      window.history.pushState({ view: 'chat', chatId: dialog.id }, '', `#chat-${dialog.id}`);
+    } catch (_) {}
   };
+
+  // Dedicated back to chat list handler (for UI back button & gesture)
+  const handleBackToChatList = useCallback(() => {
+    setMobileView('list');
+    setSelectedChat(null);
+    if (window.location.hash.startsWith('#chat-')) {
+      try {
+        window.history.back();
+      } catch (_) {}
+    }
+  }, []);
+
+  // Modal openers that record history for Android/Mobile hardware back button
+  const openInfoModal = () => {
+    try { window.history.pushState({ modal: 'info' }, '', '#info'); } catch (_) {}
+    setIsInfoModalOpen(true);
+  };
+  const openContactsModal = () => {
+    try { window.history.pushState({ modal: 'contacts' }, '', '#contacts'); } catch (_) {}
+    setIsContactsOpen(true);
+  };
+  const openSettingsModal = () => {
+    try { window.history.pushState({ modal: 'settings' }, '', '#settings'); } catch (_) {}
+    setIsSettingsOpen(true);
+  };
+  const openFolderModal = () => {
+    try { window.history.pushState({ modal: 'folders' }, '', '#folders'); } catch (_) {}
+    setIsFolderManagerOpen(true);
+  };
+  const openNewChatModal = () => {
+    try { window.history.pushState({ modal: 'new-chat' }, '', '#new-chat'); } catch (_) {}
+    setIsNewChatOpen(true);
+  };
+
+  // Hardware Back Button & Browser popstate handling
+  useEffect(() => {
+    const handlePopState = () => {
+      // 1. If any modal is active, close it on back press
+      if (activeCall) {
+        setActiveCall(null);
+        return;
+      }
+      if (activeVoiceChat) {
+        setActiveVoiceChat(null);
+        return;
+      }
+      if (isSettingsOpen) {
+        setIsSettingsOpen(false);
+        return;
+      }
+      if (isContactsOpen) {
+        setIsContactsOpen(false);
+        return;
+      }
+      if (isFolderManagerOpen) {
+        setIsFolderManagerOpen(false);
+        return;
+      }
+      if (isNewChatOpen) {
+        setIsNewChatOpen(false);
+        return;
+      }
+      if (isInfoModalOpen) {
+        setIsInfoModalOpen(false);
+        return;
+      }
+
+      // 2. If viewing a chat on mobile, return to chat list
+      if (mobileView === 'chat') {
+        setMobileView('list');
+        setSelectedChat(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [
+    activeCall,
+    activeVoiceChat,
+    isSettingsOpen,
+    isContactsOpen,
+    isFolderManagerOpen,
+    isNewChatOpen,
+    isInfoModalOpen,
+    mobileView,
+  ]);
+
+  // Keyboard Escape listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (activeCall) setActiveCall(null);
+        else if (activeVoiceChat) setActiveVoiceChat(null);
+        else if (isSettingsOpen) setIsSettingsOpen(false);
+        else if (isContactsOpen) setIsContactsOpen(false);
+        else if (isFolderManagerOpen) setIsFolderManagerOpen(false);
+        else if (isNewChatOpen) setIsNewChatOpen(false);
+        else if (isInfoModalOpen) setIsInfoModalOpen(false);
+        else if (mobileView === 'chat') handleBackToChatList();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    activeCall,
+    activeVoiceChat,
+    isSettingsOpen,
+    isContactsOpen,
+    isFolderManagerOpen,
+    isNewChatOpen,
+    isInfoModalOpen,
+    mobileView,
+    handleBackToChatList,
+  ]);
 
   // Pin / Unpin chat
   const handlePinChat = async (dialog: TelegramDialog, pinned: boolean) => {
@@ -455,18 +572,20 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#0e1621] text-slate-100 overflow-hidden font-['Tajawal','Plus_Jakarta_Sans',system-ui,sans-serif]" dir="rtl">
-      {/* Top Header */}
-      <Header
-        status={status}
-        user={user}
-        onOpenInfo={() => setIsInfoModalOpen(true)}
-        onOpenContacts={() => setIsContactsOpen(true)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onLogout={handleLogout}
-        onRefresh={() => loadDialogs(false)}
-        isRefreshing={isRefreshing}
-      />
+    <div className="h-screen h-[100dvh] max-h-[100dvh] w-screen max-w-[100vw] flex flex-col bg-[#0e1621] text-slate-100 overflow-hidden font-['Tajawal','Plus_Jakarta_Sans',system-ui,sans-serif]" dir="rtl">
+      {/* Top Header - automatically hidden on mobile when in chat view to give native Telegram full screen experience */}
+      <div className={mobileView === 'chat' ? 'hidden md:block' : 'block'}>
+        <Header
+          status={status}
+          user={user}
+          onOpenInfo={openInfoModal}
+          onOpenContacts={openContactsModal}
+          onOpenSettings={openSettingsModal}
+          onLogout={handleLogout}
+          onRefresh={() => loadDialogs(false)}
+          isRefreshing={isRefreshing}
+        />
+      </div>
 
       {/* Offline Status Warning Banner */}
       {isOffline && (
@@ -490,10 +609,10 @@ export default function App() {
               isLoading={isRefreshing}
               typingStatuses={typingStatuses}
               folders={folders}
-              onOpenFolderManager={() => setIsFolderManagerOpen(true)}
-              onOpenNewChat={() => setIsNewChatOpen(true)}
-              onOpenContacts={() => setIsContactsOpen(true)}
-              onOpenSettings={() => setIsSettingsOpen(true)}
+              onOpenFolderManager={openFolderModal}
+              onOpenNewChat={openNewChatModal}
+              onOpenContacts={openContactsModal}
+              onOpenSettings={openSettingsModal}
               onPinChat={handlePinChat}
               onMuteChat={handleMuteChat}
               onArchiveChat={handleArchiveChat}
@@ -507,7 +626,7 @@ export default function App() {
             <ChatView
               chat={selectedChat}
               dialogs={dialogs}
-              onBackMobile={() => setMobileView('list')}
+              onBackMobile={handleBackToChatList}
               onMessageSent={() => loadDialogs(true)}
               onPinChat={handlePinChat}
               onMuteChat={handleMuteChat}

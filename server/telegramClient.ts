@@ -5,6 +5,8 @@ import { NewMessage, Raw } from 'telegram/events/index.js';
 import { getPeerId } from 'telegram/Utils.js';
 import bigInt from 'big-integer';
 import zlib from 'zlib';
+import fs from 'fs';
+import path from 'path';
 
 // Official Telegram API Credentials provided by user
 export const TELEGRAM_API_ID = Number(process.env.TELEGRAM_API_ID || 22043994);
@@ -374,6 +376,10 @@ export async function getTelegramDialogs(sessionString: string, limit = 50, fold
     const folderId = Number((d.dialog as any)?.folderId || (d as any).folderId || 0);
     const isArchived = folderId === 1;
 
+    const entity = d.entity as any;
+    const hasPhoto = !!(entity && entity.photo && !entity.photo.className?.includes('Empty'));
+    const photoUrl = hasPhoto ? `/api/telegram/avatar/${idStr}` : undefined;
+
     formattedDialogs.push({
       id: idStr,
       title: d.title || d.name || 'محادثة',
@@ -386,6 +392,8 @@ export async function getTelegramDialogs(sessionString: string, limit = 50, fold
       muted,
       folderId,
       isArchived,
+      hasPhoto,
+      photoUrl,
       date: d.date || 0,
       lastMessage: {
         id: d.message?.id,
@@ -674,13 +682,41 @@ export function formatTelegramMessage(m: any, readOutboxMaxId?: number) {
       : false
     : false;
 
+  let senderName: string | undefined = undefined;
+  let senderUsername: string | undefined = undefined;
+  let hasSenderPhoto = false;
+
+  const sender = m.sender || (m as any)._sender;
+  if (sender) {
+    if (sender.title) {
+      senderName = sender.title;
+    } else {
+      const full = `${sender.firstName || ''} ${sender.lastName || ''}`.trim();
+      senderName = full || sender.username || undefined;
+    }
+    senderUsername = sender.username || undefined;
+    if (sender.photo && !sender.photo.className?.includes('Empty')) {
+      hasSenderPhoto = true;
+    }
+  } else if (m.postAuthor) {
+    senderName = m.postAuthor;
+  }
+
+  const resolvedSenderId =
+    m.senderId?.toString?.() ||
+    (m.fromId ? getPeerId(m.fromId).toString() : '') ||
+    '';
+
   return {
     id: m.id,
     text: m.message || '',
     date: m.date || 0,
     out: isOut,
     unread,
-    senderId: m.senderId?.toString?.() || '',
+    senderId: resolvedSenderId,
+    senderName,
+    senderUsername,
+    hasSenderPhoto,
     mediaType,
     mediaInfo,
     replyToMsgId,
@@ -1121,6 +1157,119 @@ export async function downloadTelegramMedia(
     mimeType,
     fileName,
   };
+}
+
+const AVATAR_CACHE_DIR = '/tmp/tg_avatars';
+try {
+  if (!fs.existsSync(AVATAR_CACHE_DIR)) {
+    fs.mkdirSync(AVATAR_CACHE_DIR, { recursive: true });
+  }
+} catch (_) {}
+
+const avatarMemoryCache = new Map<string, { buffer: Buffer; timestamp: number }>();
+const avatarNegativeCache = new Map<string, number>();
+
+/**
+ * Download peer profile photo/avatar using official GramJS MTProto client with fast disk & memory caching
+ */
+export async function getTelegramPeerAvatar(
+  sessionString: string | undefined,
+  peerId: string,
+  isBig: boolean = false
+): Promise<Buffer | null> {
+  if (!peerId) return null;
+
+  const cleanPeerId = peerId.trim();
+  const cacheKey = `${cleanPeerId}_${isBig ? 'big' : 'small'}`;
+
+  // 1. Check in-memory cache
+  const memCached = avatarMemoryCache.get(cacheKey);
+  if (memCached && Date.now() - memCached.timestamp < 3600 * 1000) {
+    return memCached.buffer;
+  }
+
+  // 2. Check negative cache (peers that have no avatar, skip for 3 minutes to avoid hammering)
+  const negTime = avatarNegativeCache.get(cacheKey);
+  if (negTime && Date.now() - negTime < 180 * 1000) {
+    return null;
+  }
+
+  // 3. Check disk cache
+  const safeFileName = `${cleanPeerId.replace(/[^a-zA-Z0-9_-]/g, '_')}_${isBig ? 'big' : 'small'}.jpg`;
+  const filePath = path.join(AVATAR_CACHE_DIR, safeFileName);
+  try {
+    if (fs.existsSync(filePath)) {
+      const stat = fs.statSync(filePath);
+      if (Date.now() - stat.mtimeMs < 86400 * 1000) {
+        const fileBuf = fs.readFileSync(filePath);
+        if (fileBuf && fileBuf.length > 0) {
+          avatarMemoryCache.set(cacheKey, { buffer: fileBuf, timestamp: Date.now() });
+          return fileBuf;
+        }
+      }
+    }
+  } catch (_) {}
+
+  // 4. Resolve session
+  let session: ActiveSession | null = null;
+  if (sessionString) {
+    try {
+      session = await getClientForSession(sessionString);
+    } catch (_) {}
+  }
+  if (!session && activeSessions.size > 0) {
+    session = activeSessions.values().next().value || null;
+  }
+  if (!session) {
+    return null;
+  }
+
+  const client = session.client;
+
+  // 5. Resolve target entity
+  let targetEntity: any = cleanPeerId;
+  if (session.entityCache.has(cleanPeerId)) {
+    targetEntity = session.entityCache.get(cleanPeerId);
+  } else {
+    try {
+      const cleanId = cleanPeerId.startsWith('-')
+        ? bigInt(cleanPeerId)
+        : cleanPeerId.match(/^\d+$/)
+        ? bigInt(cleanPeerId)
+        : cleanPeerId;
+      try {
+        targetEntity = await client.getInputEntity(cleanId);
+      } catch (_) {
+        targetEntity = await client.getEntity(cleanId);
+      }
+      if (targetEntity) {
+        session.entityCache.set(cleanPeerId, targetEntity);
+      }
+    } catch (e) {
+      targetEntity = cleanPeerId;
+    }
+  }
+
+  // 6. Download profile photo using GramJS downloadProfilePhoto
+  try {
+    const photoResult: any = await client.downloadProfilePhoto(targetEntity, {
+      isBig: !!isBig,
+    });
+
+    if (photoResult && photoResult.length > 0) {
+      const buf = Buffer.isBuffer(photoResult) ? photoResult : Buffer.from(photoResult);
+      avatarMemoryCache.set(cacheKey, { buffer: buf, timestamp: Date.now() });
+      try {
+        fs.writeFileSync(filePath, buf);
+      } catch (_) {}
+      return buf;
+    }
+  } catch (err: any) {
+    // If entity has no photo or private, mark in negative cache
+  }
+
+  avatarNegativeCache.set(cacheKey, Date.now());
+  return null;
 }
 
 /**
@@ -2173,6 +2322,68 @@ export async function searchTelegramGlobal(sessionString: string, query: string)
     chats: chatsResults,
     messages: messageResults,
   };
+}
+
+/**
+ * Search messages inside a specific chat via Telegram MTProto API
+ */
+export async function searchTelegramChatMessages(
+  sessionString: string,
+  peerId: string,
+  query: string = '',
+  options: {
+    minDate?: number;
+    maxDate?: number;
+    limit?: number;
+    offsetId?: number;
+  } = {}
+) {
+  const session = await getClientForSession(sessionString);
+  const client = session.client;
+
+  let targetPeer: any = peerId;
+  if (session.entityCache.has(peerId)) {
+    targetPeer = session.entityCache.get(peerId);
+  } else {
+    try {
+      targetPeer = await client.getInputEntity(peerId.startsWith('-') ? bigInt(peerId) : peerId);
+    } catch (_) {
+      try {
+        targetPeer = await client.getEntity(bigInt(peerId));
+      } catch (e) {
+        targetPeer = peerId;
+      }
+    }
+  }
+
+  const { minDate = 0, maxDate = 0, limit = 50, offsetId = 0 } = options;
+
+  try {
+    const res: any = await client.invoke(
+      new Api.messages.Search({
+        peer: targetPeer,
+        q: query || '',
+        filter: new Api.InputMessagesFilterEmpty(),
+        minDate,
+        maxDate,
+        offsetId,
+        addOffset: 0,
+        limit,
+        maxId: 0,
+        minId: 0,
+        hash: BigInt(0) as any,
+      })
+    );
+
+    const messages = (res.messages || []).map((m: any) => formatTelegramMessage(m));
+    return {
+      count: res.count || messages.length,
+      messages,
+    };
+  } catch (err: any) {
+    console.warn('messages.Search in chat error:', err);
+    throw err;
+  }
 }
 
 // ----------------------------------------------------

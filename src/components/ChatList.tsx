@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { TelegramDialog, TypingStatus, ChatFolder, GlobalSearchResult } from '../types';
 import { telegramApi } from '../api/telegramApi';
+import { Avatar } from './Avatar';
 
 interface ChatListProps {
   dialogs: TelegramDialog[];
@@ -526,17 +527,16 @@ export const ChatList: React.FC<ChatListProps> = ({
                     : 'hover:bg-[#202b36] text-slate-200'
                 }`}
               >
-                {/* Avatar */}
-                <div
-                  className={`w-12 h-12 rounded-full ${avatarBg} flex items-center justify-center text-white font-bold text-base shrink-0 shadow relative`}
-                >
-                  {dialog.isChannel ? (
-                    <Volume2 className="w-5 h-5 text-white/90" />
-                  ) : dialog.isGroup ? (
-                    <Users className="w-5 h-5 text-white/90" />
-                  ) : (
-                    initial
-                  )}
+                {/* Real Telegram Avatar */}
+                <div className="relative shrink-0">
+                  <Avatar
+                    peerId={dialog.id}
+                    name={displayName}
+                    size="lg"
+                    isGroup={dialog.isGroup}
+                    isChannel={dialog.isChannel}
+                    customSrc={dialog.photoUrl}
+                  />
                   {dialog.isArchived && (
                     <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#17212b] border border-[#2b5278] flex items-center justify-center text-slate-300">
                       <Archive className="w-2.5 h-2.5" />
@@ -669,9 +669,11 @@ export const ChatList: React.FC<ChatListProps> = ({
                     className="p-2 rounded-xl bg-[#1e2a38]/60 hover:bg-[#2b5278] transition cursor-pointer flex items-center justify-between"
                   >
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-[#54a9eb]/20 text-[#54a9eb] flex items-center justify-center font-bold text-xs">
-                        {c.title.charAt(0)}
-                      </div>
+                      <Avatar
+                        peerId={c.id}
+                        name={c.title}
+                        size="sm"
+                      />
                       <div>
                         <h4 className="text-xs font-bold text-white">{c.title}</h4>
                         <span className="text-[10px] text-slate-400">
@@ -708,9 +710,13 @@ export const ChatList: React.FC<ChatListProps> = ({
                     className="p-2 rounded-xl bg-[#1e2a38]/60 hover:bg-[#2b5278] transition cursor-pointer flex items-center justify-between"
                   >
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-xs">
-                        {ch.isChannel ? <Volume2 className="w-4 h-4" /> : <Users className="w-4 h-4" />}
-                      </div>
+                      <Avatar
+                        peerId={ch.id}
+                        name={ch.title}
+                        size="sm"
+                        isGroup={ch.isGroup}
+                        isChannel={ch.isChannel}
+                      />
                       <div>
                         <h4 className="text-xs font-bold text-white">{ch.title}</h4>
                         <span className="text-[10px] text-slate-400">

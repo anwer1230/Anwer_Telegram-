@@ -7,13 +7,39 @@
 import { TelegramDialog, TelegramMessage } from '../types';
 
 const DB_NAME = 'TelegramWeb_IndexedDB_Cache';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export interface CachedMediaItem {
   key: string;
   dataUrl: string;
   mimeType: string;
   timestamp: number;
+}
+
+export interface ChatSearchOptions {
+  query?: string;
+  date?: string; // YYYY-MM-DD
+  minDate?: number; // unix seconds
+  maxDate?: number; // unix seconds
+  typeFilter?: 'all' | 'text' | 'media' | 'files' | 'links';
+  limit?: number;
+}
+
+/**
+ * Normalizes text for comprehensive multilingual and Arabic search
+ * Handles Arabic diacritics, Alef variants, Ta Marbuta, Ya, and letter-casing.
+ */
+export function normalizeSearchText(text: string): string {
+  if (!text) return '';
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u064B-\u065F\u0670]/g, '') // remove arabic tashkeel (fatha, damma, kasra, sukun, etc.)
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/[ىي]/g, 'ي')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '') // zero-width spaces
+    .trim();
 }
 
 class IndexedDbCacheService {
@@ -31,6 +57,7 @@ class IndexedDbCacheService {
 
       request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
         const db = (event.target as IDBOpenDBRequest).result;
+        const tx = (event.target as any).transaction as IDBTransaction;
 
         // 1. Dialogs store
         if (!db.objectStoreNames.contains('dialogs')) {
@@ -40,11 +67,22 @@ class IndexedDbCacheService {
         }
 
         // 2. Messages store: key is composite `${chatId}_${id}`
+        let msgStore: IDBObjectStore;
         if (!db.objectStoreNames.contains('messages')) {
-          const msgStore = db.createObjectStore('messages', { keyPath: 'storeKey' });
+          msgStore = db.createObjectStore('messages', { keyPath: 'storeKey' });
           msgStore.createIndex('chatId', 'chatId', { unique: false });
           msgStore.createIndex('date', 'date', { unique: false });
           msgStore.createIndex('id', 'id', { unique: false });
+          msgStore.createIndex('chatId_date', ['chatId', 'date'], { unique: false });
+        } else {
+          msgStore = tx.objectStore('messages');
+          if (!msgStore.indexNames.contains('chatId_date')) {
+            try {
+              msgStore.createIndex('chatId_date', ['chatId', 'date'], { unique: false });
+            } catch (err) {
+              console.warn('Could not create chatId_date index:', err);
+            }
+          }
         }
 
         // 3. Media Cache store
@@ -187,6 +225,181 @@ class IndexedDbCacheService {
       });
     } catch (err) {
       console.warn('IndexedDB getCachedMessages error:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Search messages inside a chat using IndexedDB indexes
+   * Fast indexed querying by date range, keywords, and media types
+   */
+  async searchChatMessages(chatId: string, options: ChatSearchOptions = {}): Promise<TelegramMessage[]> {
+    try {
+      const cleanChatId = chatId.replace(/^-100/, '').replace(/^-/, '');
+      const db = await this.getDB();
+      const tx = db.transaction('messages', 'readonly');
+      const store = tx.objectStore('messages');
+
+      let minDate = options.minDate;
+      let maxDate = options.maxDate;
+
+      // If a specific date is chosen (YYYY-MM-DD), calculate local start and end of that day
+      if (options.date) {
+        const [year, month, day] = options.date.split('-').map(Number);
+        if (year && month && day) {
+          const startDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+          const endDate = new Date(year, month - 1, day, 23, 59, 59, 999);
+          const dayStartSec = Math.floor(startDate.getTime() / 1000);
+          const dayEndSec = Math.floor(endDate.getTime() / 1000);
+          minDate = minDate ? Math.max(minDate, dayStartSec) : dayStartSec;
+          maxDate = maxDate ? Math.min(maxDate, dayEndSec) : dayEndSec;
+        }
+      }
+
+      let request: IDBRequest<any[]>;
+
+      // Utilize compound index 'chatId_date' if both minDate and maxDate are defined
+      if (
+        store.indexNames.contains('chatId_date') &&
+        minDate !== undefined &&
+        maxDate !== undefined
+      ) {
+        const keyRange = IDBKeyRange.bound([cleanChatId, minDate], [cleanChatId, maxDate]);
+        request = store.index('chatId_date').getAll(keyRange);
+      } else if (store.indexNames.contains('chatId')) {
+        // Query by chatId index
+        request = store.index('chatId').getAll(IDBKeyRange.only(cleanChatId));
+      } else {
+        request = store.getAll();
+      }
+
+      return new Promise((resolve) => {
+        request.onsuccess = () => {
+          let items = (request.result || []) as any[];
+
+          // 1. Ensure chatId match if not indexed
+          items = items.filter((item) => {
+            const itemChatId = item.chatId || (item.storeKey ? item.storeKey.split('_')[0] : '');
+            return itemChatId === cleanChatId;
+          });
+
+          // 2. Date filtering (if not handled by compound index)
+          if (minDate !== undefined) {
+            items = items.filter((m) => (m.date || 0) >= minDate!);
+          }
+          if (maxDate !== undefined) {
+            items = items.filter((m) => (m.date || 0) <= maxDate!);
+          }
+
+          // 3. Keyword filtering with Arabic normalization
+          if (options.query && options.query.trim()) {
+            const normQ = normalizeSearchText(options.query);
+            items = items.filter((m) => {
+              const text = normalizeSearchText(m.text || '');
+              const caption = normalizeSearchText(m.mediaInfo?.caption || '');
+              const fileName = normalizeSearchText(m.mediaInfo?.fileName || '');
+              const sender = normalizeSearchText(m.senderName || m.authorName || '');
+              return (
+                text.includes(normQ) ||
+                caption.includes(normQ) ||
+                fileName.includes(normQ) ||
+                sender.includes(normQ)
+              );
+            });
+          }
+
+          // 4. Media/Type filter
+          if (options.typeFilter && options.typeFilter !== 'all') {
+            switch (options.typeFilter) {
+              case 'text':
+                items = items.filter((m) => !m.mediaType && !!m.text);
+                break;
+              case 'media':
+                items = items.filter(
+                  (m) =>
+                    m.mediaType === 'photo' ||
+                    m.mediaType === 'video' ||
+                    m.mediaType === 'round' ||
+                    m.mediaType === 'voice'
+                );
+                break;
+              case 'files':
+                items = items.filter(
+                  (m) => m.mediaType === 'document' || !!m.mediaInfo?.fileName
+                );
+                break;
+              case 'links':
+                items = items.filter((m) =>
+                  /(https?:\/\/[^\s]+|t\.me\/[^\s]+)/i.test(m.text || '')
+                );
+                break;
+            }
+          }
+
+          // 5. Sort chronologically (newest first for search results)
+          items.sort((a, b) => (b.date || 0) - (a.date || 0));
+
+          // 6. Limit results
+          const limit = options.limit || 100;
+          const mapped = items.slice(0, limit).map((item) => {
+            const { storeKey, chatId: cid, rawChatId, ...msg } = item;
+            return msg as TelegramMessage;
+          });
+
+          resolve(mapped);
+        };
+
+        request.onerror = () => {
+          resolve([]);
+        };
+      });
+    } catch (err) {
+      console.warn('IndexedDB searchChatMessages error:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Get surrounding messages around a message ID from IndexedDB
+   * Useful when jumping to an older message from search results
+   */
+  async getMessageContext(chatId: string, messageId: number, windowSize = 25): Promise<TelegramMessage[]> {
+    try {
+      const cleanChatId = chatId.replace(/^-100/, '').replace(/^-/, '');
+      const db = await this.getDB();
+      const tx = db.transaction('messages', 'readonly');
+      const store = tx.objectStore('messages');
+      const index = store.index('chatId');
+      const request = index.getAll(IDBKeyRange.only(cleanChatId));
+
+      return new Promise((resolve) => {
+        request.onsuccess = () => {
+          const items = (request.result || []) as any[];
+          // Sort chronologically ascending (oldest first)
+          items.sort((a, b) => (a.date || 0) - (b.date || 0));
+
+          const targetIndex = items.findIndex((m) => m.id === messageId);
+          if (targetIndex === -1) {
+            resolve([]);
+            return;
+          }
+
+          const startIndex = Math.max(0, targetIndex - windowSize);
+          const endIndex = Math.min(items.length, targetIndex + windowSize + 1);
+          const slice = items.slice(startIndex, endIndex).map((item) => {
+            const { storeKey, chatId: cid, rawChatId, ...msg } = item;
+            return msg as TelegramMessage;
+          });
+
+          resolve(slice);
+        };
+
+        request.onerror = () => {
+          resolve([]);
+        };
+      });
+    } catch (err) {
+      console.warn('IndexedDB getMessageContext error:', err);
       return [];
     }
   }

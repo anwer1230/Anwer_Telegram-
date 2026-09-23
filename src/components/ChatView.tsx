@@ -32,6 +32,11 @@ import {
   Calendar,
   VolumeX,
   Clock,
+  Search,
+  ChevronUp,
+  ChevronDown,
+  Filter,
+  Sparkles,
 } from 'lucide-react';
 import {
   TelegramDialog,
@@ -43,6 +48,7 @@ import {
 } from '../types';
 import { telegramApi } from '../api/telegramApi';
 import { indexedDbCache } from '../utils/indexedDbCache';
+import { Avatar } from './Avatar';
 import { MediaRenderer } from './MediaRenderer';
 import { StickersAndGifsPicker } from './StickersAndGifsPicker';
 import { ForwardModal } from './ForwardModal';
@@ -149,6 +155,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const typingTimeoutRef = useRef<any>(null);
   const lastTypingSentRef = useRef<number>(0);
   const isPrependingRef = useRef<boolean>(false);
+
+  // In-Chat Search state (IndexedDB indexed search by keywords & date)
+  const [showInChatSearch, setShowInChatSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchDate, setSearchDate] = useState('');
+  const [searchTypeFilter, setSearchTypeFilter] = useState<'all' | 'text' | 'media' | 'files' | 'links'>('all');
+  const [searchResults, setSearchResults] = useState<TelegramMessage[]>([]);
+  const [searchActiveIndex, setSearchActiveIndex] = useState(0);
+  const [isSearchingLocal, setIsSearchingLocal] = useState(false);
+  const [isSearchingCloud, setIsSearchingCloud] = useState(false);
+  const [showSearchResultsList, setShowSearchResultsList] = useState(false);
+  const [highlightedMsgId, setHighlightedMsgId] = useState<number | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Load messages when active chat changes (Offline IndexedDB first + Cloud fetch)
   useEffect(() => {
@@ -514,6 +533,130 @@ export const ChatView: React.FC<ChatViewProps> = ({
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       el.classList.add('ring-2', 'ring-[#54a9eb]', 'rounded-2xl', 'transition-all');
       setTimeout(() => el.classList.remove('ring-2', 'ring-[#54a9eb]'), 2000);
+    }
+  };
+
+  // Perform in-chat search using IndexedDB indexes
+  const performInChatSearch = async (
+    query: string = searchQuery,
+    date: string = searchDate,
+    typeFilter: 'all' | 'text' | 'media' | 'files' | 'links' = searchTypeFilter
+  ) => {
+    if (!chat) return;
+    if (!query.trim() && !date && typeFilter === 'all') {
+      setSearchResults([]);
+      setSearchActiveIndex(0);
+      return;
+    }
+
+    setIsSearchingLocal(true);
+    try {
+      const results = await indexedDbCache.searchChatMessages(chat.id, {
+        query: query.trim() || undefined,
+        date: date || undefined,
+        typeFilter,
+        limit: 150,
+      });
+
+      setSearchResults(results);
+      setSearchActiveIndex(0);
+      if (results.length > 0) {
+        jumpToMessage(results[0].id);
+      }
+    } catch (err) {
+      console.warn('In-chat IndexedDB search error:', err);
+    } finally {
+      setIsSearchingLocal(false);
+    }
+  };
+
+  // Trigger search whenever search criteria change
+  useEffect(() => {
+    if (!showInChatSearch || !chat) return;
+    const timer = setTimeout(() => {
+      performInChatSearch(searchQuery, searchDate, searchTypeFilter);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [searchQuery, searchDate, searchTypeFilter, showInChatSearch, chat?.id]);
+
+  // Jump to a specific message ID, loading context from IndexedDB if not currently in memory
+  const jumpToMessage = async (msgId: number) => {
+    if (!chat) return;
+    setHighlightedMsgId(msgId);
+
+    const existsInMemory = messages.some((m) => m.id === msgId);
+    if (!existsInMemory) {
+      const context = await indexedDbCache.getMessageContext(chat.id, msgId, 30);
+      if (context.length > 0) {
+        setMessages((prev) => {
+          const map = new Map<number, TelegramMessage>();
+          prev.forEach((m) => map.set(m.id, m));
+          context.forEach((m) => map.set(m.id, m));
+          const merged = Array.from(map.values());
+          merged.sort((a, b) => (a.date || 0) - (b.date || 0));
+          return merged;
+        });
+      }
+    }
+
+    setTimeout(() => {
+      scrollToMessage(msgId);
+    }, 120);
+  };
+
+  const handleNextSearchResult = () => {
+    if (searchResults.length === 0) return;
+    const nextIdx = (searchActiveIndex + 1) % searchResults.length;
+    setSearchActiveIndex(nextIdx);
+    jumpToMessage(searchResults[nextIdx].id);
+  };
+
+  const handlePrevSearchResult = () => {
+    if (searchResults.length === 0) return;
+    const prevIdx = (searchActiveIndex - 1 + searchResults.length) % searchResults.length;
+    setSearchActiveIndex(prevIdx);
+    jumpToMessage(searchResults[prevIdx].id);
+  };
+
+  const handleCloseSearch = () => {
+    setShowInChatSearch(false);
+    setSearchQuery('');
+    setSearchDate('');
+    setSearchTypeFilter('all');
+    setSearchResults([]);
+    setSearchActiveIndex(0);
+    setShowSearchResultsList(false);
+    setHighlightedMsgId(null);
+  };
+
+  // Cloud Search fallback / extension for deeper cloud history
+  const performCloudSearch = async () => {
+    if (!chat) return;
+    setIsSearchingCloud(true);
+    try {
+      let minDate = 0;
+      let maxDate = 0;
+      if (searchDate) {
+        const [y, m, d] = searchDate.split('-').map(Number);
+        minDate = Math.floor(new Date(y, m - 1, d, 0, 0, 0).getTime() / 1000);
+        maxDate = Math.floor(new Date(y, m - 1, d, 23, 59, 59).getTime() / 1000);
+      }
+      const cloudRes = await telegramApi.searchChatMessages(chat.id, searchQuery.trim(), {
+        minDate,
+        maxDate,
+        limit: 50,
+      });
+
+      if (cloudRes.messages && cloudRes.messages.length > 0) {
+        await indexedDbCache.saveMessages(chat.id, cloudRes.messages);
+        await performInChatSearch(searchQuery, searchDate, searchTypeFilter);
+      } else {
+        alert('لم يتم العثور على رسائل إضافية في سحابة تليجرام');
+      }
+    } catch (err: any) {
+      alert(`البحث السحابي: ${err.message || 'خطأ'}`);
+    } finally {
+      setIsSearchingCloud(false);
     }
   };
 
@@ -1092,13 +1235,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
           <button
             onClick={onBackMobile}
             className="md:hidden p-1.5 -mr-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+            title="رجوع للمحادثات"
           >
             <ArrowRight className="w-5 h-5" />
           </button>
 
-          <div className="w-10 h-10 rounded-full bg-[#2b5278] flex items-center justify-center text-white font-bold text-sm shadow">
-            {initial}
-          </div>
+          <Avatar
+            peerId={chat.id}
+            name={chatTitle}
+            size="md"
+            isGroup={chat.isGroup}
+            isChannel={chat.isChannel}
+            customSrc={chat.photoUrl}
+          />
 
           <div>
             <h2 className="text-sm font-bold text-white leading-tight flex items-center gap-1.5">
@@ -1207,6 +1356,23 @@ export const ChatView: React.FC<ChatViewProps> = ({
             </button>
           )}
 
+          {/* In-Chat Search Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setShowInChatSearch((prev) => !prev);
+              setTimeout(() => searchInputRef.current?.focus(), 100);
+            }}
+            title="البحث في رسائل المحادثة (فهارس IndexedDB والسحابة)"
+            className={`p-2 rounded-xl transition-colors cursor-pointer ${
+              showInChatSearch
+                ? 'text-[#54a9eb] bg-[#54a9eb]/15 hover:bg-[#54a9eb]/25'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Search className="w-4 h-4" />
+          </button>
+
           {/* 3-dots Menu for Clear History, Archive, and Leave */}
           <div className="relative">
             <button
@@ -1285,6 +1451,256 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* In-Chat Search Bar (IndexedDB indexed search by keywords & date) */}
+      {showInChatSearch && (
+        <div className="bg-[#17212b] border-b border-[#242f3d] z-30 shrink-0 shadow-lg animate-in slide-in-from-top-2 duration-150" dir="rtl">
+          {/* Main search input and controls */}
+          <div className="px-4 py-2.5 flex flex-wrap items-center gap-2">
+            <div className="flex-1 min-w-[200px] relative flex items-center">
+              <Search className="w-4 h-4 text-slate-400 absolute right-3 pointer-events-none" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (e.shiftKey) handlePrevSearchResult();
+                    else handleNextSearchResult();
+                  } else if (e.key === 'Escape') {
+                    handleCloseSearch();
+                  }
+                }}
+                placeholder="ابحث بالكلمات المفتاحية في هذه المحادثة..."
+                className="w-full bg-[#0e1621] text-slate-100 text-xs rounded-xl pr-9 pl-8 py-2 border border-[#242f3d] focus:border-[#54a9eb] focus:outline-none transition-colors placeholder:text-slate-500"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute left-2.5 text-slate-400 hover:text-white p-1"
+                  title="مسح النص"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Date filter picker & shortcuts */}
+            <div className="flex items-center gap-1.5">
+              <div className="relative flex items-center">
+                <input
+                  type="date"
+                  value={searchDate}
+                  onChange={(e) => setSearchDate(e.target.value)}
+                  className="bg-[#0e1621] text-slate-200 text-xs rounded-xl px-2.5 py-1.5 border border-[#242f3d] focus:border-[#54a9eb] focus:outline-none transition-colors cursor-pointer"
+                  title="البحث حسب تاريخ محدد"
+                />
+                {searchDate && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchDate('')}
+                    className="mr-1 text-slate-400 hover:text-white text-xs p-1"
+                    title="إلغاء فلتر التاريخ"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Quick Date Presets */}
+              <button
+                type="button"
+                onClick={() => setSearchDate(new Date().toISOString().split('T')[0])}
+                className={`px-2 py-1 text-[11px] rounded-lg border transition-colors cursor-pointer ${
+                  searchDate === new Date().toISOString().split('T')[0]
+                    ? 'bg-[#54a9eb] text-white border-[#54a9eb]'
+                    : 'bg-[#242f3d]/60 text-slate-300 border-[#242f3d] hover:bg-[#242f3d]'
+                }`}
+              >
+                اليوم
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+                  setSearchDate(yesterday);
+                }}
+                className={`px-2 py-1 text-[11px] rounded-lg border transition-colors cursor-pointer ${
+                  searchDate === new Date(Date.now() - 86400000).toISOString().split('T')[0]
+                    ? 'bg-[#54a9eb] text-white border-[#54a9eb]'
+                    : 'bg-[#242f3d]/60 text-slate-300 border-[#242f3d] hover:bg-[#242f3d]'
+                }`}
+              >
+                أمس
+              </button>
+            </div>
+
+            {/* Navigation Buttons and Results Count */}
+            <div className="flex items-center gap-1 shrink-0">
+              {isSearchingLocal ? (
+                <div className="flex items-center gap-1.5 px-2 text-xs text-slate-400">
+                  <div className="w-3.5 h-3.5 border-2 border-[#54a9eb] border-t-transparent rounded-full animate-spin" />
+                  <span>جاري الفهرسة...</span>
+                </div>
+              ) : searchResults.length > 0 ? (
+                <div className="flex items-center gap-1 bg-[#0e1621] px-2 py-1 rounded-xl border border-[#242f3d]">
+                  <span className="text-xs text-slate-300 font-medium px-1">
+                    {searchActiveIndex + 1} من {searchResults.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handlePrevSearchResult}
+                    className="p-1 text-slate-400 hover:text-white hover:bg-white/10 rounded-md transition-colors cursor-pointer"
+                    title="النتيجة السابقة (Shift+Enter)"
+                  >
+                    <ChevronUp className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextSearchResult}
+                    className="p-1 text-slate-400 hover:text-white hover:bg-white/10 rounded-md transition-colors cursor-pointer"
+                    title="النتيجة التالية (Enter)"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (searchQuery || searchDate || searchTypeFilter !== 'all') ? (
+                <span className="text-xs text-slate-400 px-2">لا توجد رسائل مطابقة</span>
+              ) : null}
+
+              {/* Toggle Results List Button */}
+              {searchResults.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowSearchResultsList((prev) => !prev)}
+                  className={`p-1.5 text-xs rounded-xl border transition-colors cursor-pointer flex items-center gap-1 ${
+                    showSearchResultsList
+                      ? 'bg-[#54a9eb]/20 text-[#54a9eb] border-[#54a9eb]/40'
+                      : 'bg-[#242f3d]/60 text-slate-300 border-[#242f3d] hover:bg-[#242f3d]'
+                  }`}
+                  title="عرض قائمة النتائج"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">القائمة</span>
+                </button>
+              )}
+
+              {/* Cloud Search Button */}
+              <button
+                type="button"
+                onClick={performCloudSearch}
+                disabled={isSearchingCloud}
+                className="px-2.5 py-1.5 text-xs rounded-xl bg-[#54a9eb]/15 hover:bg-[#54a9eb]/25 text-[#54a9eb] border border-[#54a9eb]/30 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="البحث في سحابة تليجرام عن الرسائل الأقدم غير المحفوظة محلياً"
+              >
+                {isSearchingCloud ? (
+                  <div className="w-3.5 h-3.5 border-2 border-[#54a9eb] border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5" />
+                )}
+                <span className="hidden md:inline">بحث سحابي</span>
+              </button>
+
+              {/* Close Search */}
+              <button
+                type="button"
+                onClick={handleCloseSearch}
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
+                title="إغلاق البحث (Esc)"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Filter Chips Bar (All, Texts, Media, Files, Links) */}
+          <div className="px-4 pb-2 flex items-center gap-1.5 overflow-x-auto text-[11px]">
+            <span className="text-slate-400 ml-1 flex items-center gap-1 shrink-0">
+              <Filter className="w-3 h-3" />
+              تصفية:
+            </span>
+            {(
+              [
+                { id: 'all', label: 'الكل' },
+                { id: 'text', label: 'نصوص فقط' },
+                { id: 'media', label: 'وسائط وصور' },
+                { id: 'files', label: 'ملفات ومستندات' },
+                { id: 'links', label: 'روابط' },
+              ] as const
+            ).map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => setSearchTypeFilter(filter.id)}
+                className={`px-2.5 py-0.5 rounded-full border transition-all cursor-pointer whitespace-nowrap ${
+                  searchTypeFilter === filter.id
+                    ? 'bg-[#54a9eb] text-white border-[#54a9eb] font-medium'
+                    : 'bg-[#0e1621]/60 text-slate-400 border-[#242f3d] hover:text-slate-200 hover:border-slate-600'
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Expandable Search Results List Drawer */}
+          {showSearchResultsList && searchResults.length > 0 && (
+            <div className="max-h-60 overflow-y-auto border-t border-[#242f3d] bg-[#131d27]/95 divide-y divide-[#242f3d]/60">
+              {searchResults.map((resMsg, idx) => {
+                const isSelected = idx === searchActiveIndex;
+                const formattedDate = new Date((resMsg.date || 0) * 1000).toLocaleDateString('ar-EG', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                });
+                const formattedTime = formatMsgTime(resMsg.date || 0);
+
+                return (
+                  <div
+                    key={resMsg.id}
+                    onClick={() => {
+                      setSearchActiveIndex(idx);
+                      jumpToMessage(resMsg.id);
+                    }}
+                    className={`px-4 py-2 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                      isSelected
+                        ? 'bg-[#54a9eb]/15 border-r-4 border-r-[#54a9eb]'
+                        : 'hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <span className="font-semibold text-slate-200">
+                          {resMsg.out ? 'أنت' : resMsg.senderName || chat.title || 'رسالة'}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          {formattedDate} • {formattedTime}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-300 truncate mt-0.5">
+                        {resMsg.text ||
+                          (resMsg.mediaInfo?.fileName
+                            ? `ملف: ${resMsg.mediaInfo.fileName}`
+                            : resMsg.mediaType
+                            ? `مرفق: ${resMsg.mediaType}`
+                            : 'رسالة بدون نص')}
+                      </p>
+                    </div>
+
+                    <div className="shrink-0 text-left">
+                      <span className="text-[10px] text-slate-400 bg-[#242f3d] px-2 py-0.5 rounded-full">
+                        #{resMsg.id}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Pinned Messages Top Bar */}
       {pinnedMessages.length > 0 && (
@@ -1382,13 +1798,32 @@ export const ChatView: React.FC<ChatViewProps> = ({
               <div
                 key={msg.id}
                 id={`msg-${msg.id}`}
-                className={`group flex items-end gap-1.5 transition-all ${
+                className={`group flex items-end gap-2 transition-all ${
                   isOut ? 'justify-start flex-row' : 'justify-end flex-row-reverse'
                 }`}
               >
+                {/* Incoming Message Sender Avatar */}
+                {!isOut && (
+                  <div
+                    className="shrink-0 mb-0.5 select-none"
+                    title={msg.senderName || chatTitle}
+                  >
+                    <Avatar
+                      peerId={msg.senderId || chat.id}
+                      name={msg.senderName || chatTitle}
+                      size="sm"
+                      isChannel={chat.isChannel}
+                    />
+                  </div>
+                )}
+
                 {/* Message Bubble */}
                 <div
                   className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3.5 py-2 shadow-md relative break-words text-sm transition-all ${
+                    highlightedMsgId === msg.id
+                      ? 'ring-2 ring-[#54a9eb] shadow-lg shadow-[#54a9eb]/30 '
+                      : ''
+                  }${
                     isOut
                       ? 'bg-[#2b5278] text-white rounded-br-xs'
                       : 'bg-[#182533] text-slate-100 rounded-bl-xs border border-[#242f3d]/60'
@@ -1415,23 +1850,28 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     </div>
                   )}
 
+                  {/* Incoming Message Sender Name Header */}
+                  {!isOut && (chat.isGroup || chat.isChannel || (msg.senderName && msg.senderName !== chatTitle)) && (
+                    <div className="text-[12px] font-semibold text-[#54a9eb] mb-1 flex items-center gap-1.5 leading-tight">
+                      <span>{msg.senderName || chatTitle}</span>
+                      {msg.senderUsername && (
+                        <span className="text-[10px] text-slate-400 font-normal">@{msg.senderUsername}</span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Quoted Reply Banner */}
                   {msg.replyToMsgId && (
                     <div
-                      onClick={() => {
-                        const el = document.getElementById(`msg-${msg.replyToMsgId}`);
-                        if (el) {
-                          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          el.classList.add('ring-2', 'ring-[#54a9eb]');
-                          setTimeout(() => el.classList.remove('ring-2', 'ring-[#54a9eb]'), 1500);
-                        }
-                      }}
+                      onClick={() => jumpToMessage(msg.replyToMsgId!)}
                       className="mb-1.5 px-2.5 py-1 rounded bg-black/25 border-r-2 border-[#54a9eb] text-xs cursor-pointer hover:bg-black/35 transition-colors"
                     >
                       <div className="font-semibold text-[11px] text-[#54a9eb] flex items-center gap-1">
                         <Reply className="w-3 h-3 -scale-x-100" />
                         <span>
-                          {parentMsg ? (parentMsg.out ? 'أنت' : chatTitle) : `رسالة #${msg.replyToMsgId}`}
+                          {parentMsg
+                            ? (parentMsg.out ? 'أنت' : parentMsg.senderName || chatTitle)
+                            : `رد على رسالة #${msg.replyToMsgId}`}
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-300 truncate max-w-[240px]">
@@ -1446,7 +1886,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                               : parentMsg.mediaType === 'document'
                               ? '📄 ملف'
                               : 'مرفق وسائط')
-                          : 'انقر لعرض الرسالة الأصلية'}
+                          : 'انقر للقفز إلى الرسالة الأصلية'}
                       </p>
                     </div>
                   )}

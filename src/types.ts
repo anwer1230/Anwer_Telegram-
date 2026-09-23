@@ -22,6 +22,8 @@ export interface TelegramDialog {
   folderId?: number;
   isArchived?: boolean;
   date: number;
+  hasPhoto?: boolean;
+  photoUrl?: string;
   lastMessage?: {
     id?: number;
     text: string;
@@ -287,6 +289,10 @@ export interface TelegramMessage {
   out: boolean;
   unread?: boolean;
   senderId: string;
+  senderName?: string;
+  senderUsername?: string;
+  hasSenderPhoto?: boolean;
+  authorName?: string;
   mediaType: string | null;
   mediaInfo?: TelegramMessageMediaInfo | null;
   replyToMsgId?: number | null;

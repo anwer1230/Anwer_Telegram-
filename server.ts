@@ -64,6 +64,8 @@ import {
   getTelegramPrivacySettings,
   setTelegramPrivacyRule,
   sendBotCallbackAnswer,
+  searchTelegramChatMessages,
+  getTelegramPeerAvatar,
 } from './server/telegramClient.js';
 
 async function startServer() {
@@ -327,6 +329,37 @@ async function startServer() {
         success: false,
         error: err.errorMessage || err.message || 'فشل تنزيل الوسائط من تليجرام',
       });
+    }
+  });
+
+  // --------------------------------
+  // Real Telegram Peer Avatars Endpoint (Fast Caching for Users, Groups, Channels)
+  // --------------------------------
+  app.get(['/api/telegram/avatar/:peerId', '/api/telegram/avatar'], async (req, res) => {
+    try {
+      const peerId = (req.params.peerId || req.query.peerId) as string;
+      if (!peerId) {
+        return res.status(400).send('peerId is required');
+      }
+
+      const isBig = req.query.big === '1' || req.query.big === 'true';
+      const sessionString =
+        (req.headers['x-telegram-session'] as string) ||
+        (req.query.session as string);
+
+      const buffer = await getTelegramPeerAvatar(sessionString, peerId, isBig);
+      if (!buffer || buffer.length === 0) {
+        res.setHeader('Cache-Control', 'public, max-age=300');
+        return res.status(404).send('No profile photo');
+      }
+
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Content-Length', buffer.length);
+      res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+      return res.send(buffer);
+    } catch (err: any) {
+      res.setHeader('Cache-Control', 'public, max-age=180');
+      return res.status(404).send('Avatar unavailable');
     }
   });
 
@@ -1174,6 +1207,39 @@ async function startServer() {
       res.status(500).json({
         success: false,
         error: err.errorMessage || err.message || 'فشل البحث العام في سحابة تليجرام',
+      });
+    }
+  });
+
+  // --------------------------------
+  // In-Chat Search (Search Messages in Specific Chat via Cloud MTProto)
+  // --------------------------------
+  app.get('/api/telegram/search/chat', async (req, res) => {
+    try {
+      const sessionString = req.headers['x-telegram-session'] as string;
+      if (!sessionString) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
+      }
+      const chatId = req.query.chatId as string;
+      if (!chatId) {
+        return res.status(400).json({ success: false, error: 'chatId مطلوب للبحث' });
+      }
+      const q = (req.query.q as string) || '';
+      const minDate = parseInt(req.query.minDate as string, 10) || 0;
+      const maxDate = parseInt(req.query.maxDate as string, 10) || 0;
+      const limit = parseInt(req.query.limit as string, 10) || 50;
+
+      const result = await searchTelegramChatMessages(sessionString, chatId, q, {
+        minDate,
+        maxDate,
+        limit,
+      });
+      res.json({ success: true, ...result });
+    } catch (err: any) {
+      console.error('Error in in-chat search:', err);
+      res.status(500).json({
+        success: false,
+        error: err.errorMessage || err.message || 'فشل البحث في رسائل المحادثة',
       });
     }
   });

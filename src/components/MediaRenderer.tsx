@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { TelegramMessage, TelegramMiniApp } from '../types';
 import { telegramApi } from '../api/telegramApi';
+import { MediaViewerModal } from './MediaViewerModal';
 
 interface MediaRendererProps {
   message: TelegramMessage;
@@ -35,6 +36,7 @@ export const MediaRenderer: React.FC<MediaRendererProps> = ({
   const [loadError, setLoadError] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioEl, setAudioEl] = useState<HTMLAudioElement | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
 
   // Poll state
   const [voting, setVoting] = useState(false);
@@ -250,13 +252,14 @@ export const MediaRenderer: React.FC<MediaRendererProps> = ({
 
       {/* 4. Photo rendering */}
       {mediaType === 'photo' && (
-        <div className="relative group max-w-sm rounded-lg overflow-hidden bg-black/30 border border-white/5">
+        <div className="relative group max-w-sm rounded-lg overflow-hidden bg-black/30 border border-white/5 cursor-pointer">
           {!loadError ? (
             <img
               src={viewUrl}
               alt={fileName}
               loading="lazy"
               referrerPolicy="no-referrer"
+              onClick={() => setIsViewerOpen(true)}
               onError={() => setLoadError(true)}
               className="w-full max-h-80 object-cover rounded-lg transition-transform duration-200 group-hover:scale-[1.01]"
             />
@@ -268,15 +271,14 @@ export const MediaRenderer: React.FC<MediaRendererProps> = ({
           )}
 
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-            <a
-              href={viewUrl}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={() => setIsViewerOpen(true)}
               title="معاينة بالحجم الكامل"
-              className="p-2 rounded-full bg-[#242f3d]/90 text-white hover:bg-[#54a9eb] transition-colors shadow-lg"
+              className="p-2 rounded-full bg-[#242f3d]/90 text-white hover:bg-[#54a9eb] transition-colors shadow-lg cursor-pointer"
             >
               <ExternalLink className="w-4 h-4" />
-            </a>
+            </button>
             <a
               href={downloadUrl}
               download={fileName}
@@ -286,6 +288,16 @@ export const MediaRenderer: React.FC<MediaRendererProps> = ({
               <Download className="w-4 h-4" />
             </a>
           </div>
+
+          <MediaViewerModal
+            isOpen={isViewerOpen}
+            onClose={() => setIsViewerOpen(false)}
+            mediaUrl={viewUrl}
+            mediaType="photo"
+            fileName={fileName}
+            senderName={message.senderName}
+            date={message.date}
+          />
         </div>
       )}
 
