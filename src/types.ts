@@ -347,6 +347,13 @@ export interface TelegramChatInfo {
   hasPhoto?: boolean;
 }
 
+export interface TelegramMonitorMatch {
+  chatId: string;
+  message: TelegramMessage;
+  matchedKeywords: string[];
+  detectedAt: number;
+}
+
 export type AuthMode = 'phone' | 'session' | 'bot';
 
 export interface AuthState {
