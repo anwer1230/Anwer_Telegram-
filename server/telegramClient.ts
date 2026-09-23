@@ -26,10 +26,98 @@ interface ActiveSession {
   lastDialogsFetch?: number;
   eventListenersAttached?: boolean;
   eventSubscribers: Set<(data: { event: string; payload: any }) => void>;
+  // Captured independently of SSE subscribers so monitoring remains always on.
+  monitorMatches?: Array<{
+    chatId: string;
+    message: any;
+    matchedKeywords: string[];
+    detectedAt: number;
+  }>;
 }
 
 const activeSessions = new Map<string, ActiveSession>();
 const pendingAuth = new Map<string, { client: TelegramClient; phoneCodeHash?: string; phone: string; createdAt: number }>();
+
+/**
+ * Fixed backend monitoring vocabulary. Each source line is kept as a separate keyword.
+ * This list is independent from the UI so monitoring cannot be disabled by the frontend.
+ */
+export const ALWAYS_ON_MONITOR_KEYWORDS = [
+  'اريد مساعدة',
+  'ابي مساعدة',
+  'من يسوي تكليف',
+  'من يحل',
+  'عندي بحث',
+  'معي واجب',
+  'عندي اسايمنت',
+  'من يسوي اسايمنت',
+  'ابي سكليف',
+  'ابي عذر',
+  'من يسوي سكليف',
+  'ابي شخص مضمون',
+  'ابي مختص',
+  'هيليب',
+  'من يستطيع',
+  'تعرفون احد',
+  'تعرفون شخص',
+  'من يساعدني',
+  'من يعرف مختص',
+  'ابي مختص',
+  'مين يعرف يحل واجب',
+  'من يحل واجبات الجامعه',
+  'أحتاج مساعدتكم',
+  'ابي احد يسوي بحث',
+  'اريد مساعدة',
+  'ابي مساعدة',
+  'من يسوي تكليف',
+  'من يحل',
+  'عندي بحث',
+  'معي واجب',
+  'عندي اسايمنت',
+  'من يسوي اسايمنت',
+  'ابي سكليف',
+  'ابي عذر',
+  'من يسوي سكليف',
+  'ابي شخص مضمون',
+  'ابي مختص',
+  'هيليب',
+  'من يستطيع',
+  'تعرفون احد',
+  'تعرفون شخص',
+  'من يساعدني',
+  'من يعرف مختص',
+  'ابي مختص',
+  'مين يعرف يحل واجب',
+  'من يحل واجبات الجامعه',
+  'أحتاج مساعدتكم',
+  'ابي احد يسوي بحث',
+  'عندي بحث',
+  'مين يعرف مختص',
+  'من يعرف احد كويس',
+] as const;
+
+function normalizeMonitorText(value: unknown): string {
+  return String(value || '')
+    .normalize('NFKC')
+    .toLocaleLowerCase('ar')
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ـ/g, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const normalizedMonitorKeywords = ALWAYS_ON_MONITOR_KEYWORDS.map((keyword) => normalizeMonitorText(keyword));
+
+export function findMonitoringKeywordMatches(text: unknown): string[] {
+  const normalizedText = normalizeMonitorText(text);
+  if (!normalizedText) return [];
+
+  // Keep the fixed source order but show each matched phrase once per message.
+  return Array.from(new Set(ALWAYS_ON_MONITOR_KEYWORDS.filter((_, index) => normalizedText.includes(normalizedMonitorKeywords[index]))));
+}
 
 // Clean up pending requests older than 15 minutes
 setInterval(() => {
@@ -794,6 +882,34 @@ export function attachTelegramEventHandlers(sessionObj: ActiveSession) {
           console.error('Error dispatching new_message event:', err);
         }
       }
+
+      // Always-on monitor: inspect incoming messages in the backend event handler.
+      // It does not depend on the UI, an open SSE connection, or a UI keyword list.
+      if (!m.out) {
+        const matchedKeywords = findMonitoringKeywordMatches(m.message || m.text || formatted.text);
+        if (matchedKeywords.length > 0) {
+          const monitorPayload = {
+            chatId,
+            message: formatted,
+            matchedKeywords,
+            detectedAt: Date.now(),
+          };
+
+          const storedMatches = (sessionObj.monitorMatches ||= []);
+          storedMatches.push(monitorPayload);
+          if (storedMatches.length > 100) {
+            storedMatches.splice(0, storedMatches.length - 100);
+          }
+
+          for (const subscriber of sessionObj.eventSubscribers) {
+            try {
+              subscriber({ event: 'monitor_match', payload: monitorPayload });
+            } catch (err) {
+              console.error('Error dispatching monitor_match event:', err);
+            }
+          }
+        }
+      }
     } catch (err) {
       console.error('Error in Telegram NewMessage handler:', err);
     }
@@ -950,6 +1066,16 @@ export async function subscribeToTelegramEvents(
   const session = await getClientForSession(sessionString);
   attachTelegramEventHandlers(session);
   session.eventSubscribers.add(subscriber);
+
+  // Replay only very recent matches after a temporary SSE reconnect.
+  const recentMonitorMatches = (session.monitorMatches || []).filter(
+    (match) => Date.now() - match.detectedAt < 5 * 60 * 1000
+  );
+  for (const payload of recentMonitorMatches) {
+    try {
+      subscriber({ event: 'monitor_match', payload });
+    } catch (_) {}
+  }
 
   return () => {
     session.eventSubscribers.delete(subscriber);
