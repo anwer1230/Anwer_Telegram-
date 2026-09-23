@@ -4240,6 +4240,287 @@
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script src="/static/js/app.js"></script>
 
+    <!-- تسجيل الدخول إلى Telegram: إرسال النموذج عبر API بدون إعادة تحميل الصفحة -->
+    <script>
+    (() => {
+        'use strict';
+
+        // تهيئة Socket.IO مرة واحدة حتى تصل نتائج الاتصال والكود إلى الواجهة.
+        if (typeof window.io === 'function' && !window.socket) {
+            window.socket = window.io({
+                transports: ['polling', 'websocket'],
+                withCredentials: true
+            });
+        }
+
+        const byId = (id) => document.getElementById(id);
+
+        function ensureLoginFeedback() {
+            let el = byId('loginFeedback');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'loginFeedback';
+                el.className = 'alert d-none mt-3 mb-3';
+                el.setAttribute('role', 'alert');
+                const form = byId('loginForm');
+                if (form && form.parentNode) form.parentNode.insertBefore(el, form);
+            }
+            return el;
+        }
+
+        function showLoginMessage(message, type = 'info') {
+            const el = ensureLoginFeedback();
+            if (!el) return;
+            el.className = `alert alert-${type} mt-3 mb-3`;
+            el.textContent = message || '';
+            el.classList.toggle('d-none', !message);
+        }
+
+        function setConnectionStatus(connected) {
+            const html = connected
+                ? '<i class="fas fa-circle text-success"></i> متصل'
+                : '<i class="fas fa-circle text-danger"></i> غير متصل';
+            ['connectionStatus', 'connectionStatusHeader'].forEach((id) => {
+                const el = byId(id);
+                if (!el) return;
+                el.innerHTML = html;
+                el.className = `badge ${connected ? 'bg-success' : 'bg-secondary'}`;
+            });
+        }
+
+        function setLoginBusy(busy) {
+            const btn = byId('loginBtn');
+            if (!btn) return;
+            btn.disabled = busy;
+            if (busy) {
+                btn.dataset.originalHtml = btn.dataset.originalHtml || btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>جاري الاتصال...';
+            } else {
+                btn.innerHTML = btn.dataset.originalHtml ||
+                    '<i class="fas fa-sign-in-alt me-2"></i>تسجيل الدخول';
+            }
+        }
+
+        function showCodeForm() {
+            const verifyForm = byId('verifyForm');
+            const passwordForm = byId('passwordForm');
+            const loginButton = byId('loginButtonContainer');
+            if (verifyForm) verifyForm.style.display = '';
+            if (passwordForm) passwordForm.style.display = 'none';
+            if (loginButton) loginButton.style.display = 'none';
+            const code = byId('verificationCode');
+            if (code) {
+                code.value = '';
+                setTimeout(() => code.focus(), 50);
+            }
+            showLoginMessage('📱 تم إرسال كود التحقق. أدخل الكود الذي وصلك في تيليجرام.', 'info');
+        }
+
+        function showPasswordForm() {
+            const verifyForm = byId('verifyForm');
+            const passwordForm = byId('passwordForm');
+            if (verifyForm) verifyForm.style.display = 'none';
+            if (passwordForm) passwordForm.style.display = '';
+            const password = byId('twoFactorPassword');
+            if (password) {
+                password.value = '';
+                setTimeout(() => password.focus(), 50);
+            }
+            showLoginMessage('🔐 الحساب محمي بالتحقق بخطوتين. أدخل كلمة المرور.', 'warning');
+        }
+
+        function showLoggedIn() {
+            setConnectionStatus(true);
+            setLoginBusy(false);
+            const loginButton = byId('loginButtonContainer');
+            const sessionControls = byId('sessionControls');
+            const verifyForm = byId('verifyForm');
+            const passwordForm = byId('passwordForm');
+            if (loginButton) loginButton.style.display = 'none';
+            if (sessionControls) sessionControls.style.display = '';
+            if (verifyForm) verifyForm.style.display = 'none';
+            if (passwordForm) passwordForm.style.display = 'none';
+            showLoginMessage('✅ تم تسجيل الدخول بنجاح.', 'success');
+        }
+
+        function showLoggedOut() {
+            setConnectionStatus(false);
+            const sessionControls = byId('sessionControls');
+            const loginButton = byId('loginButtonContainer');
+            if (sessionControls) sessionControls.style.display = 'none';
+            if (loginButton) loginButton.style.display = '';
+        }
+
+        async function postLogin(url, body) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify(body)
+            });
+            const text = await response.text();
+            let data = {};
+            try { data = text ? JSON.parse(text) : {}; }
+            catch (_) { data = { success: false, message: `استجابة غير صالحة من الخادم (HTTP ${response.status})` }; }
+            if (!response.ok && data.success !== false) {
+                data.success = false;
+                data.message = data.message || `فشل الطلب (HTTP ${response.status})`;
+            }
+            return data;
+        }
+
+        async function submitLogin(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const phone = (byId('phone')?.value || '').trim();
+            if (!phone) {
+                showLoginMessage('❌ يرجى إدخال رقم الهاتف مع رمز الدولة.', 'danger');
+                byId('phone')?.focus();
+                return false;
+            }
+
+            setLoginBusy(true);
+            showLoginMessage('🔄 جاري الاتصال بتيليجرام وإرسال كود التحقق...', 'info');
+            try {
+                const result = await postLogin('/api/save_login', {
+                    phone,
+                    password: byId('password')?.value || ''
+                });
+
+                if (!result.success) {
+                    setLoginBusy(false);
+                    setConnectionStatus(false);
+                    showLoginMessage(result.message || '❌ تعذر بدء تسجيل الدخول.', 'danger');
+                } else if (result.code_required) {
+                    showCodeForm();
+                } else if (result.pending) {
+                    setConnectionStatus(true);
+                    showLoginMessage('⏳ تم بدء الاتصال. انتظر وصول كود التحقق...', 'info');
+                } else {
+                    showLoggedIn();
+                }
+            } catch (error) {
+                setLoginBusy(false);
+                showLoginMessage('❌ تعذر الاتصال بالخادم: ' + (error.message || error), 'danger');
+            }
+            return false;
+        }
+
+        async function submitCode(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const code = (byId('verificationCode')?.value || '').trim();
+            if (!code) {
+                showLoginMessage('❌ يرجى إدخال كود التحقق.', 'danger');
+                byId('verificationCode')?.focus();
+                return false;
+            }
+            const button = byId('verifyForm')?.querySelector('button[type="submit"]');
+            if (button) button.disabled = true;
+            showLoginMessage('🔄 جاري التحقق من الكود...', 'info');
+            try {
+                const result = await postLogin('/api/verify_code', { code });
+                if (result.password_required) {
+                    showPasswordForm();
+                } else if (result.success) {
+                    showLoggedIn();
+                } else {
+                    showLoginMessage(result.message || '❌ كود التحقق غير صحيح.', 'danger');
+                }
+            } catch (error) {
+                showLoginMessage('❌ تعذر التحقق: ' + (error.message || error), 'danger');
+            } finally {
+                if (button) button.disabled = false;
+            }
+            return false;
+        }
+
+        async function submitPassword(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const password = byId('twoFactorPassword')?.value || '';
+            if (!password) {
+                showLoginMessage('❌ يرجى إدخال كلمة مرور التحقق الثنائي.', 'danger');
+                byId('twoFactorPassword')?.focus();
+                return false;
+            }
+            const button = byId('passwordForm')?.querySelector('button[type="submit"]');
+            if (button) button.disabled = true;
+            showLoginMessage('🔄 جاري التحقق من كلمة المرور...', 'info');
+            try {
+                const result = await postLogin('/api/verify_code', { password });
+                if (result.success) showLoggedIn();
+                else showLoginMessage(result.message || '❌ كلمة المرور غير صحيحة.', 'danger');
+            } catch (error) {
+                showLoginMessage('❌ تعذر التحقق: ' + (error.message || error), 'danger');
+            } finally {
+                if (button) button.disabled = false;
+            }
+            return false;
+        }
+
+        async function resendCode(forceSms = false) {
+            const button = byId(forceSms ? 'resendSmsBtn' : 'resendCodeBtn');
+            if (button) button.disabled = true;
+            try {
+                const result = await postLogin('/api/resend_code', { force_sms: forceSms });
+                showLoginMessage(result.message || (result.success ? '✅ تم إرسال الكود.' : '❌ فشل إرسال الكود.'), result.success ? 'success' : 'danger');
+            } catch (error) {
+                showLoginMessage('❌ تعذر إعادة إرسال الكود: ' + (error.message || error), 'danger');
+            } finally {
+                if (button) button.disabled = false;
+            }
+        }
+
+        function handleLoginResult(data) {
+            if (!data) return;
+            if (data.status === 'code_required') showCodeForm();
+            else if (data.status === 'success') showLoggedIn();
+            else if (data.status === 'error') {
+                setLoginBusy(false);
+                showLoginMessage(data.message || '❌ فشل تسجيل الدخول.', 'danger');
+            }
+        }
+
+        function handleLoginStatus(data) {
+            if (!data) return;
+            if (data.connected) setConnectionStatus(true);
+            if (data.awaiting_code) showCodeForm();
+            else if (data.awaiting_password) showPasswordForm();
+            else if (data.logged_in) showLoggedIn();
+        }
+
+        function bindLoginSocket() {
+            if (!window.socket || window._loginSocketBound) return;
+            window._loginSocketBound = true;
+            window.socket.on('login_result', handleLoginResult);
+            window.socket.on('login_status', handleLoginStatus);
+            window.socket.on('connection_status', (data) => {
+                if (data?.status) setConnectionStatus(data.status === 'connected');
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginForm = byId('loginForm');
+            const verifyForm = byId('verifyForm');
+            const passwordForm = byId('passwordForm');
+            if (loginForm) loginForm.addEventListener('submit', submitLogin);
+            if (verifyForm) verifyForm.addEventListener('submit', submitCode);
+            if (passwordForm) passwordForm.addEventListener('submit', submitPassword);
+            byId('resendCodeBtn')?.addEventListener('click', () => resendCode(false));
+            byId('resendSmsBtn')?.addEventListener('click', () => resendCode(true));
+            bindLoginSocket();
+            if (window.socket) window.socket.on('connect', bindLoginSocket);
+
+            // استعادة الحالة الحالية دون إعادة تحميل الصفحة.
+            fetch('/api/get_login_status', { credentials: 'same-origin' })
+                .then((response) => response.json())
+                .then(handleLoginStatus)
+                .catch(() => {});
+        });
+    })();
+    </script>
+
     <!-- PWA و Service Worker -->
     <script>
     // ══════════════════════════════════════════════════════
