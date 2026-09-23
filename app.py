@@ -115,6 +115,7 @@ except ImportError:
     fitz = None
 
 from flask import Flask, session, request, render_template, jsonify, redirect, send_file, abort, make_response
+import db as _app_db
 from install_tracker import track_installation, register_admin_routes
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from telethon import TelegramClient, events, functions
@@ -380,6 +381,15 @@ if not os.path.exists(SESSIONS_DIR):
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
+# ── قاعدة PostgreSQL الاختيارية: تصبح أساسية عند ضبط DATABASE_URL ──
+_DB_READY = False
+try:
+    _DB_READY = _app_db.init_db()
+    if _DB_READY:
+        logger.info("✅ PostgreSQL database is enabled")
+except Exception as _db_bootstrap_error:
+    logger.error("PostgreSQL bootstrap failed; using JSON fallback: %s", _db_bootstrap_error)
+
 # ── ملف بطاقات الشحن ──
 CARDS_FILE = os.path.join(DATA_DIR, "cards.json")
 _CARDS_LOCK = threading.Lock()
@@ -491,6 +501,10 @@ def _save_push_subs(subs):
     try:
         with open(PUSH_SUBS_FILE, "w") as _f:
             json.dump(subs, _f, indent=2)
+        if _DB_READY:
+            for _uid, _subscription in subs.items():
+                if isinstance(_subscription, dict) and _subscription.get("endpoint"):
+                    _app_db.upsert_push_subscription(str(_uid), _subscription["endpoint"], _subscription)
     except Exception:
         pass
 
@@ -1254,43 +1268,65 @@ def _cache_protection(cache_key, result, reason, bots=None):
         }
 
 def save_settings(user_id, settings, force=False):
+    db_saved = True
     try:
         if not force:
             existing = load_settings(user_id)
             if existing == settings:
                 return True
+        if _DB_READY:
+            db_saved = _app_db.save_settings(user_id, settings)
+
         user_dir = get_user_session_dir(user_id)
         path = os.path.join(user_dir, "settings.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump(settings, f, ensure_ascii=False, indent=4)
-        # احتفاظ بنسخة في المجلد الرئيسي للتوافق مع الكود القديم
+        # نسخة JSON احتياطية للتوافق مع التشغيل القديم والاستعادة اليدوية
         legacy_path = os.path.join(SESSIONS_DIR, f"{user_id}.json")
         with open(legacy_path, "w", encoding="utf-8") as f:
             json.dump(settings, f, ensure_ascii=False, indent=4)
-        return True
+        return bool(db_saved)
     except Exception as e:
         logger.error(f"Error saving settings for {user_id}: {str(e)}")
         return False
 
 def load_settings(user_id):
+    if _DB_READY:
+        try:
+            database_settings = _app_db.load_settings(user_id)
+            if database_settings is not None:
+                return database_settings
+        except Exception as _db_load_error:
+            logger.warning("PostgreSQL settings read failed for %s: %s", user_id, _db_load_error)
+
     try:
         user_dir = get_user_session_dir(user_id)
         path = os.path.join(user_dir, "settings.json")
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+            if _DB_READY:
+                _app_db.save_settings(user_id, data)
+            return data
         # fallback للملف القديم
         legacy_path = os.path.join(SESSIONS_DIR, f"{user_id}.json")
         if os.path.exists(legacy_path):
             with open(legacy_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            # نقل البيانات للمجلد الجديد
+            # نقل البيانات للمجلد الجديد والقاعدة عند توفرها
             save_settings(user_id, data)
             return data
         return {}
     except Exception as e:
         logger.error(f"Error loading settings for {user_id}: {str(e)}")
         return {}
+
+# ترحيل كسول وآمن: لا يستبدل أي إعداد موجود في PostgreSQL
+if _DB_READY:
+    try:
+        _app_db.migrate_json_settings(SESSIONS_DIR)
+    except Exception as _db_migration_error:
+        logger.warning("JSON settings migration skipped: %s", _db_migration_error)
 
 def clear_user_session(user_id):
     """حذف مجلد المستخدم بالكامل"""
@@ -3445,6 +3481,12 @@ def monitoring_worker(user_id):
             "auto_resume": _pause_dur > 0
         }, to=user_id)
 
+        if _DB_READY:
+            _app_db.record_schedule_event(user_id, "running", {
+                "duration_hours": _sched_dur / 3600,
+                "pause_duration_hours": _pause_dur / 3600,
+            })
+
         consecutive_errors = 0
         max_consecutive_errors = 5
         _last_remain_emit = 0
@@ -3473,6 +3515,10 @@ def monitoring_worker(user_id):
                     socketio.emit('log_update', {
                         "message": "▶️ انتهت مدة التوقف — استؤنف الإرسال المجدول تلقائياً"
                     }, to=user_id)
+                    if _DB_READY:
+                        _app_db.record_schedule_event(user_id, "resumed", {
+                            "run_duration_seconds": _sched_dur,
+                        })
                     socketio.emit('schedule_status', {
                         "running": True,
                         "cycle_phase": "running",
@@ -3507,6 +3553,11 @@ def monitoring_worker(user_id):
                         socketio.emit('log_update', {
                             "message": f"⏸️ انتهت مدة التشغيل — توقف الإرسال لمدة {_pause_h}س {_pause_m}د ثم يستأنف تلقائياً"
                         }, to=user_id)
+                        if _DB_READY:
+                            _app_db.record_schedule_event(user_id, "paused", {
+                                "pause_duration_seconds": _pause_dur,
+                                "run_duration_seconds": _sched_dur,
+                            })
                         socketio.emit('schedule_status', {
                             "running": False,
                             "cycle_phase": "paused",
@@ -3664,6 +3715,8 @@ def monitoring_worker(user_id):
         if not _stopped_by_duration:
             socketio.emit('schedule_status', {"running": False, "stopped_by_duration": False}, to=user_id)
 
+        if _DB_READY:
+            _app_db.record_schedule_event(user_id, "stopped", {})
         logger.info(f"Enhanced monitoring worker ended for user {user_id}")
 
 
@@ -4517,6 +4570,15 @@ def api_save_settings():
 # ملاحظة: /api/smart_stop أُزيل — الإيقاف يتم الآن تلقائياً عند تغيير sanitize_mode من salam إلى غيره
 
 
+@app.route("/api/database/status", methods=["GET"])
+def api_database_status():
+    """إرجاع حالة اتصال قاعدة البيانات دون كشف بيانات الاتصال."""
+    if 'user_id' not in session:
+        return jsonify({"success": False, "message": "❌ الجلسة غير صالحة"}), 401
+    database_status = _app_db.status() if _DB_READY else {"configured": bool(os.environ.get("DATABASE_URL")), "connected": False}
+    return jsonify({"success": True, "database": database_status})
+
+
 @app.route("/api/user_logout", methods=["POST"])
 def api_user_logout():
     user_id = session.get('user_id')
@@ -5221,6 +5283,8 @@ def api_send_now():
                             save_settings(user_id, settings)
                         except Exception:
                             pass
+                if _DB_READY:
+                    _app_db.record_sent_batch(user_id, batch_id, batch_record)
                 socketio.emit('batch_saved', batch_record, to=user_id)
 
         except Exception as e:
