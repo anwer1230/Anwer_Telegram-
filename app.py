@@ -3411,21 +3411,38 @@ def monitoring_worker(user_id):
             if user_id in USERS:
                 USERS[user_id]['last_scheduled_send'] = _saved_last_send
 
-        # ── مدة التشغيل المحددة ──────────────────────────────────
-        _sched_dur = int(settings.get('schedule_duration', 0))
+        # ── دورة التشغيل/التوقف التلقائية للإرسال المجدول ───────────────
+        _sched_dur = max(0, int(settings.get('schedule_duration', 0) or 0))
+        _pause_dur = max(0, int(settings.get('schedule_pause_duration', 0) or 0))
+        if _pause_dur == 0:
+            try:
+                _pause_dur = max(0, int(float(settings.get('schedule_pause_hours', 0) or 0) * 3600))
+            except (TypeError, ValueError):
+                _pause_dur = 0
         _sched_start = time.time()
+        _pause_start = None
+        _cycle_phase = 'running'
         _stopped_by_duration = False
 
         if _sched_dur > 0:
             _h = _sched_dur // 3600
             _m = (_sched_dur % 3600) // 60
-            socketio.emit('log_update', {
-                "message": f"⏱️ الإرسال المجدول سيعمل لمدة {_h}س {_m}د ثم يتوقف تلقائياً"
-            }, to=user_id)
+            _cycle_message = f"⏱️ سيعمل الإرسال {_h}س {_m}د"
+            if _pause_dur > 0:
+                _ph = _pause_dur // 3600
+                _pm = (_pause_dur % 3600) // 60
+                _cycle_message += f" ثم يتوقف {_ph}س {_pm}د ويُستأنف تلقائياً"
+            else:
+                _cycle_message += " ثم يتوقف تلقائياً"
+            socketio.emit('log_update', {"message": _cycle_message}, to=user_id)
         socketio.emit('schedule_status', {
             "running": True,
+            "cycle_phase": "running",
             "duration_hours": _sched_dur / 3600,
-            "remaining_seconds": _sched_dur if _sched_dur > 0 else None
+            "pause_duration_hours": _pause_dur / 3600,
+            "remaining_seconds": _sched_dur if _sched_dur > 0 else None,
+            "pause_remaining_seconds": None,
+            "auto_resume": _pause_dur > 0
         }, to=user_id)
 
         consecutive_errors = 0
@@ -3441,12 +3458,73 @@ def monitoring_worker(user_id):
                 user_data = USERS[user_id].copy()
                 USERS[user_id]['monitoring_active'] = True
 
-            # ── التحقق من انتهاء مدة التشغيل ────────────────────
-            if _sched_dur > 0:
-                _elapsed = time.time() - _sched_start
-                _remain  = _sched_dur - _elapsed
+            # ── إدارة دورة التشغيل والتوقف التلقائية ───────────────────────
+            _now = time.time()
+            if _cycle_phase == 'paused':
+                _pause_remaining = _pause_dur - (_now - (_pause_start or _now))
+                if _pause_remaining <= 0:
+                    _cycle_phase = 'running'
+                    _sched_start = _now
+                    _pause_start = None
+                    with USERS_LOCK:
+                        if user_id in USERS:
+                            _interval_after_pause = max(60, int(USERS[user_id].get('settings', {}).get('interval_seconds', 3600)))
+                            USERS[user_id]['last_scheduled_send'] = _now - _interval_after_pause
+                    socketio.emit('log_update', {
+                        "message": "▶️ انتهت مدة التوقف — استؤنف الإرسال المجدول تلقائياً"
+                    }, to=user_id)
+                    socketio.emit('schedule_status', {
+                        "running": True,
+                        "cycle_phase": "running",
+                        "duration_hours": _sched_dur / 3600,
+                        "pause_duration_hours": _pause_dur / 3600,
+                        "remaining_seconds": _sched_dur if _sched_dur > 0 else None,
+                        "pause_remaining_seconds": None,
+                        "auto_resume": True
+                    }, to=user_id)
+                else:
+                    if time.time() - _last_remain_emit >= 30:
+                        _last_remain_emit = time.time()
+                        socketio.emit('schedule_remaining', {
+                            "phase": "paused",
+                            "remaining_seconds": int(_pause_remaining),
+                            "remaining_minutes": int(_pause_remaining // 60),
+                            "remaining_hours": _pause_remaining / 3600
+                        }, to=user_id)
+                    time.sleep(10)
+                    continue
+
+            if _cycle_phase == 'running' and _sched_dur > 0:
+                _remain = _sched_dur - (_now - _sched_start)
                 if _remain <= 0:
-                    logger.info(f"Schedule duration expired for user {user_id}")
+                    logger.info(f"Schedule run phase expired for user {user_id}")
+                    if _pause_dur > 0:
+                        _cycle_phase = 'paused'
+                        _pause_start = _now
+                        _last_remain_emit = 0
+                        _pause_h = _pause_dur // 3600
+                        _pause_m = (_pause_dur % 3600) // 60
+                        socketio.emit('log_update', {
+                            "message": f"⏸️ انتهت مدة التشغيل — توقف الإرسال لمدة {_pause_h}س {_pause_m}د ثم يستأنف تلقائياً"
+                        }, to=user_id)
+                        socketio.emit('schedule_status', {
+                            "running": False,
+                            "cycle_phase": "paused",
+                            "stopped_by_duration": False,
+                            "duration_hours": _sched_dur / 3600,
+                            "pause_duration_hours": _pause_dur / 3600,
+                            "pause_remaining_seconds": _pause_dur,
+                            "auto_resume": True
+                        }, to=user_id)
+                        send_push_notification(
+                            user_id,
+                            "⏸️ توقف مؤقت للإرسال المجدول",
+                            f"انتهت مدة التشغيل. سيُستأنف الإرسال تلقائياً بعد {_pause_h}س {_pause_m}د.",
+                            data={"type": "schedule_paused", "pause_remaining_seconds": _pause_dur}
+                        )
+                        time.sleep(1)
+                        continue
+
                     socketio.emit('log_update', {
                         "message": "⏹ انتهت المدة المحددة — توقف الإرسال المجدول تلقائياً"
                     }, to=user_id)
@@ -3456,11 +3534,12 @@ def monitoring_worker(user_id):
                             USERS[user_id]['is_running'] = False
                     socketio.emit('schedule_status', {
                         "running": False,
+                        "cycle_phase": "stopped",
                         "stopped_by_duration": True,
                         "duration_hours": _sched_dur / 3600,
+                        "pause_duration_hours": 0,
                         "can_resume": True
                     }, to=user_id)
-                    # ── إشعار Web Push حتى لو التطبيق مغلق ──
                     _h2 = _sched_dur // 3600
                     _m2 = (_sched_dur % 3600) // 60
                     send_push_notification(
@@ -3470,15 +3549,14 @@ def monitoring_worker(user_id):
                         data={"type": "schedule_expired", "duration_hours": _sched_dur / 3600}
                     )
                     break
-                else:
-                    # إرسال الوقت المتبقي كل 30 ثانية
-                    if time.time() - _last_remain_emit >= 30:
-                        _last_remain_emit = time.time()
-                        socketio.emit('schedule_remaining', {
-                            "remaining_seconds": int(_remain),
-                            "remaining_minutes": int(_remain // 60),
-                            "remaining_hours": _remain / 3600
-                        }, to=user_id)
+                elif time.time() - _last_remain_emit >= 30:
+                    _last_remain_emit = time.time()
+                    socketio.emit('schedule_remaining', {
+                        "phase": "running",
+                        "remaining_seconds": int(_remain),
+                        "remaining_minutes": int(_remain // 60),
+                        "remaining_hours": _remain / 3600
+                    }, to=user_id)
 
             try:
                 settings = user_data.get('settings', {})
@@ -3539,7 +3617,10 @@ def monitoring_worker(user_id):
                     'next_send_remaining': next_send_remaining,
                     'next_send_at': next_send_at_str,
                     'schedule_remaining': _dur_remain,
-                    'schedule_duration_hours': _sched_dur / 3600 if _sched_dur > 0 else 0
+                    'schedule_duration_hours': _sched_dur / 3600 if _sched_dur > 0 else 0,
+                    'cycle_phase': _cycle_phase,
+                    'pause_remaining_seconds': (max(0, int(_pause_dur - (time.time() - (_pause_start or time.time())))) if _cycle_phase == 'paused' else None),
+                    'pause_duration_hours': _pause_dur / 3600
                 }
 
                 socketio.emit('heartbeat', status_info, to=user_id)
@@ -4379,15 +4460,28 @@ def api_save_settings():
                 "message": f"⏹ تم إيقاف {len(keys_to_remove)} دورة ذكية بسبب تغيير وضع الإرسال"
             }, to=user_id)
 
-    _sched_dur_h = float(data.get('schedule_duration_hours', 0) or 0)
+    try:
+        _sched_dur_h = max(0.0, float(data.get('schedule_duration_hours', 0) or 0))
+    except (TypeError, ValueError):
+        _sched_dur_h = 0.0
+    try:
+        _pause_dur_h = max(0.0, float(data.get('schedule_pause_hours', 0) or 0))
+    except (TypeError, ValueError):
+        _pause_dur_h = 0.0
+    try:
+        _interval_seconds = max(60, int(data.get('interval_seconds', 3600) or 3600))
+    except (TypeError, ValueError):
+        _interval_seconds = 3600
     current_settings.update({
         'message': data.get('message', ''),
         'groups': dedupe_groups(data.get('groups', '')),
-        'interval_seconds': int(data.get('interval_seconds', 3600)),
+        'interval_seconds': _interval_seconds,
         'watch_words': [w.strip() for w in data.get('watch_words', '').split('\n') if w.strip()],
         'send_type': data.get('send_type', 'manual'),
         'schedule_duration_hours': _sched_dur_h,
         'schedule_duration': int(_sched_dur_h * 3600),
+        'schedule_pause_hours': _pause_dur_h,
+        'schedule_pause_duration': int(_pause_dur_h * 3600),
         'schedule_start_time': None,   # يُعاد ضبطه عند بدء التشغيل
         'max_retries': int(data.get('max_retries', 5)),
         'auto_reconnect': data.get('auto_reconnect', False),
