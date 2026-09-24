@@ -648,39 +648,38 @@ def get_user_session_dir(user_id):
         os.makedirs(user_dir)
     return user_dir
 
-# نظام المستخدمين الخمسة المحددين مسبقاً
-PREDEFINED_USERS = {
-    "user_1": {
-        "id": "user_1",
-        "name": "المستخدم الأول",
-        "icon": "fas fa-user",
-        "color": "#007bff"
-    },
-    "user_2": {
-        "id": "user_2", 
-        "name": "المستخدم الثاني",
-        "icon": "fas fa-user-tie",
-        "color": "#28a745"
-    },
-    "user_3": {
-        "id": "user_3",
-        "name": "المستخدم الثالث", 
-        "icon": "fas fa-user-graduate",
-        "color": "#ffc107"
-    },
-    "user_4": {
-        "id": "user_4",
-        "name": "المستخدم الرابع",
-        "icon": "fas fa-user-cog",
-        "color": "#dc3545"
-    },
-    "user_5": {
-        "id": "user_5",
-        "name": "المستخدم الخامس",
-        "icon": "fas fa-user-astronaut", 
-        "color": "#6f42c1"
+# نظام إدارة الحسابات الديناميكي وحفظها
+ACCOUNTS_CONFIG_FILE = os.path.join("data", "accounts.json")
+
+def load_accounts_config():
+    if os.path.exists(ACCOUNTS_CONFIG_FILE):
+        try:
+            with open(ACCOUNTS_CONFIG_FILE, "r", encoding="utf-8") as f:
+                d = json.load(f)
+                if isinstance(d, dict) and d:
+                    return d
+        except Exception as e:
+            logger.error(f"Error loading {ACCOUNTS_CONFIG_FILE}: {e}")
+    # الحساب الأساسي الافتراضي
+    return {
+        "user_1": {
+            "id": "user_1",
+            "name": "الحساب الأول",
+            "icon": "fas fa-user",
+            "color": "#0088cc"
+        }
     }
-}
+
+def save_accounts_config(accounts):
+    try:
+        os.makedirs(os.path.dirname(ACCOUNTS_CONFIG_FILE), exist_ok=True)
+        with open(ACCOUNTS_CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(accounts, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"Error saving {ACCOUNTS_CONFIG_FILE}: {e}")
+
+PREDEFINED_USERS = load_accounts_config()
+save_accounts_config(PREDEFINED_USERS)
 
 # معالجات الأخطاء الشاملة
 @app.errorhandler(404)
@@ -3297,6 +3296,8 @@ class TelegramManager:
 
             user_info = result.get("user", {})
             account_name = user_info.get("full_name") or user_info.get("username") or "حساب تليجرام"
+            account_phone = user_info.get("phone")
+            account_avatar = user_info.get("avatar_url") or f"/api/account_avatar/{user_id}?t={int(time.time())}"
 
             client_manager = self.get_client_manager(user_id)
 
@@ -3308,6 +3309,8 @@ class TelegramManager:
                     USERS[user_id]['awaiting_code'] = False
                     USERS[user_id]['awaiting_password'] = False
                     USERS[user_id]['account_name'] = account_name
+                    USERS[user_id]['account_phone'] = account_phone
+                    USERS[user_id]['account_avatar'] = account_avatar
 
             socketio.emit('login_status', {
                 "logged_in": True,
@@ -3315,7 +3318,10 @@ class TelegramManager:
                 "awaiting_code": False,
                 "awaiting_password": False,
                 "is_running": False,
-                "account_name": account_name
+                "account_name": account_name,
+                "account_phone": account_phone,
+                "account_avatar": account_avatar,
+                "user_id": user_id
             }, to=user_id)
             socketio.emit('connection_status', {"status": "connected"}, to=user_id)
 
@@ -3329,7 +3335,14 @@ class TelegramManager:
 
             _OSThread(target=_start_client_bg_code, daemon=True).start()
 
-            return {"status": "success", "message": "✅ تم التحقق بنجاح", "account_name": account_name}
+            return {
+                "status": "success", 
+                "message": "✅ تم التحقق بنجاح", 
+                "account_name": account_name,
+                "account_phone": account_phone,
+                "account_avatar": account_avatar,
+                "user_id": user_id
+            }
 
         except Exception as e:
             logger.error(f"Code verification error: {str(e)}")
@@ -3356,6 +3369,8 @@ class TelegramManager:
 
             user_info = result.get("user", {})
             account_name = user_info.get("full_name") or user_info.get("username") or "حساب تليجرام"
+            account_phone = user_info.get("phone")
+            account_avatar = user_info.get("avatar_url") or f"/api/account_avatar/{user_id}?t={int(time.time())}"
 
             client_manager = self.get_client_manager(user_id)
 
@@ -3367,13 +3382,18 @@ class TelegramManager:
                     USERS[user_id]['awaiting_code'] = False
                     USERS[user_id]['awaiting_password'] = False
                     USERS[user_id]['account_name'] = account_name
+                    USERS[user_id]['account_phone'] = account_phone
+                    USERS[user_id]['account_avatar'] = account_avatar
 
             socketio.emit('login_status', {
                 'logged_in': True,
                 'connected': True,
                 'awaiting_code': False,
                 'awaiting_password': False,
-                'account_name': account_name
+                'account_name': account_name,
+                'account_phone': account_phone,
+                'account_avatar': account_avatar,
+                'user_id': user_id
             }, to=user_id)
             socketio.emit('connection_status', {"status": "connected"}, to=user_id)
 
@@ -3387,7 +3407,14 @@ class TelegramManager:
 
             _OSThread(target=_start_client_bg_2fa, daemon=True).start()
 
-            return {"status": "success", "message": "✅ تم التحقق بنجاح", "account_name": account_name}
+            return {
+                "status": "success", 
+                "message": "✅ تم التحقق بنجاح", 
+                "account_name": account_name,
+                "account_phone": account_phone,
+                "account_avatar": account_avatar,
+                "user_id": user_id
+            }
 
         except Exception as e:
             logger.error(f"Password verification error: {str(e)}")
@@ -5085,6 +5112,8 @@ def api_verify_code():
 
         if result["status"] == "success":
             account_name = result.get("account_name")
+            account_phone = result.get("account_phone")
+            account_avatar = result.get("account_avatar") or f"/api/account_avatar/{user_id}?t={int(time.time())}"
             socketio.emit('log_update', {
                 "message": f"✅ تم التحقق بنجاح — أهلاً {account_name}" if account_name else "✅ تم التحقق بنجاح"
             }, to=user_id)
@@ -5096,7 +5125,10 @@ def api_verify_code():
             return jsonify({
                 "success": True,
                 "message": f"✅ تم التحقق بنجاح — أهلاً {account_name}" if account_name else "✅ تم التحقق بنجاح",
-                "account_name": account_name
+                "account_name": account_name,
+                "account_phone": account_phone,
+                "account_avatar": account_avatar,
+                "user_id": user_id
             })
 
         elif result["status"] == "password_required":
@@ -5431,7 +5463,14 @@ def api_get_account_info():
         if not cached.get("account_avatar"):
             avatar_file = os.path.join(SESSIONS_DIR, 'avatars', f"{user_id}.jpg")
             if os.path.exists(avatar_file) and os.path.getsize(avatar_file) > 0:
-                cached["account_avatar"] = f"/api/account_avatar/{user_id}"
+                cached["account_avatar"] = f"/api/account_avatar/{user_id}?t={int(os.path.getmtime(avatar_file))}"
+            elif cached.get("authenticated"):
+                try:
+                    telegram_manager._fetch_account_photo(user_id)
+                    if os.path.exists(avatar_file) and os.path.getsize(avatar_file) > 0:
+                        cached["account_avatar"] = f"/api/account_avatar/{user_id}?t={int(time.time())}"
+                except Exception as _pe:
+                    logger.debug(f"fetch account photo failed: {_pe}")
         cached["is_pro"] = is_user_restricted(user_id)
         return jsonify({
             "success": True,
@@ -5448,12 +5487,12 @@ def api_account_avatar(uid):
         from flask import send_file, Response
         avatar_file = os.path.join(SESSIONS_DIR, 'avatars', f"{uid}.jpg")
         if os.path.exists(avatar_file) and os.path.getsize(avatar_file) > 0:
-            return send_file(avatar_file, mimetype='image/jpeg', max_age=60)
+            return send_file(avatar_file, mimetype='image/jpeg', max_age=0)
         default_svg = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
             <defs>
                 <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#4f46e5"/>
-                    <stop offset="100%" stop-color="#06b6d4"/>
+                    <stop offset="0%" stop-color="#0088cc"/>
+                    <stop offset="100%" stop-color="#005580"/>
                 </linearGradient>
             </defs>
             <circle cx="50" cy="50" r="50" fill="url(#g)"/>
@@ -5588,6 +5627,128 @@ def api_switch_user():
             "success": False,
             "message": f"❌ خطأ في التبديل: {str(e)}"
         })
+
+@app.route("/api/get_all_accounts", methods=["GET"])
+def api_get_all_accounts():
+    try:
+        active_uid = session.get('user_id', 'user_1')
+        accounts_list = []
+        for uid, udata in list(PREDEFINED_USERS.items()):
+            user_sess = USERS.get(uid, {})
+            settings = user_sess.get('settings') or load_settings(uid) or {}
+            avatar_path = os.path.join(SESSIONS_DIR, 'avatars', f"{uid}.jpg")
+            has_avatar = os.path.exists(avatar_path) and os.path.getsize(avatar_path) > 0
+            account_name = user_sess.get('account_name')
+            if not account_name and user_sess.get('authenticated'):
+                try:
+                    account_name = telegram_manager._fetch_account_name(uid)
+                except Exception:
+                    pass
+            accounts_list.append({
+                "id": uid,
+                "name": account_name or udata.get('name', uid),
+                "custom_name": udata.get('name', uid),
+                "phone": user_sess.get('account_phone') or settings.get('phone') or '',
+                "avatar": f"/api/account_avatar/{uid}?t={int(os.path.getmtime(avatar_path))}" if has_avatar else None,
+                "color": udata.get('color', '#0088cc'),
+                "icon": udata.get('icon', 'fas fa-user'),
+                "is_active": uid == active_uid,
+                "authenticated": user_sess.get('authenticated', False) or bool(settings.get('phone') and os.path.exists(os.path.join(SESSIONS_DIR, f"{uid}_session.session"))),
+                "connected": user_sess.get('connected', False)
+            })
+        return jsonify({
+            "success": True,
+            "accounts": accounts_list,
+            "active_user_id": active_uid
+        })
+    except Exception as e:
+        logger.error(f"Error fetching accounts: {e}")
+        return jsonify({"success": False, "message": str(e), "accounts": []})
+
+@app.route("/api/accounts/add", methods=["POST"])
+def api_accounts_add():
+    try:
+        idx = 1
+        while f"user_{idx}" in PREDEFINED_USERS:
+            idx += 1
+        new_uid = f"user_{idx}"
+        arabic_numbers = ["الأول", "الثاني", "الثالث", "الرابع", "الخامس", "السادس", "السابع", "الثامن", "التاسع", "العاشر"]
+        num_str = arabic_numbers[idx - 1] if idx <= len(arabic_numbers) else str(idx)
+        colors = ["#0088cc", "#28a745", "#ffc107", "#dc3545", "#6f42c1", "#20c997", "#fd7e14", "#e83e8c"]
+        color = colors[(idx - 1) % len(colors)]
+        
+        new_user_data = {
+            "id": new_uid,
+            "name": f"الحساب {num_str}",
+            "icon": "fas fa-user",
+            "color": color
+        }
+        PREDEFINED_USERS[new_uid] = new_user_data
+        save_accounts_config(PREDEFINED_USERS)
+        
+        # التبديل إلى الحساب الجديد
+        session['user_id'] = new_uid
+        session.permanent = True
+        
+        with USERS_LOCK:
+            USERS[new_uid] = {
+                'client_manager': None,
+                'settings': {},
+                'thread': None,
+                'is_running': False,
+                'stats': {"sent": 0, "errors": 0},
+                'connected': False,
+                'authenticated': False,
+                'awaiting_code': False,
+                'awaiting_password': False,
+                'phone_code_hash': None,
+                'monitoring_active': False,
+                'event_handlers_registered': False,
+                'sent_batches': []
+            }
+        
+        return jsonify({
+            "success": True,
+            "message": f"✅ تم إنشاء {new_user_data['name']} بنجاح",
+            "user_id": new_uid,
+            "account": new_user_data
+        })
+    except Exception as e:
+        logger.error(f"Error adding account: {e}")
+        return jsonify({"success": False, "message": str(e)})
+
+@app.route("/api/accounts/delete", methods=["POST"])
+def api_accounts_delete():
+    try:
+        data = request.get_json() or {}
+        del_uid = data.get('user_id')
+        if not del_uid or del_uid not in PREDEFINED_USERS:
+            return jsonify({"success": False, "message": "❌ حساب غير صحيح"})
+        if len(PREDEFINED_USERS) <= 1:
+            return jsonify({"success": False, "message": "⚠️ لا يمكن حذف الحساب الوحيد المتبقي"})
+        
+        try:
+            telegram_manager.logout_user(del_uid)
+        except Exception:
+            pass
+        
+        del PREDEFINED_USERS[del_uid]
+        save_accounts_config(PREDEFINED_USERS)
+        
+        curr = session.get('user_id')
+        if curr == del_uid:
+            new_curr = list(PREDEFINED_USERS.keys())[0]
+            session['user_id'] = new_curr
+            session.permanent = True
+        
+        return jsonify({
+            "success": True, 
+            "message": "✅ تم حذف الحساب بنجاح",
+            "active_user_id": session.get('user_id')
+        })
+    except Exception as e:
+        logger.error(f"Error deleting account: {e}")
+        return jsonify({"success": False, "message": str(e)})
 
 @app.route("/api/start_monitoring", methods=["POST"])
 def api_start_monitoring():
@@ -6152,6 +6313,15 @@ def api_get_login_status():
                     USERS[user_id]['authenticated'] = True
                     USERS[user_id]['connected'] = True
 
+            avatar_path = os.path.join(SESSIONS_DIR, 'avatars', f"{user_id}.jpg")
+            has_avatar = os.path.exists(avatar_path) and os.path.getsize(avatar_path) > 0
+            account_name = user_data.get('account_name')
+            if not account_name and authenticated:
+                try:
+                    account_name = telegram_manager._fetch_account_name(user_id)
+                except Exception:
+                    pass
+
             return jsonify({
                 "logged_in": authenticated, 
                 "connected": connected,
@@ -6159,7 +6329,11 @@ def api_get_login_status():
                 "awaiting_password": awaiting_password,
                 "login_pending": login_pending,
                 "login_error": login_error,
-                "is_running": user_data.get('is_running', False)
+                "is_running": user_data.get('is_running', False),
+                "account_name": account_name or PREDEFINED_USERS.get(user_id, {}).get('name'),
+                "account_phone": user_data.get('account_phone') or user_data.get('settings', {}).get('phone', ''),
+                "account_avatar": f"/api/account_avatar/{user_id}?t={int(os.path.getmtime(avatar_path))}" if has_avatar else None,
+                "user_id": user_id
             })
 
     return jsonify({

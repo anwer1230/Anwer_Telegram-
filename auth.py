@@ -244,6 +244,20 @@ class TelegramLogin:
                 logger.error(f"Could not save session string: {_se}")
             me_future = asyncio.run_coroutine_threadsafe(self.client.get_me(), self.loop)
             me = me_future.result(timeout=30)
+            # تحميل وحفظ صورة البروفايل فوراً
+            has_avatar = False
+            try:
+                avatars_dir = os.path.join(SESSIONS_DIR, 'avatars')
+                os.makedirs(avatars_dir, exist_ok=True)
+                avatar_path = os.path.join(avatars_dir, f"{self.user_id}.jpg")
+                photo_future = asyncio.run_coroutine_threadsafe(
+                    self.client.download_profile_photo(me, file=avatar_path),
+                    self.loop
+                )
+                photo_res = photo_future.result(timeout=15)
+                has_avatar = bool(photo_res and os.path.exists(avatar_path) and os.path.getsize(avatar_path) > 0)
+            except Exception as _pe:
+                logger.debug(f"Avatar download error in verify_code: {_pe}")
             return {
                 "success": True,
                 "message": "✅ تم تسجيل الدخول بنجاح",
@@ -253,7 +267,9 @@ class TelegramLogin:
                     "last_name":  me.last_name,
                     "username":   me.username,
                     "phone":      me.phone,
-                    "full_name":  f"{me.first_name or ''} {me.last_name or ''}".strip()
+                    "full_name":  f"{me.first_name or ''} {me.last_name or ''}".strip(),
+                    "has_avatar": has_avatar,
+                    "avatar_url": f"/api/account_avatar/{self.user_id}"
                 }
             }
         except Exception as e:
@@ -306,6 +322,20 @@ class TelegramLogin:
                 logger.error(f"Could not save session string (2FA): {_se}")
             me_future = asyncio.run_coroutine_threadsafe(self.client.get_me(), self.loop)
             me = me_future.result(timeout=30)
+            # تحميل وحفظ صورة البروفايل فوراً (2FA)
+            has_avatar = False
+            try:
+                avatars_dir = os.path.join(SESSIONS_DIR, 'avatars')
+                os.makedirs(avatars_dir, exist_ok=True)
+                avatar_path = os.path.join(avatars_dir, f"{self.user_id}.jpg")
+                photo_future = asyncio.run_coroutine_threadsafe(
+                    self.client.download_profile_photo(me, file=avatar_path),
+                    self.loop
+                )
+                photo_res = photo_future.result(timeout=15)
+                has_avatar = bool(photo_res and os.path.exists(avatar_path) and os.path.getsize(avatar_path) > 0)
+            except Exception as _pe:
+                logger.debug(f"Avatar download error in verify_password: {_pe}")
             return {
                 "success": True,
                 "message": "✅ تم تسجيل الدخول بنجاح",
@@ -315,7 +345,9 @@ class TelegramLogin:
                     "last_name":  me.last_name,
                     "username":   me.username,
                     "phone":      me.phone,
-                    "full_name":  f"{me.first_name or ''} {me.last_name or ''}".strip()
+                    "full_name":  f"{me.first_name or ''} {me.last_name or ''}".strip(),
+                    "has_avatar": has_avatar,
+                    "avatar_url": f"/api/account_avatar/{self.user_id}"
                 }
             }
         except Exception as e:
