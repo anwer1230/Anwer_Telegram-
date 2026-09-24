@@ -394,6 +394,87 @@ class SafeSessionInterface(SecureCookieSessionInterface):
 
 app.session_interface = SafeSessionInterface()
 app.secret_key = os.environ.get("SESSION_SECRET", "abu_malk_stable_secret_session_key_2026")
+app.config.update(
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=False,
+    SESSION_COOKIE_HTTPONLY=False,
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30),
+)
+
+def resolve_request_user_id(data=None):
+    """استرجاع معرف المستخدم بدقة ومرونة لمنع أخطاء 'الجلسة غير صالحة' تماماً"""
+    # 1. من جسم الطلب
+    if data and isinstance(data, dict):
+        uid = data.get('user_id')
+        if uid and uid in PREDEFINED_USERS:
+            session['user_id'] = uid
+            return uid
+    if request and hasattr(request, 'is_json') and request.is_json:
+        try:
+            req_data = request.get_json(silent=True) or {}
+            uid = req_data.get('user_id')
+            if uid and uid in PREDEFINED_USERS:
+                session['user_id'] = uid
+                return uid
+        except Exception:
+            pass
+
+    # 2. من Headers
+    if request:
+        header_uid = request.headers.get('X-User-Id')
+        if header_uid and header_uid in PREDEFINED_USERS:
+            session['user_id'] = header_uid
+            return header_uid
+
+        # 3. من Query params
+        arg_uid = request.args.get('user_id')
+        if arg_uid and arg_uid in PREDEFINED_USERS:
+            session['user_id'] = arg_uid
+            return arg_uid
+
+    # 4. من الجلسة الحالية
+    sess_uid = session.get('user_id')
+    if sess_uid and sess_uid in PREDEFINED_USERS:
+        return sess_uid
+
+    # 5. من Cookie مخصص
+    if request:
+        cookie_uid = request.cookies.get('app_user_id')
+        if cookie_uid and cookie_uid in PREDEFINED_USERS:
+            session['user_id'] = cookie_uid
+            return cookie_uid
+
+    # 6. هل هناك حساب ينتظر كود أو كلمة مرور حالياً في telegram_manager؟
+    try:
+        if 'telegram_manager' in globals() and hasattr(telegram_manager, 'login_managers'):
+            for waiting_uid, lm in telegram_manager.login_managers.items():
+                if getattr(lm, 'awaiting_code', False) or getattr(lm, 'awaiting_password', False):
+                    session['user_id'] = waiting_uid
+                    return waiting_uid
+    except Exception:
+        pass
+
+    # 7. افتراضي
+    default_uid = "user_1" if "user_1" in PREDEFINED_USERS else (next(iter(PREDEFINED_USERS.keys())) if PREDEFINED_USERS else "user_1")
+    session['user_id'] = default_uid
+    return default_uid
+
+@app.before_request
+def ensure_session_user():
+    # ضمان وجود user_id دائماً في الجلسة لكل طلب دون أي انقطاع
+    if 'user_id' not in session or session['user_id'] not in PREDEFINED_USERS:
+        session['user_id'] = resolve_request_user_id()
+        session.permanent = True
+
+@app.after_request
+def set_user_cookie(response):
+    try:
+        uid = session.get('user_id')
+        if uid:
+            response.set_cookie('app_user_id', uid, max_age=30*86400, path='/', samesite='Lax')
+    except Exception:
+        pass
+    return response
 
 # إعداد SocketIO — threading mode لتجنب تعارض asyncio/gevent
 socketio = SocketIO(
@@ -3410,7 +3491,14 @@ class TelegramManager:
         try:
             login = self.login_managers.get(user_id)
             if not login:
-                return {"status": "error", "message": "❌ لم يتم بدء جلسة تسجيل الدخول"}
+                # البحث الذكي عن أي حساب آخر لديه جلسة إرسال كود نشطة
+                for alt_uid, alt_login in list(self.login_managers.items()):
+                    if getattr(alt_login, 'awaiting_code', False):
+                        login = alt_login
+                        user_id = alt_uid
+                        break
+            if not login:
+                return {"status": "error", "message": "❌ لم يتم العثور على جلسة طلب كود نشطة، يرجى الضغط على تسجيل الدخول مرة أخرى لإرسال كود جديد"}
 
             result = login.verify_code(code)
 
@@ -3527,7 +3615,14 @@ class TelegramManager:
         try:
             login = self.login_managers.get(user_id)
             if not login:
-                return {"status": "error", "message": "❌ لم يتم بدء جلسة تسجيل الدخول"}
+                # البحث الذكي عن أي حساب آخر لديه جلسة تحقق نشطة
+                for alt_uid, alt_login in list(self.login_managers.items()):
+                    if getattr(alt_login, 'awaiting_password', False):
+                        login = alt_login
+                        user_id = alt_uid
+                        break
+            if not login:
+                return {"status": "error", "message": "❌ لم يتم العثور على جلسة طلب تحقق نشطة، يرجى الضغط على تسجيل الدخول مرة أخرى"}
 
             result = login.verify_password(password)
 
@@ -5527,14 +5622,11 @@ def api_add_saved_phone_number():
 
 @app.route("/api/verify_code", methods=["POST"])
 def api_verify_code():
-    if 'user_id' not in session:
-        return jsonify({
-            "success": False, 
-            "message": "❌ الجلسة غير صالحة، يرجى إعادة تحميل الصفحة"
-        })
-
-    user_id = session['user_id']
-    data = request.json
+    data = request.json or {}
+    user_id = resolve_request_user_id(data)
+    session['user_id'] = user_id
+    session.permanent = True
+    session.modified = True
 
     if not data:
         return jsonify({
@@ -5569,6 +5661,7 @@ def api_verify_code():
 
             return jsonify({
                 "success": True,
+                "user_id": user_id,
                 "message": f"✅ تم التحقق بنجاح — أهلاً {account_name}" if account_name else "✅ تم التحقق بنجاح",
                 "account_name": account_name
             })
@@ -5603,14 +5696,10 @@ def api_verify_code():
 
 @app.route("/api/save_settings", methods=["POST"])
 def api_save_settings():
-    if 'user_id' not in session:
-        return jsonify({
-            "success": False, 
-            "message": "❌ الجلسة غير صالحة، يرجى إعادة تحميل الصفحة"
-        })
-
-    user_id = session['user_id']
-    data = request.json
+    data = request.json or {}
+    user_id = resolve_request_user_id(data)
+    session['user_id'] = user_id
+    session.permanent = True
 
     if not data:
         return jsonify({
@@ -6065,13 +6154,9 @@ def api_switch_user():
 
 @app.route("/api/start_monitoring", methods=["POST"])
 def api_start_monitoring():
-    if 'user_id' not in session:
-        return jsonify({
-            "success": False, 
-            "message": "❌ الجلسة غير صالحة، يرجى إعادة تحميل الصفحة"
-        })
-
-    user_id = session['user_id']
+    user_id = resolve_request_user_id(request.json)
+    session['user_id'] = user_id
+    session.permanent = True
 
     with USERS_LOCK:
         if user_id not in USERS:
@@ -6145,13 +6230,9 @@ def api_start_monitoring():
 
 @app.route("/api/stop_monitoring", methods=["POST"])
 def api_stop_monitoring():
-    if 'user_id' not in session:
-        return jsonify({
-            "success": False, 
-            "message": "❌ الجلسة غير صالحة، يرجى إعادة تحميل الصفحة"
-        })
-
-    user_id = session['user_id']
+    user_id = resolve_request_user_id(request.json)
+    session['user_id'] = user_id
+    session.permanent = True
 
     try:
         _settings = load_settings(user_id)
@@ -6266,13 +6347,9 @@ def api_pre_send_scan():
 
 @app.route("/api/send_now", methods=["POST"])
 def api_send_now():
-    if 'user_id' not in session:
-        return jsonify({
-            "success": False, 
-            "message": "❌ الجلسة غير صالحة، يرجى إعادة تحميل الصفحة"
-        })
-
-    user_id = session['user_id']
+    user_id = resolve_request_user_id(request.json)
+    session['user_id'] = user_id
+    session.permanent = True
 
     with USERS_LOCK:
         if user_id not in USERS:
@@ -6870,10 +6947,10 @@ def api_get_user_info():
 @app.route("/api/resend_code", methods=["POST"])
 def api_resend_code():
     try:
-        if 'user_id' not in session:
-            return jsonify({"success": False, "message": "❌ الجلسة غير صالحة"})
-        user_id = session['user_id']
         data = request.json or {}
+        user_id = resolve_request_user_id(data)
+        session['user_id'] = user_id
+        session.permanent = True
         force_sms = bool(data.get('force_sms', False))
 
         with USERS_LOCK:

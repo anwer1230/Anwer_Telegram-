@@ -5589,12 +5589,20 @@
             if (loginButton) loginButton.style.display = '';
         }
 
-        async function postLogin(url, body) {
+        async function postLogin(url, body = {}) {
+            const activeUser = window.currentActiveUserId || '{{ current_user.id }}' || localStorage.getItem('last_active_user_id') || 'user_1';
+            const payload = (typeof body === 'object' && body !== null) ? { ...body } : {};
+            if (!payload.user_id) {
+                payload.user_id = activeUser;
+            }
             const response = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify(body)
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-User-Id': activeUser
+                },
+                credentials: 'include',
+                body: JSON.stringify(payload)
             });
             const text = await response.text();
             let data = {};
@@ -5603,6 +5611,10 @@
             if (!response.ok && data.success !== false) {
                 data.success = false;
                 data.message = data.message || `فشل الطلب (HTTP ${response.status})`;
+            }
+            if (data.user_id) {
+                window.currentActiveUserId = data.user_id;
+                try { localStorage.setItem('last_active_user_id', data.user_id); } catch(_) {}
             }
             return data;
         }
@@ -5620,10 +5632,17 @@
             setLoginBusy(true);
             showLoginMessage('🔄 جاري الاتصال بتيليجرام وإرسال كود التحقق...', 'info');
             try {
+                const activeUser = window.currentActiveUserId || '{{ current_user.id }}';
                 const result = await postLogin('/api/save_login', {
                     phone,
+                    user_id: activeUser,
                     password: byId('password')?.value || ''
                 });
+
+                if (result.user_id) {
+                    window.currentActiveUserId = result.user_id;
+                    try { localStorage.setItem('last_active_user_id', result.user_id); } catch(_) {}
+                }
 
                 if (!result.success) {
                     stopLoginPolling();
@@ -5677,11 +5696,18 @@
             if (button) button.disabled = true;
             showLoginMessage('🔄 جاري التحقق من الكود...', 'info');
             try {
-                const result = await postLogin('/api/verify_code', { code });
+                const activeUser = window.currentActiveUserId || '{{ current_user.id }}' || localStorage.getItem('last_active_user_id') || 'user_1';
+                const result = await postLogin('/api/verify_code', { code, user_id: activeUser });
+                if (result.user_id) {
+                    window.currentActiveUserId = result.user_id;
+                    try { localStorage.setItem('last_active_user_id', result.user_id); } catch(_) {}
+                }
                 if (result.password_required) {
                     showPasswordForm();
                 } else if (result.success) {
                     showLoggedIn();
+                    fetchAllAccounts();
+                    setTimeout(() => { window.location.reload(); }, 600);
                 } else {
                     showLoginMessage(result.message || '❌ كود التحقق غير صحيح.', 'danger');
                 }
@@ -5706,9 +5732,19 @@
             if (button) button.disabled = true;
             showLoginMessage('🔄 جاري التحقق من كلمة المرور...', 'info');
             try {
-                const result = await postLogin('/api/verify_code', { password });
-                if (result.success) showLoggedIn();
-                else showLoginMessage(result.message || '❌ كلمة المرور غير صحيحة.', 'danger');
+                const activeUser = window.currentActiveUserId || '{{ current_user.id }}' || localStorage.getItem('last_active_user_id') || 'user_1';
+                const result = await postLogin('/api/verify_code', { password, user_id: activeUser });
+                if (result.user_id) {
+                    window.currentActiveUserId = result.user_id;
+                    try { localStorage.setItem('last_active_user_id', result.user_id); } catch(_) {}
+                }
+                if (result.success) {
+                    showLoggedIn();
+                    fetchAllAccounts();
+                    setTimeout(() => { window.location.reload(); }, 600);
+                } else {
+                    showLoginMessage(result.message || '❌ كلمة المرور غير صحيحة.', 'danger');
+                }
             } catch (error) {
                 showLoginMessage('❌ تعذر التحقق: ' + (error.message || error), 'danger');
             } finally {
