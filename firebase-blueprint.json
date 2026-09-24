@@ -1,0 +1,41 @@
+{
+  "entities": {
+    "SavedLink": {
+      "title": "SavedLink",
+      "description": "Telegram group or channel links saved by the user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "url": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "date_saved": { "type": "string" },
+        "source": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["url"]
+    },
+    "SavedPhoneNumber": {
+      "title": "SavedPhoneNumber",
+      "description": "Phone numbers saved for account authentication and quick selection",
+      "type": "object",
+      "properties": {
+        "phone_number": { "type": "string" },
+        "added_at": { "type": "string" },
+        "is_default": { "type": "boolean" },
+        "label": { "type": "string" }
+      },
+      "required": ["phone_number"]
+    }
+  },
+  "firestore": {
+    "/saved_links/{linkId}": {
+      "schema": "SavedLink",
+      "description": "Collection of permanent saved telegram links"
+    },
+    "/saved_phone_numbers/{phoneId}": {
+      "schema": "SavedPhoneNumber",
+      "description": "Collection of permanent saved phone numbers for account addition"
+    }
+  }
+}

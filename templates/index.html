@@ -239,94 +239,363 @@
             margin-bottom: 5px;
         }
 
-        /* أنماط شريط الحسابات الجانبي - تليجرام الرسمي */
-        .tg-drawer-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.55);
-            backdrop-filter: blur(3px);
-            z-index: 1050;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        /* ══════════════════════════════════════════════════════
+           أنماط شريط حسابات تيليجرام الجانبي — التصميم الرسمي
+        ══════════════════════════════════════════════════════ */
+        .login-card-header-tg {
+            background: linear-gradient(135deg, #0088cc 0%, #175d97 100%) !important;
+            padding: 12px 16px;
+            position: relative;
+            border-bottom: 1px solid rgba(255,255,255,0.15);
         }
-        .tg-drawer-backdrop.show {
-            opacity: 1;
-            visibility: visible;
-        }
-        .tg-drawer {
-            position: fixed;
-            top: 0;
-            right: -360px;
-            width: 330px;
-            max-width: 86vw;
-            height: 100vh;
-            background: #ffffff;
-            box-shadow: -5px 0 25px rgba(0, 0, 0, 0.25);
-            z-index: 1055;
-            display: flex;
-            flex-direction: column;
-            transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-            direction: rtl;
-            overflow: hidden;
-        }
-        .tg-drawer.show {
-            right: 0;
-        }
-        .tg-drawer-header {
-            background: linear-gradient(135deg, #179cde 0%, #0088cc 100%);
-            padding: 24px 20px 18px;
+
+        .tg-sidebar-toggle-btn {
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.4);
             color: #ffffff;
-            box-shadow: 0 4px 12px rgba(0, 136, 204, 0.25);
+            border-radius: 30px;
+            padding: 6px 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            text-decoration: none;
         }
-        .tg-drawer-avatar {
-            width: 58px;
-            height: 58px;
+
+        .tg-sidebar-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: #ffffff;
+            color: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+        }
+
+        .tg-btn-avatar-wrap {
+            position: relative;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tg-btn-avatar-wrap img {
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             object-fit: cover;
-            border: 2.5px solid #ffffff;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            background: #e0f2fe;
+            border: 2px solid #ffffff;
         }
+
+        .tg-status-dot {
+            position: absolute;
+            bottom: -1px;
+            right: -1px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #adb5bd;
+            border: 2px solid #ffffff;
+        }
+
+        .tg-status-dot.online {
+            background-color: #28a745;
+            box-shadow: 0 0 6px rgba(40,167,69,0.8);
+        }
+
+        /* ── Telegram Offcanvas Drawer ── */
+        .telegram-drawer {
+            width: 340px !important;
+            max-width: 88vw !important;
+            border-left: none;
+            border-right: 1px solid rgba(0,0,0,0.1);
+            background: #ffffff;
+            box-shadow: -5px 0 30px rgba(0,0,0,0.3);
+            font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            z-index: 100000 !important;
+        }
+
+        .tg-drawer-header {
+            position: relative;
+            background: linear-gradient(145deg, #2481cc 0%, #1b68a5 50%, #154c79 100%);
+            color: #ffffff;
+            padding: 24px 20px 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(27,104,165,0.3);
+        }
+
+        .tg-drawer-header-bg {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 80% 20%, rgba(255,255,255,0.18) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .tg-drawer-header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .tg-profile-avatar-wrap {
+            position: relative;
+            width: 66px;
+            height: 66px;
+        }
+
+        .tg-profile-avatar-wrap img {
+            width: 66px;
+            height: 66px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #ffffff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        }
+
+        .tg-avatar-fallback {
+            width: 66px;
+            height: 66px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            color: #ffffff;
+            border: 3px solid #ffffff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        }
+
+        .tg-drawer-status-indicator {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #adb5bd;
+            border: 3px solid #ffffff;
+        }
+
+        .tg-drawer-status-indicator.online {
+            background-color: #28a745;
+            box-shadow: 0 0 8px rgba(40,167,69,0.9);
+        }
+
+        .tg-profile-name {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: 0.2px;
+        }
+
+        .tg-profile-phone {
+            font-size: 0.88rem;
+            color: rgba(255,255,255,0.85);
+            direction: ltr;
+            text-align: right;
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+        }
+
+        .tg-profile-username {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.7);
+        }
+
         .tg-drawer-body {
-            flex: 1;
+            background: #f8fafc;
+            height: calc(100% - 170px);
             overflow-y: auto;
+        }
+
+        .tg-accounts-list {
+            padding: 8px 12px;
             display: flex;
             flex-direction: column;
+            gap: 6px;
         }
+
         .tg-account-item {
             display: flex;
             align-items: center;
-            padding: 12px 16px;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 14px;
+            background: #ffffff;
+            border: 1px solid #e9ecef;
             cursor: pointer;
-            transition: background 0.2s ease;
-            border-bottom: 1px solid #f1f5f9;
-            text-decoration: none;
-            color: inherit;
+            transition: all 0.2s ease;
             position: relative;
         }
+
         .tg-account-item:hover {
-            background: #f8fafc;
+            background: #eef6fc;
+            border-color: #bce0fd;
+            transform: translateX(-3px);
         }
+
         .tg-account-item.active {
-            background: #eff6ff;
-            border-right: 4px solid #0088cc;
+            background: #e8f4fd;
+            border: 2px solid #2481cc;
+            box-shadow: 0 3px 10px rgba(36,129,204,0.15);
         }
-        .tg-account-avatar {
+
+        .tg-item-avatar-wrap {
+            position: relative;
+            width: 44px;
+            height: 44px;
+            flex-shrink: 0;
+        }
+
+        .tg-item-avatar {
             width: 44px;
             height: 44px;
             border-radius: 50%;
             object-fit: cover;
-            margin-left: 12px;
-            border: 2px solid #e2e8f0;
-            flex-shrink: 0;
-            background: #f0fdf4;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
         }
-        .tg-account-item.active .tg-account-avatar {
-            border-color: #0088cc;
+
+        .tg-item-avatar-fallback {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 1.15rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .tg-item-dot {
+            position: absolute;
+            bottom: 0px;
+            right: 0px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #ced4da;
+            border: 2px solid #ffffff;
+        }
+
+        .tg-item-dot.online {
+            background-color: #28a745;
+        }
+
+        .tg-item-details {
+            flex-grow: 1;
+            min-width: 0;
+        }
+
+        .tg-item-name {
+            font-weight: 700;
+            font-size: 0.92rem;
+            color: #212529;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tg-item-sub {
+            font-size: 0.78rem;
+            color: #6c757d;
+            direction: ltr;
+            text-align: right;
+        }
+
+        .tg-item-actions {
+            flex-shrink: 0;
+        }
+
+        .tg-active-check {
+            font-size: 1.25rem;
+        }
+
+        .tg-quick-switch-btn {
+            background: #f1f5f9;
+            color: #2481cc;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 3px 8px;
+            font-size: 0.8rem;
+        }
+
+        .tg-quick-switch-btn:hover {
+            background: #2481cc;
+            color: #ffffff;
+        }
+
+        .tg-item-reset-btn {
+            color: #dc3545;
+            background: rgba(220,53,69,0.08);
+            border: none;
+            border-radius: 8px;
+            padding: 4px 7px;
+            font-size: 0.75rem;
+        }
+
+        .tg-item-reset-btn:hover {
+            background: #dc3545;
+            color: #ffffff;
+        }
+
+        .tg-item-delete-btn {
+            border: none;
+            background: transparent;
+            padding: 4px 6px;
+            font-size: 0.8rem;
+        }
+
+        .tg-item-delete-btn:hover {
+            color: #b02a37 !important;
+        }
+
+        .tg-add-account-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin: 4px 12px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: #ffffff;
+            border: 2px dashed #0088cc;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tg-add-account-item:hover {
+            background: #f0f7fc;
+            border-style: solid;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,136,204,0.15);
+        }
+
+        .tg-add-icon-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0088cc 0%, #006699 100%);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: 0 2px 8px rgba(0,136,204,0.3);
+        }
+
+        .tg-current-user-tag {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 20px;
+            padding: 2px 10px;
+            color: #ffffff;
+            font-size: 0.82rem;
         }
     </style>
 </head>
@@ -354,13 +623,214 @@
       setTimeout(__hideSplash, 4000);
     </script>
 
-    <div class="container-fluid mt-4">
-        <!-- مساحة مخفية للتوافق البرمجي مع أي سكريبتات مرجعية -->
-        <div style="display:none;" id="legacyUsersBarCompat">
-            <span id="currentUserNameDisplay">{{ current_user.name }}</span>
-            <img id="currentAccountAvatar" src="" alt="" style="display:none;">
-            <span id="currentAccountNameDisplay" style="display:none;"></span>
+    <!-- ══════════════════════════════════════════════════════
+         الشريط الجانبي للحسابات — تصميم تليجرام الرسمي بالضبط
+    ══════════════════════════════════════════════════════ -->
+    <div class="offcanvas offcanvas-start telegram-drawer" tabindex="-1" id="telegramAccountsSidebar" aria-labelledby="telegramAccountsSidebarLabel">
+      
+      <!-- هيدر الشريط الجانبي (بروفايل الحساب النشط مثل تيليجرام الرسمي) -->
+      <div class="tg-drawer-header">
+        <div class="tg-drawer-header-bg"></div>
+        <div class="tg-drawer-header-content">
+          <div class="d-flex align-items-start justify-content-between mb-3">
+            <!-- الصورة الشخصية الكبيرة للحساب النشط -->
+            <div class="tg-profile-avatar-wrap">
+              <img id="drawerActiveAvatarImg"
+                   src="/api/account_avatar/{{ current_user.id }}"
+                   alt=""
+                   onerror="this.style.display='none'; document.getElementById('drawerActiveFallbackIcon').style.display='flex';"
+                   onload="this.style.display='block'; document.getElementById('drawerActiveFallbackIcon').style.display='none';"
+                   style="{% if users_account_info and users_account_info.get(current_user.id, {}).get('account_avatar') %}display:block;{% else %}display:none;{% endif %}">
+              <div class="tg-avatar-fallback" id="drawerActiveFallbackIcon" style="{% if users_account_info and users_account_info.get(current_user.id, {}).get('account_avatar') %}display:none;{% else %}display:flex;{% endif %}background-color: {{ current_user.color or '#0088cc' }};">
+                <i class="{{ current_user.icon or 'fas fa-user' }}"></i>
+              </div>
+              <span class="tg-drawer-status-indicator {% if connection_status == 'connected' %}online{% endif %}" id="drawerActiveStatusDot"></span>
+            </div>
+
+            <!-- زر إغلاق الشريط الجانبي -->
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="إغلاق"></button>
+          </div>
+
+          <!-- تفاصيل الحساب النشط -->
+          <div class="tg-profile-info">
+            <h5 class="tg-profile-name mb-0" id="drawerActiveName">
+              {{ users_account_info.get(current_user.id, {}).get('account_name') or current_user.name }}
+            </h5>
+            <div class="tg-profile-phone" id="drawerActivePhone">
+              {% if users_account_info and users_account_info.get(current_user.id, {}).get('account_phone') %}
+                {{ users_account_info[current_user.id]['account_phone'] }}
+              {% elif settings and settings.phone %}
+                {{ settings.phone }}
+              {% else %}
+                غير محدد
+              {% endif %}
+            </div>
+            <div class="tg-profile-username" id="drawerActiveUsername">
+              {% if users_account_info and users_account_info.get(current_user.id, {}).get('account_username') %}
+                @{{ users_account_info[current_user.id]['account_username'].lstrip('@') }}
+              {% else %}
+                @مركز_سرعة_انجاز
+              {% endif %}
+            </div>
+          </div>
         </div>
+      </div>
+
+      <!-- جسم الشريط الجانبي: قائمة الحسابات وإضافة حساب -->
+      <div class="offcanvas-body tg-drawer-body p-0">
+        
+        <div class="tg-section-header d-flex align-items-center justify-content-between px-3 py-2">
+          <span class="text-uppercase fw-bold" style="font-size:0.75rem; letter-spacing:0.5px; color:#6c757d;">
+            <i class="fab fa-telegram me-1 text-primary"></i> الحسابات المسجلة
+          </span>
+          <span class="badge rounded-pill bg-primary" id="drawerAccountsCountBadge">{{ predefined_users|length }}</span>
+        </div>
+
+        <!-- قائمة الحسابات (إمكانية التنقل بين الحسابات من الشريط الجانبي) -->
+        <div class="tg-accounts-list" id="telegramAccountsList">
+          {% for uid, udata in predefined_users.items() %}
+          {% set uinfo = users_account_info.get(uid, {}) if users_account_info else {} %}
+          {% set is_active = (uid == current_user.id) %}
+          <div class="tg-account-item {% if is_active %}active{% endif %}"
+               id="tgAccountRow_{{ uid }}"
+               data-user-id="{{ uid }}"
+               onclick="switchToAccount('{{ uid }}')">
+            
+            <div class="tg-item-avatar-wrap">
+              <img class="tg-item-avatar"
+                   id="tgAccountImg_{{ uid }}"
+                   src="/api/account_avatar/{{ uid }}"
+                   alt=""
+                   onerror="this.style.display='none'; document.getElementById('tgAccountFallback_{{ uid }}').style.display='flex';"
+                   onload="this.style.display='block'; document.getElementById('tgAccountFallback_{{ uid }}').style.display='none';"
+                   style="{% if uinfo.get('account_avatar') %}display:block;{% else %}display:none;{% endif %}">
+              <div class="tg-item-avatar-fallback"
+                   id="tgAccountFallback_{{ uid }}"
+                   style="{% if uinfo.get('account_avatar') %}display:none;{% else %}display:flex;{% endif %}background-color: {{ udata.color or '#0088cc' }};">
+                <i class="{{ udata.icon or 'fas fa-user' }}"></i>
+              </div>
+              <span class="tg-item-dot {% if uinfo.get('logged_in') %}online{% endif %}" id="tgAccountDot_{{ uid }}"></span>
+            </div>
+
+            <div class="tg-item-details">
+              <div class="tg-item-name" id="tgAccountName_{{ uid }}">
+                {{ uinfo.get('account_name') or udata.name }}
+              </div>
+              <div class="tg-item-sub" id="tgAccountSub_{{ uid }}">
+                {% if uinfo.get('account_phone') %}
+                  {{ uinfo.get('account_phone') }}
+                {% else %}
+                  {{ udata.name }}
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="tg-item-actions d-flex align-items-center gap-1" onclick="event.stopPropagation();">
+              {% if is_active %}
+                <span class="tg-active-check text-primary" title="الحساب النشط حالياً">
+                  <i class="fas fa-check-circle"></i>
+                </span>
+              {% else %}
+                <button type="button"
+                        class="btn btn-sm tg-quick-switch-btn"
+                        title="التبديل إلى هذا الحساب"
+                        onclick="switchToAccount('{{ uid }}')">
+                  <i class="fas fa-arrow-left"></i>
+                </button>
+              {% endif %}
+
+              <button type="button"
+                      class="btn btn-sm tg-item-reset-btn"
+                      data-uid="{{ uid }}"
+                      data-uname="{{ uinfo.get('account_name') or udata.name }}"
+                      title="إعادة تعيين / تسجيل خروج هذا الحساب"
+                      onclick="openResetSingleModal(this)">
+                <i class="fas fa-redo-alt"></i>
+              </button>
+
+              {% if uid not in ['user_1', 'user_2', 'user_3', 'user_4', 'user_5'] %}
+              <button type="button"
+                      class="btn btn-sm text-danger tg-item-delete-btn"
+                      title="حذف هذا الحساب نهائياً"
+                      onclick="deleteCustomAccount('{{ uid }}', '{{ uinfo.get('account_name') or udata.name }}')">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <hr class="my-2 border-secondary-subtle">
+
+        <!-- زر: + إضافة حساب جديد (مثل تليجرام الرسمي بالضبط) -->
+        <div class="tg-add-account-item px-3 py-2" id="tgBtnAddAccount" onclick="openAddAccountModal()">
+          <div class="tg-add-icon-wrap">
+            <i class="fas fa-plus"></i>
+          </div>
+          <div class="tg-add-text">
+            <div class="fw-bold text-primary" style="font-size:0.95rem;">إضافة حساب جديد</div>
+            <div class="text-muted" style="font-size:0.75rem;">تسجيل الدخول برقم هاتف أو حساب تيليجرام إضافي</div>
+          </div>
+        </div>
+
+        <!-- أدوات سريعة -->
+        <div class="mt-4 px-3 mb-4">
+          <div class="p-3 bg-light rounded-3 border">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="small fw-bold text-secondary">
+                <i class="fas fa-shield-alt me-1 text-warning"></i> إدارة الجلسات
+              </span>
+              <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" onclick="refreshAccountsSidebar(true)" title="تحديث البيانات">
+                <i class="fas fa-sync-alt"></i> تحديث
+              </button>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="openResetAllModal()">
+              <i class="fas fa-power-off me-1"></i> تنظيف وتسجيل الخروج من كل الحسابات
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         Modal: إضافة حساب تيليجرام جديد
+    ══════════════════════════════════════════════════════ -->
+    <div class="modal fade" id="addAccountModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:20px;overflow:hidden;">
+          <div class="modal-header border-0 pb-0" style="background:linear-gradient(135deg, #0088cc 0%, #005580 100%);">
+            <h5 class="modal-title text-white fw-bold">
+              <i class="fab fa-telegram me-2"></i>إضافة حساب تيليجرام جديد
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <p class="text-muted small mb-3">
+              أدخل اسم الحساب ورقم الهاتف. سيتم إنشاء الحساب والتبديل إليه لتسجيل الدخول فوراً.
+            </p>
+            <div class="mb-3">
+              <label class="form-label fw-bold small">اسم الحساب (اختياري)</label>
+              <input type="text" id="newAccountNameInput" class="form-control text-start" placeholder="مثال: حساب العمل / الدعم الفني">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold small">رقم الهاتف (مع رمز الدولة)</label>
+              <input type="tel" id="newAccountPhoneInput" class="form-control text-start" placeholder="+966xxxxxxxxx">
+              <div class="form-text">يمكنك تركه فارغاً وكتابته في حقل تسجيل الدخول</div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+              <button type="button" class="btn btn-primary flex-grow-1" id="btnConfirmAddAccount" onclick="executeAddAccount()">
+                <i class="fas fa-plus me-1"></i> إنشاء الحساب والبدء
+              </button>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container-fluid mt-4">
 
         <!-- مساحة للتنبيهات -->
         <div id="alertContainer"></div>
@@ -434,70 +904,87 @@
         <div class="row">
             <!-- لوحة تسجيل الدخول -->
             <div class="col-lg-6 mb-4">
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-primary text-white text-center position-relative py-3" style="background: linear-gradient(135deg, #0088cc 0%, #006699 100%) !important;">
-                        <!-- أيقونة الشريط الجانبي في زاوية عنوان تسجيل الدخول (مثل تليجرام الرسمي) -->
-                        <button type="button" id="tgDrawerOpenBtn" class="btn text-white p-0 position-absolute" 
-                                onclick="openTgDrawer()"
-                                style="top: 50%; right: 16px; transform: translateY(-50%); width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.22); border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.2); cursor: pointer; transition: all 0.2s;" 
-                                title="قائمة الحسابات (تيليجرام)">
-                            <img id="tgDrawerBtnAvatar" src="/api/account_avatar/{{ current_user.id }}" alt="" 
-                                 style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; display: none; border: 2px solid #fff;"
-                                 onerror="this.style.display='none'; document.getElementById('tgDrawerBtnIcon').style.display='inline-block';"
-                                 onload="this.style.display='inline-block'; document.getElementById('tgDrawerBtnIcon').style.display='none';">
-                            <i id="tgDrawerBtnIcon" class="fas fa-bars" style="font-size: 1.25rem;"></i>
-                        </button>
+                <div class="card shadow-sm border-0" style="border-radius:18px;overflow:hidden;">
+                    <div class="card-header login-card-header-tg text-white">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <!-- أيقونة الشريط الجانبي في زاوية تصميم عنوان تسجيل الدخول (مثل تليجرام الرسمي) -->
+                            <button type="button"
+                                    class="tg-sidebar-toggle-btn"
+                                    id="btnOpenTelegramSidebar"
+                                    data-bs-toggle="offcanvas"
+                                    data-bs-target="#telegramAccountsSidebar"
+                                    aria-controls="telegramAccountsSidebar"
+                                    title="شريط حسابات تيليجرام (اضغط للتبديل أو إضافة حساب)">
+                                <i class="fas fa-bars"></i>
+                                <span class="tg-btn-avatar-wrap">
+                                    <img id="headerActiveAvatarImg"
+                                         src="/api/account_avatar/{{ current_user.id }}"
+                                         alt=""
+                                         onerror="this.style.display='none'; document.getElementById('headerActiveFallbackIcon').style.display='inline-block';"
+                                         onload="this.style.display='inline-block'; document.getElementById('headerActiveFallbackIcon').style.display='none';"
+                                         style="{% if users_account_info and users_account_info.get(current_user.id, {}).get('account_avatar') %}display:inline-block;{% else %}display:none;{% endif %}">
+                                    <i class="{{ current_user.icon or 'fas fa-user' }}" id="headerActiveFallbackIcon" style="{% if users_account_info and users_account_info.get(current_user.id, {}).get('account_avatar') %}display:none;{% else %}display:inline-block;{% endif %}font-size:1.1rem;"></i>
+                                    <span class="tg-status-dot {% if connection_status == 'connected' %}online{% endif %}" id="headerActiveStatusDot"></span>
+                                </span>
+                                <span>الحسابات</span>
+                                <span class="badge bg-white text-primary rounded-pill px-2 py-1" id="headerAccountsCountBadge" style="font-size:0.75rem;">{{ predefined_users|length }}</span>
+                            </button>
 
-                        <h2 class="mb-1" style="font-size: 1.5rem; font-weight: 700;">
-                            <i class="fas fa-telegram-plane me-2"></i>
-                            تسجيل الدخول
-                        </h2>
-                        <small id="connectionStatusHeader" class="badge bg-secondary">
-                            {% if connection_status == 'connected' %}
-                                <i class="fas fa-circle text-success"></i> متصل
-                            {% else %}
-                                <i class="fas fa-circle text-danger"></i> غير متصل
-                            {% endif %}
-                        </small>
-                    </div>
-                    <div class="card-body">
-                        <!-- أيقونة وهوية الحساب الشخصي مع صورة البروفايل والاسم المسجل فيه -->
-                        <div id="accountIdentityBox" class="p-3 mb-3 rounded-3" style="background: linear-gradient(135deg, rgba(0, 136, 204, 0.08) 0%, rgba(37, 99, 235, 0.08) 100%); border: 1.5px solid rgba(0, 136, 204, 0.3); box-shadow: 0 2px 8px rgba(0, 136, 204, 0.06);">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="position-relative">
-                                        <img id="loginProfileAvatar" 
-                                             src="/api/account_avatar/{{ current_user.id }}" 
-                                             alt="صورة الحساب" 
-                                             style="width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2.5px solid #0088cc; box-shadow: 0 3px 10px rgba(0, 136, 204, 0.25); background: #e0f2fe;"
-                                             onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><circle cx=\'50\' cy=\'50\' r=\'50\' fill=\'%230088cc\'/><text x=\'50\' y=\'55\' fill=\'white\' font-size=\'40\' text-anchor=\'middle\' dy=\'.3em\'>👤</text></svg>';">
-                                        <span id="loginProfileStatusDot" class="position-absolute bottom-0 end-0 bg-success border border-2 border-white rounded-circle" style="width: 13px; height: 13px; display: {% if connection_status == 'connected' %}inline-block{% else %}none{% endif %};"></span>
-                                    </div>
-                                    <div>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <h6 class="mb-0 fw-bold text-dark" id="loginProfileName" style="font-size: 1.05rem;">{{ current_user.name }}</h6>
-                                            <span id="loginProfileBadge" class="badge {% if connection_status == 'connected' %}bg-success{% else %}bg-secondary{% endif %}" style="font-size: 0.72rem;">
-                                                {% if connection_status == 'connected' %}<i class="fas fa-check-circle me-1"></i>متصل{% else %}غير متصل{% endif %}
-                                            </span>
-                                        </div>
-                                        <div class="text-muted small mt-1" id="loginProfilePhone" dir="ltr" style="text-align: right; font-weight: 500;">
-                                            {{ settings.phone or 'لم يتم تسجيل رقم هاتف' }}
-                                        </div>
-                                    </div>
-                                </div>
-                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 shadow-none" onclick="openTgDrawer()" title="فتح قائمة الحسابات" style="font-weight: 600; font-size: 0.82rem; border-color: #0088cc; color: #0088cc;">
-                                    <i class="fas fa-users me-1"></i> الحسابات
-                                </button>
+                            <!-- عنوان تسجيل الدخول في الوسط -->
+                            <div class="text-center flex-grow-1">
+                                <h3 class="mb-0 fw-bold d-flex align-items-center justify-content-center gap-2 text-white" style="font-size:1.25rem;">
+                                    <i class="fab fa-telegram-plane"></i>
+                                    <span>تسجيل الدخول</span>
+                                </h3>
+                            </div>
+
+                            <!-- مؤشر الحساب النشط وحالة الاتصال -->
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="tg-current-user-tag" title="الحساب النشط">
+                                    <i class="fas fa-user-check text-warning me-1"></i>
+                                    <strong id="currentUserNameDisplay">{{ users_account_info.get(current_user.id, {}).get('account_name') or current_user.name }}</strong>
+                                </span>
+                                <small id="connectionStatusHeader" class="badge {% if connection_status == 'connected' %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {% if connection_status == 'connected' %}
+                                        <i class="fas fa-circle text-white me-1" style="font-size:0.5rem;"></i> متصل
+                                    {% else %}
+                                        <i class="fas fa-circle text-danger me-1" style="font-size:0.5rem;"></i> غير متصل
+                                    {% endif %}
+                                </small>
                             </div>
                         </div>
+                    </div>
+                    <div class="card-body">
                         <form id="loginForm">
+                            <!-- قائمة الأرقام المحفوظة في Firestore -->
                             <div class="mb-3">
-                                <label for="phone" class="form-label">رقم الهاتف</label>
+                                <label class="form-label d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold"><i class="fas fa-address-book text-primary me-1"></i> اختر رقماً من المحفوظة:</span>
+                                    <span class="badge bg-light text-primary border" style="font-size: 0.72rem;"><i class="fas fa-cloud me-1"></i>Firestore</span>
+                                </label>
+                                <select class="form-select shadow-sm" id="savedPhonesDropdown" onchange="handlePhoneDropdownSelect(this.value)" style="border-radius: 10px; font-weight: 600; border-color: #0088cc;">
+                                    <option value="">-- اضغط لاختيار رقم أو تسجيل برقم آخر --</option>
+                                    <option value="+573244867204">+573244867204 (⭐ أساسي)</option>
+                                    <option value="+201221349790">+201221349790 (⭐ أساسي)</option>
+                                    <option value="+201148863243">+201148863243 (⭐ أساسي)</option>
+                                    <option value="+213797500921">+213797500921 (⭐ أساسي)</option>
+                                    <option value="+201274386864">+201274386864 (⭐ أساسي)</option>
+                                    <option value="__custom__">➕ تسجيل برقم آخر...</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3" id="phoneFieldWrapper">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label for="phone" class="form-label mb-0">رقم الهاتف</label>
+                                    <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none fw-bold" onclick="toggleCustomPhone()" style="font-size:0.78rem; color:#0088cc;">
+                                        <i class="fas fa-plus-circle me-1"></i>تسجيل برقم آخر
+                                    </button>
+                                </div>
                                 <input type="tel" class="form-control" id="phone"
                                         placeholder="+966xxxxxxxxx"
                                         value="{{ settings.phone or '' }}"
                                        required>
-                                <div class="form-text">أدخل رقم الهاتف مع رمز الدولة</div>
+                                <div class="form-text">أدخل رقم الهاتف مع رمز الدولة الدولي، أو اختر من القائمة أعلاه</div>
                             </div>
 
                             <div class="mb-3" id="passwordDiv" style="display: none;">
@@ -731,9 +1218,21 @@
                     <div class="card-body">
                         <form id="settingsForm">
                             <div class="mb-3">
-                                <label for="message" class="form-label">الرسالة</label>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label for="message" class="form-label mb-0 fw-bold">
+                                        <i class="fas fa-comment-dots text-primary me-1"></i> نص الرسالة المراد إرسالها
+                                    </label>
+                                    <button type="button" class="btn btn-sm shadow-sm d-inline-flex align-items-center gap-1"
+                                            id="btnOpenDraftsModal" data-bs-toggle="modal" data-bs-target="#draftsModal"
+                                            title="استعراض مسودات الإعلانات الجاهزة والمزخرفة"
+                                            style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-size: 0.8rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; border: none; cursor: pointer; transition: all 0.2s ease;">
+                                        <i class="fas fa-file-signature"></i>
+                                        <span>مسودات</span>
+                                        <span class="badge bg-white text-dark rounded-pill px-2 py-0" style="font-size: 0.72rem; font-weight: 800;">11 إعلان</span>
+                                    </button>
+                                </div>
                                 <textarea class="form-control" id="message" rows="3"
-                                          placeholder="اكتب الرسالة المراد إرسالها">{{ settings.message or '' }}</textarea>
+                                          placeholder="اكتب الرسالة المراد إرسالها أو اختر مسودة جاهزة من زر مسودات أعلاه">{{ settings.message or '' }}</textarea>
                             </div>
 
                             <!-- قسم رفع الصور المحسن -->
@@ -1050,8 +1549,8 @@
             </div>
         </div>
 
-        <!-- سجل العمليات ووحدة التحكم (مخفية من الواجهة الرئيسية) -->
-        <div class="row d-none" id="logsAndConsoleRow" style="display: none !important;">
+        <!-- سجل العمليات ووحدة التحكم (مخفية من الواجهة بناءً على طلب المستخدم) -->
+        <div class="row" style="display: none !important;">
             <div class="col-lg-6 mb-4">
                 <div class="card">
                     <div class="card-header bg-dark text-white">
@@ -1086,6 +1585,78 @@
     <!-- تحميل المكتبات -->
     <!-- مودالات الوظائف الجديدة -->
 
+
+    <!-- ════ مودال مسودات الإعلانات الجاهزة ════ -->
+    <div class="modal fade" id="draftsModal" tabindex="-1" aria-labelledby="draftsModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="background: #0f172a; border-radius: 20px; overflow: hidden; border: 1px solid rgba(245, 158, 11, 0.3);">
+          <!-- رأس المودال -->
+          <div class="modal-header border-bottom border-secondary border-opacity-25" style="background: linear-gradient(135deg, #1e1b4b, #0f172a); padding: 18px 24px;">
+            <div class="d-flex align-items-center gap-3">
+              <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #fff; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);">
+                <i class="fas fa-file-signature"></i>
+              </div>
+              <div>
+                <h5 class="modal-title mb-0 fw-bold text-white" id="draftsModalLabel">
+                  مسودات الإعلانات الجاهزة
+                  <span class="badge bg-warning text-dark rounded-pill ms-2" style="font-size: 0.75rem;">11 إعلان مزخرف</span>
+                </h5>
+                <small class="text-white-50">تنسيق تليجرام احترافي ومزخرف — انقر على أي بطاقة لنقلها فوراً إلى خانة نص الرسالة</small>
+              </div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+          </div>
+
+          <!-- جسم المودال -->
+          <div class="modal-body" style="padding: 20px; background: #0b1329;">
+            <!-- شريط البحث والفلترة -->
+            <div class="row g-2 mb-3 align-items-center">
+              <div class="col-md-7">
+                <div class="input-group">
+                  <span class="input-group-text bg-dark border-secondary text-warning" style="border-color: rgba(255,255,255,0.15) !important;">
+                    <i class="fas fa-search"></i>
+                  </span>
+                  <input type="text" id="draftsSearchInput" class="form-control bg-dark text-white border-secondary"
+                         placeholder="ابحث في الإعلانات (بحوث، سكليف، برمجة، إجازة مرضية، واتساب...)"
+                         style="border-color: rgba(255,255,255,0.15) !important;"
+                         oninput="filterDraftsCards()">
+                  <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('draftsSearchInput').value=''; filterDraftsCards();" title="مسح">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="col-md-5">
+                <div class="d-flex gap-1 justify-content-md-end flex-wrap" id="draftCategoryFilter">
+                  <button type="button" class="btn btn-sm btn-warning draft-cat-btn active" data-category="all" onclick="filterDraftsCategory('all', this)">
+                    الكل (11)
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary text-light draft-cat-btn" data-category="student" onclick="filterDraftsCategory('student', this)">
+                    📚 طلابية وبحوث (7)
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary text-light draft-cat-btn" data-category="medical" onclick="filterDraftsCategory('medical', this)">
+                    🏥 طبية وسكليف (4)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- شبكة بطاقات الإعلانات -->
+            <div class="row g-3" id="draftsCardsContainer">
+              <!-- يتم ملؤها ديناميكياً بواسطة JavaScript -->
+            </div>
+          </div>
+
+          <!-- ذيل المودال -->
+          <div class="modal-footer border-top border-secondary border-opacity-25 d-flex justify-content-between" style="background: #0f172a; padding: 14px 24px;">
+            <div class="text-white-50 small">
+              <i class="fas fa-info-circle text-warning me-1"></i>
+              الضغط على أي بطاقة أو زر النقل يقوم بنقل النص فوراً وإغلاق النافذة.
+            </div>
+            <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">إغلاق</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- ════ مودال أسعار البطاقات ════ -->
     <div class="modal fade" id="cardPricesModal" tabindex="-1" aria-hidden="true">
@@ -4987,7 +5558,7 @@
             showLoginMessage('🔐 الحساب محمي بالتحقق بخطوتين. أدخل كلمة المرور.', 'warning');
         }
 
-        function showLoggedIn(loginData) {
+        function showLoggedIn() {
             stopLoginPolling();
             setConnectionStatus(true);
             setLoginBusy(false);
@@ -5000,12 +5571,6 @@
             if (verifyForm) verifyForm.style.display = 'none';
             if (passwordForm) passwordForm.style.display = 'none';
             showLoginMessage('✅ تم تسجيل الدخول بنجاح.', 'success');
-            if (typeof window.refreshActiveAccountInfo === 'function') {
-                window.refreshActiveAccountInfo(loginData);
-            }
-            if (typeof window.loadTgAccounts === 'function') {
-                window.loadTgAccounts();
-            }
         }
 
         function showLoggedOut() {
@@ -5101,7 +5666,7 @@
                 if (result.password_required) {
                     showPasswordForm();
                 } else if (result.success) {
-                    showLoggedIn(result);
+                    showLoggedIn();
                 } else {
                     showLoginMessage(result.message || '❌ كود التحقق غير صحيح.', 'danger');
                 }
@@ -5127,7 +5692,7 @@
             showLoginMessage('🔄 جاري التحقق من كلمة المرور...', 'info');
             try {
                 const result = await postLogin('/api/verify_code', { password });
-                if (result.success) showLoggedIn(result);
+                if (result.success) showLoggedIn();
                 else showLoginMessage(result.message || '❌ كلمة المرور غير صحيحة.', 'danger');
             } catch (error) {
                 showLoginMessage('❌ تعذر التحقق: ' + (error.message || error), 'danger');
@@ -5150,6 +5715,279 @@
             }
         }
 
+        function updateAccountUI(data) {
+            if (!data) return;
+            const uid = data.user_id || '{{ current_user.id }}';
+            const accountName = data.account_name || '';
+            const rawUsername = data.account_username || '';
+            const accountUsername = rawUsername ? (rawUsername.startsWith('@') ? rawUsername : '@' + rawUsername) : '';
+            const avatarUrl = data.account_avatar || ('/api/account_avatar/' + uid + '?t=' + Date.now());
+            const isLoggedIn = Boolean(data.logged_in);
+            const phone = data.account_phone || '';
+
+            // تحديث بطاقة الحساب في الشريط الجانبي لتليجرام
+            const tgRow = byId('tgAccountRow_' + uid);
+            const tgImg = byId('tgAccountImg_' + uid);
+            const tgFallback = byId('tgAccountFallback_' + uid);
+            const tgName = byId('tgAccountName_' + uid);
+            const tgSub = byId('tgAccountSub_' + uid);
+            const tgDot = byId('tgAccountDot_' + uid);
+
+            if (tgImg) {
+                if (isLoggedIn && avatarUrl) {
+                    tgImg.src = avatarUrl;
+                    tgImg.style.display = 'block';
+                    if (tgFallback) tgFallback.style.display = 'none';
+                } else if (!isLoggedIn) {
+                    tgImg.style.display = 'none';
+                    if (tgFallback) tgFallback.style.display = 'flex';
+                }
+            }
+            if (tgName && accountName) {
+                tgName.textContent = accountName;
+            }
+            if (tgSub) {
+                if (phone) tgSub.textContent = phone;
+                else if (accountName) tgSub.textContent = accountName;
+            }
+            if (tgDot) {
+                if (isLoggedIn) {
+                    tgDot.classList.add('online');
+                } else {
+                    tgDot.classList.remove('online');
+                }
+            }
+
+            // تحديث الحساب النشط في هيدر تسجيل الدخول وبروفايل الشريط الجانبي
+            if (uid === '{{ current_user.id }}') {
+                const headerImg = byId('headerActiveAvatarImg');
+                const headerFallback = byId('headerActiveFallbackIcon');
+                const headerDot = byId('headerActiveStatusDot');
+                const headerName = byId('currentUserNameDisplay');
+
+                const drawerImg = byId('drawerActiveAvatarImg');
+                const drawerFallback = byId('drawerActiveFallbackIcon');
+                const drawerName = byId('drawerActiveName');
+                const drawerPhone = byId('drawerActivePhone');
+                const drawerUsername = byId('drawerActiveUsername');
+                const drawerDot = byId('drawerActiveStatusDot');
+
+                if (headerImg) {
+                    if (isLoggedIn && avatarUrl) {
+                        headerImg.src = avatarUrl;
+                        headerImg.style.display = 'inline-block';
+                        if (headerFallback) headerFallback.style.display = 'none';
+                    } else if (!isLoggedIn) {
+                        headerImg.style.display = 'none';
+                        if (headerFallback) headerFallback.style.display = 'inline-block';
+                    }
+                }
+                if (headerDot) {
+                    if (isLoggedIn) headerDot.classList.add('online');
+                    else headerDot.classList.remove('online');
+                }
+                if (headerName && accountName) {
+                    headerName.textContent = accountName;
+                }
+
+                if (drawerImg) {
+                    if (isLoggedIn && avatarUrl) {
+                        drawerImg.src = avatarUrl;
+                        drawerImg.style.display = 'block';
+                        if (drawerFallback) drawerFallback.style.display = 'none';
+                    } else if (!isLoggedIn) {
+                        drawerImg.style.display = 'none';
+                        if (drawerFallback) drawerFallback.style.display = 'flex';
+                    }
+                }
+                if (drawerName && accountName) {
+                    drawerName.textContent = accountName;
+                }
+                if (drawerPhone && phone) {
+                    drawerPhone.textContent = phone;
+                }
+                if (drawerUsername && accountUsername) {
+                    drawerUsername.textContent = accountUsername;
+                }
+                if (drawerDot) {
+                    if (isLoggedIn) drawerDot.classList.add('online');
+                    else drawerDot.classList.remove('online');
+                }
+
+                // مؤشر حالة الاتصال بالهيدر
+                const connBadge = byId('connectionStatusHeader');
+                if (connBadge) {
+                    if (isLoggedIn) {
+                        connBadge.className = 'badge bg-success';
+                        connBadge.innerHTML = '<i class="fas fa-circle text-white me-1" style="font-size:0.5rem;"></i> متصل';
+                    } else {
+                        connBadge.className = 'badge bg-secondary';
+                        connBadge.innerHTML = '<i class="fas fa-circle text-danger me-1" style="font-size:0.5rem;"></i> غير متصل';
+                    }
+                }
+            }
+        }
+
+        window.switchToAccount = async function(targetUid) {
+            if (!targetUid) return;
+            if (targetUid === '{{ current_user.id }}') {
+                const drawerEl = document.getElementById('telegramAccountsSidebar');
+                if (drawerEl && typeof bootstrap !== 'undefined') {
+                    const oc = bootstrap.Offcanvas.getInstance(drawerEl);
+                    if (oc) oc.hide();
+                }
+                return;
+            }
+
+            const row = document.getElementById('tgAccountRow_' + targetUid);
+            if (row) {
+                row.style.opacity = '0.5';
+                row.style.pointerEvents = 'none';
+            }
+
+            try {
+                const resp = await fetch('/api/switch_user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ user_id: targetUid })
+                });
+                const data = await resp.json();
+                if (data && data.success) {
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'تعذر التبديل إلى الحساب');
+                    if (row) {
+                        row.style.opacity = '1';
+                        row.style.pointerEvents = 'auto';
+                    }
+                }
+            } catch (err) {
+                console.error('Error switching account:', err);
+                alert('حدث خطأ أثناء تبديل الحساب');
+                if (row) {
+                    row.style.opacity = '1';
+                    row.style.pointerEvents = 'auto';
+                }
+            }
+        };
+
+        window.openAddAccountModal = function() {
+            const drawerEl = document.getElementById('telegramAccountsSidebar');
+            if (drawerEl && typeof bootstrap !== 'undefined') {
+                const oc = bootstrap.Offcanvas.getInstance(drawerEl);
+                if (oc) oc.hide();
+            }
+            const modalEl = document.getElementById('addAccountModal');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+                setTimeout(() => {
+                    const phoneInput = document.getElementById('newAccountPhoneInput');
+                    if (phoneInput) phoneInput.focus();
+                }, 400);
+            }
+        };
+
+        window.executeAddAccount = async function() {
+            const nameInput = document.getElementById('newAccountNameInput');
+            const phoneInput = document.getElementById('newAccountPhoneInput');
+            const btn = document.getElementById('btnConfirmAddAccount');
+
+            const name = nameInput ? nameInput.value.trim() : '';
+            const phone = phoneInput ? phoneInput.value.trim() : '';
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>جاري الإنشاء...';
+            }
+
+            try {
+                const resp = await fetch('/api/add_account', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ name: name, phone: phone })
+                });
+                const data = await resp.json();
+                if (data && data.success) {
+                    const modalEl = document.getElementById('addAccountModal');
+                    if (modalEl && typeof bootstrap !== 'undefined') {
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+                    }
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'تعذر إضافة الحساب');
+                }
+            } catch (err) {
+                console.error('Error adding account:', err);
+                alert('حدث خطأ أثناء إضافة الحساب');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-plus me-1"></i> إنشاء الحساب والبدء';
+                }
+            }
+        };
+
+        window.deleteCustomAccount = async function(targetUid, accountName) {
+            if (!targetUid) return;
+            if (!confirm(`هل أنت متأكد من حذف الحساب "${accountName || targetUid}" نهائياً؟`)) {
+                return;
+            }
+            try {
+                const resp = await fetch('/api/delete_account', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ user_id: targetUid })
+                });
+                const data = await resp.json();
+                if (data && data.success) {
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'تعذر حذف الحساب');
+                }
+            } catch (err) {
+                console.error('Error deleting account:', err);
+                alert('حدث خطأ أثناء حذف الحساب');
+            }
+        };
+
+        window.refreshAccountsSidebar = async function(manual = false) {
+            try {
+                await fetchAllAccounts();
+                if (manual) {
+                    const statusMsg = document.getElementById('alertContainer');
+                    if (statusMsg) {
+                        statusMsg.innerHTML = '<div class="alert alert-success alert-dismissible fade show"><i class="fas fa-check-circle me-1"></i> تم تحديث بيانات الحسابات.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+                        setTimeout(() => {
+                            const al = statusMsg.querySelector('.alert');
+                            if (al) al.remove();
+                        }, 2500);
+                    }
+                }
+            } catch (e) {
+                console.error('Error refreshing accounts:', e);
+            }
+        };
+
+        async function fetchAllAccounts() {
+            try {
+                const response = await fetch('/api/get_all_accounts_info', { credentials: 'same-origin' });
+                if (response.ok) {
+                    const accounts = await response.json();
+                    for (const [uid, info] of Object.entries(accounts)) {
+                        updateAccountUI({
+                            user_id: uid,
+                            ...info
+                        });
+                    }
+                }
+            } catch (_) {}
+        }
+
         function handleLoginResult(data) {
             if (!data) return;
             if (data.status === 'code_required') {
@@ -5159,7 +5997,11 @@
             } else if (data.status === 'success') {
                 stopLoginPolling();
                 setLoginBusy(false);
-                showLoggedIn(data);
+                showLoggedIn();
+                if (data.account_name || data.account_avatar) {
+                    updateAccountUI(data);
+                }
+                fetchAllAccounts();
             } else if (data.status === 'error') {
                 stopLoginPolling();
                 setLoginBusy(false);
@@ -5181,7 +6023,8 @@
             } else if (data.logged_in) {
                 stopLoginPolling();
                 setLoginBusy(false);
-                showLoggedIn(data);
+                showLoggedIn();
+                updateAccountUI(data);
             } else if (data.login_error) {
                 stopLoginPolling();
                 setLoginBusy(false);
@@ -5194,12 +6037,63 @@
             window._loginSocketBound = true;
             window.socket.on('login_result', handleLoginResult);
             window.socket.on('login_status', handleLoginStatus);
+            window.socket.on('account_updated', (data) => {
+                if (data) updateAccountUI(data);
+            });
             window.socket.on('connection_status', (data) => {
                 if (data?.status) setConnectionStatus(data.status === 'connected');
             });
         }
 
+        window.handlePhoneDropdownSelect = function(val) {
+            const phoneInput = byId('phone');
+            if (!phoneInput) return;
+            if (val === '__custom__') {
+                phoneInput.value = '+';
+                phoneInput.focus();
+            } else if (val) {
+                phoneInput.value = val;
+                phoneInput.focus();
+            }
+        };
+
+        window.toggleCustomPhone = function() {
+            const dropdown = byId('savedPhonesDropdown');
+            if (dropdown) dropdown.value = '__custom__';
+            const phoneInput = byId('phone');
+            if (phoneInput) {
+                phoneInput.value = '+';
+                phoneInput.focus();
+            }
+        };
+
+        window.loadSavedPhones = async function() {
+            try {
+                const res = await fetch('/api/saved_phone_numbers');
+                const data = await res.json();
+                const select = byId('savedPhonesDropdown');
+                if (!select || !data.success) return;
+                
+                select.innerHTML = '<option value="">-- اضغط لاختيار رقم أو تسجيل برقم آخر --</option>';
+                const phones = data.phones || [];
+                phones.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.phone_number;
+                    const badge = item.is_default ? '⭐ أساسي' : '📱 محفوظ';
+                    opt.textContent = `${item.phone_number} (${badge})`;
+                    select.appendChild(opt);
+                });
+                const customOpt = document.createElement('option');
+                customOpt.value = '__custom__';
+                customOpt.textContent = '➕ تسجيل برقم آخر...';
+                select.appendChild(customOpt);
+            } catch (e) {
+                console.error('Error loading saved phones:', e);
+            }
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
+            window.loadSavedPhones();
             const loginForm = byId('loginForm');
             const verifyForm = byId('verifyForm');
             const passwordForm = byId('passwordForm');
@@ -5216,6 +6110,31 @@
                 showLoggedOut();
                 showLoginMessage('يمكنك تعديل رقم الهاتف ثم الضغط على تسجيل الدخول.', 'info');
             });
+
+            // ربط الضغط على أزرار الحسابات للتبديل السريع
+            document.querySelectorAll('.user-tab').forEach(btn => {
+                btn.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    const targetUid = this.getAttribute('data-user-id');
+                    if (!targetUid || targetUid === '{{ current_user.id }}') return;
+
+                    try {
+                        const resp = await fetch('/api/switch_user', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ user_id: targetUid })
+                        });
+                        const data = await resp.json();
+                        if (data && data.success) {
+                            window.location.reload();
+                        }
+                    } catch (err) {
+                        console.error('Error switching user:', err);
+                    }
+                });
+            });
+
             bindLoginSocket();
             if (window.socket) window.socket.on('connect', bindLoginSocket);
 
@@ -5224,6 +6143,9 @@
                 .then((response) => response.json())
                 .then(handleLoginStatus)
                 .catch(() => {});
+
+            // تحميل معلومات كل الحسابات
+            fetchAllAccounts();
         });
     })();
     </script>
@@ -9894,271 +10816,682 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-<!-- ══════════════════════════════════════════════════════════ -->
-<!--  شريط الحسابات الجانبي مثل تليجرام الرسمي (Telegram Drawer) -->
-<!-- ══════════════════════════════════════════════════════════ -->
-<div id="tgDrawerBackdrop" class="tg-drawer-backdrop" onclick="closeTgDrawer()"></div>
-<div id="tgDrawer" class="tg-drawer">
-    <!-- هيدر الشريط الجانبي (بيانات الحساب الحالي النشط) -->
-    <div class="tg-drawer-header">
-        <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="position-relative">
-                <img id="tgDrawerActiveAvatar" src="/api/account_avatar/{{ current_user.id }}" 
-                     alt="" 
-                     class="tg-drawer-avatar"
-                     onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><circle cx=\'50\' cy=\'50\' r=\'50\' fill=\'%230088cc\'/><text x=\'50\' y=\'55\' fill=\'white\' font-size=\'40\' text-anchor=\'middle\' dy=\'.3em\'>👤</text></svg>';">
-                <span id="tgDrawerActiveBadge" class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle" style="width: 13px; height: 13px; display: {% if connection_status == 'connected' %}inline-block{% else %}none{% endif %};"></span>
-            </div>
-            <button type="button" class="btn btn-sm btn-link text-white p-1" onclick="closeTgDrawer()" title="إغلاق">
-                <i class="fas fa-times fa-lg"></i>
-            </button>
-        </div>
-        <div class="tg-drawer-user-info">
-            <h5 class="mb-0 fw-bold text-white text-truncate" id="tgDrawerActiveName">{{ current_user.name }}</h5>
-            <small class="text-white-50 text-truncate d-block mt-1" id="tgDrawerActivePhone" dir="ltr" style="text-align: right;">{{ settings.phone or 'لم يتم تسجيل رقم' }}</small>
-        </div>
-    </div>
 
-    <!-- قسم الحسابات -->
-    <div class="tg-drawer-body">
-        <div class="d-flex align-items-center justify-content-between px-3 py-2 text-muted small fw-bold" style="background: #f8fafc; border-bottom: 1px solid #edf2f7;">
-            <span><i class="fas fa-users me-1 text-primary"></i> الحسابات المسجلة</span>
-            <span class="badge bg-primary rounded-pill" id="tgAccountsCountBadge">1</span>
-        </div>
-
-        <!-- قائمة الحسابات -->
-        <div class="tg-accounts-list flex-grow-1" id="tgAccountsList" style="overflow-y: auto;">
-            <!-- يتم توليدها بواسطة JavaScript -->
-        </div>
-
-        <!-- زر إضافة حساب مثل تليجرام الرسمي -->
-        <div class="p-3 border-top bg-light">
-            <button type="button" class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center py-2 fw-bold" id="tgAddAccountBtn" onclick="addNewTelegramAccount()" style="border-radius: 12px; font-size: 0.95rem; border: 2px dashed #0088cc;">
-                <i class="fas fa-plus-circle me-2 fs-5"></i>
-                إضافة حساب جديد
-            </button>
-            <small class="text-muted d-block text-center mt-2" style="font-size: 0.78rem;">
-                يمكنك التبديل بين الحسابات وإدارتها مثل تطبيق تيليجرام الرسمي
-            </small>
-        </div>
-    </div>
-</div>
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  قسم مسودات الإعلانات الجاهزة (تنسيق وزخرفة تليجرام)   -->
+<!-- ══════════════════════════════════════════════════════ -->
+<style>
+.draft-card {
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.draft-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(245, 158, 11, 0.6) !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.45) !important;
+}
+.telegram-preview-box::-webkit-scrollbar {
+    width: 6px;
+}
+.telegram-preview-box::-webkit-scrollbar-thumb {
+    background: rgba(245, 158, 11, 0.35);
+    border-radius: 4px;
+}
+.draft-highlight-flash {
+    animation: flashInputHighlight 1.8s ease-in-out;
+}
+@keyframes flashInputHighlight {
+    0% {
+        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.8), 0 0 15px rgba(245, 158, 11, 0.5);
+        border-color: #f59e0b !important;
+    }
+    50% {
+        box-shadow: 0 0 0 7px rgba(245, 158, 11, 0.4), 0 0 20px rgba(245, 158, 11, 0.3);
+        border-color: #f59e0b !important;
+    }
+    100% {
+        box-shadow: none;
+    }
+}
+</style>
 
 <script>
-// ══════════════════════════════════════════════════════════
-//  إدارة شريط الحسابات الجانبي وتحديث البروفايل (مثل تليجرام)
-// ══════════════════════════════════════════════════════════
-window.openTgDrawer = function() {
-    const drawer = document.getElementById('tgDrawer');
-    const backdrop = document.getElementById('tgDrawerBackdrop');
-    if (drawer) drawer.classList.add('show');
-    if (backdrop) backdrop.classList.add('show');
-    window.loadTgAccounts();
-};
+(function() {
+    const TELEGRAM_DRAFTS = [
+        {
+            id: 1,
+            title: "إعلان 1: الخدمات الطلابية المتكاملة",
+            category: "student",
+            badge: "خدمات طلابية",
+            badgeClass: "bg-primary",
+            icon: "fas fa-book-open",
+            whatsapp: "https://wa.me/+966562570935",
+            text: `📚 *السلام عليكم ورحمة الله وبركاته* 📚
+✨ *للخدمات الطلابية والأكاديمية المتكاملة* ✨
 
-window.closeTgDrawer = function() {
-    const drawer = document.getElementById('tgDrawer');
-    const backdrop = document.getElementById('tgDrawerBackdrop');
-    if (drawer) drawer.classList.remove('show');
-    if (backdrop) backdrop.classList.remove('show');
-};
+💞 *مـن خـدمـاتـنـا الـمـمـيـزة* 💞
+━━━━━━━━━━━━━━━━━━━━
+✅ *بحوث جامعية* (عربي 🇸🇦 + إنجليزي 🇬🇧)
+✅ *رسائل ماجستير ودكتوراه*
+✅ *أعذار طبية معتمدة* (صحتي + ورقي مختوم PDF)
+✅ *واجبات وأنشطة دراسية*
+✅ *عروض باوربوينت احترافية* (PowerPoint & Canva)
+✅ *تقارير وتكاليف أكاديمية*
+✅ *حل كويزات / ميد / فاينل*
+✅ *محاسبة + إدارة أعمال*
+✅ *حاسوب + برمجة وأنظمة*
+✅ *مشاريع تخرج متكاملة* (Projects)
+✅ *تلخيص محاضرات وكتب*
+✅ *تصميم سيرة ذاتية احترافية (CV)*
+✅ *تصاميم بوستر وبروشور وإنفوجرافيك*
+✅ *كتابة تقارير التدريب الميداني*
+━━━━━━━━━━━━━━━━━━━━
+💰 *أسـعـار مـنـاسـبـة لـلـجـمـيـع* 💰
 
-window.loadTgAccounts = async function() {
-    try {
-        const res = await fetch('/api/get_all_accounts', { credentials: 'same-origin' });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!data || !data.success) return;
+↩️ *للتواصل المباشر عبر واتساب:*
+📲 https://wa.me/+966562570935`
+        },
+        {
+            id: 2,
+            title: "إعلان 2: خـدمـات طـبـيـة وإجازات صحتي",
+            category: "medical",
+            badge: "أعذار طبية",
+            badgeClass: "bg-success",
+            icon: "fas fa-hospital",
+            whatsapp: "https://wa.me/+966562570935",
+            text: `🟢 *شـغـال الآن - مـتـاح 24 سـاعـة* 🟢
+══════════════════════
+🏥 *خـدمـات طـبـيـة مـعـتـمـدة ورسـمـيـة* 🏥
+══════════════════════
+🩺 *إجازة مرضية فحص باركود (تطبيق صحتي)*
+🩺 *إجازة ورقية مختومة رسمية PDF*
+🩺 *وصفة طبية معتمدة*
+🩺 *حجز موعد مستشفى*
+🩺 *إشعار مرافقة مريض*
+🩺 *مشهد مراجعة طبي*
+🩺 *إشعار تنويم رسمي*
+🩺 *تقرير طبي شامل*
+🩺 *كشف طبي معتمد*
+🩺 *فحص طبي رسمي*
+══════════════════════
+⚡ *إنجاز فوري وسريع ومضمون 100%* ⚡
 
-        const accounts = data.accounts || [];
-        const activeUid = data.active_user_id || 'user_1';
+📞 *للتواصل السريع عبر واتساب:*
+📲 https://wa.me/+966562570935`
+        },
+        {
+            id: 3,
+            title: "إعلان 3: ثقة وسرعة في الإنجاز",
+            category: "student",
+            badge: "إنجاز وبحوث",
+            badgeClass: "bg-info text-dark",
+            icon: "fas fa-bolt",
+            whatsapp: "https://wa.me/+966562570935",
+            text: `🌟 *ثـقـة وسـرعـة فـي الإنـجـاز* 🌟
+═══════════════════════
+☄️ *بحوثات جامعية متقدمة* (عربي أو إنجليزي)
+☄️ *حل الواجبات والتكاليف الدورية*
+☄️ *تلخيص الكتب والمحاضرات بدقة*
+☄️ *مشاريع تخرج شاملة وموثقة*
+☄️ *حل تكاليف وأنشطة البرمجة*
+☄️ *إعداد عروض بوربوينت وكانفا احترافية*
+☄️ *صياغة سيرة ذاتية احترافية (CV)*
+☄️ *تصاميم بوسترات وإنفوجرافيك أكاديمي*
+☄️ *حل اختبارات (كويز - ميد - فاينل)*
+☄️ *اسايمنت - لابات - دراسة حالة*
+☄️ *تحليل إحصائي متقدم (SPSS)*
+☄️ *إعداد تقارير وخرائط ذهنية مفاهيمية*
+☄️ *أعذار طبية ورقية PDF مختومة رسمياً*
+☄️ *أعذار طبية رسمية من منصة صحتي*
+═══════════════════════
+⚡ *دقة عالية وأسعار في متناول الجميع* ⚡
 
-        const countBadge = document.getElementById('tgAccountsCountBadge');
-        if (countBadge) countBadge.textContent = accounts.length;
+📞 *للتواصل عبر واتساب:*
+📲 https://wa.me/+966562570935`
+        },
+        {
+            id: 4,
+            title: "إعلان 4: مركز سرعة إنجاز الشامل الأكاديمي والتقني",
+            category: "student",
+            badge: "شامل وتطوير",
+            badgeClass: "bg-warning text-dark",
+            icon: "fas fa-bullseye",
+            whatsapp: "https://wa.me/+966510349663",
+            text: `🎯 *مَرْكَز سُرْعَة إِنْجَاز* ✨
+━━━━━━━━━━━━━━━━━━━━
+🎓 *كل ما تحتاجه في دراستك الجامعية، التقنية، وخدماتك الطبية… في مكان واحد!* 🚀
 
-        const listContainer = document.getElementById('tgAccountsList');
-        if (listContainer) {
-            listContainer.innerHTML = '';
-            accounts.forEach(acc => {
-                const isActive = acc.id === activeUid;
-                const item = document.createElement('div');
-                item.className = 'tg-account-item' + (isActive ? ' active' : '');
-                
-                const avatarSrc = acc.avatar ? acc.avatar : `/api/account_avatar/${acc.id}?t=${Date.now()}`;
-                const defaultSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%230088cc'/><text x='50' y='55' fill='white' font-size='40' text-anchor='middle' dy='.3em'>👤</text></svg>";
-                
-                item.innerHTML = `
-                    <img class="tg-account-avatar" src="${avatarSrc}" alt="" onerror="this.src='${defaultSvg}';">
-                    <div class="flex-grow-1 overflow-hidden me-2">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <span class="fw-bold text-dark text-truncate" style="font-size: 0.95rem;">${acc.name || acc.custom_name || acc.id}</span>
-                            ${isActive ? '<span class="badge bg-primary rounded-pill ms-2" style="font-size:0.68rem;"><i class="fas fa-check me-1"></i>نشط</span>' : ''}
+📋 *الخدمات المقدمة:*
+📝✏️ *حل الواجبات والاختبارات* (كويز – ميد – فاينل)
+📚📋 *تلخيص المقررات والمحاضرات*
+🎨💫 *تصميم عروض PowerPoint* احترافية وجذابة
+📂🎓 *إعداد مشاريع التخرج الشاملة*
+📊 *إعداد المشاريع الهندسية* (أوتوكاد - ريفيت - لوميون)
+📱 *تصميم مشاريع المحاكاة المختلفة*
+📚✨ *إعداد رسائل الماجستير والدكتوراه* باحترافية
+💡🎯 *اقتراح عناوين وخطط بحث متميزة*
+🔍📖 *توفير المراجع والدراسات السابقة*
+📄🔥 *إعداد أبحاث النشر والترقية العلمية*
+📊📈 *التحليل الإحصائي والتدقيق اللغوي*
+🌟 *إعداد البحوث الجامعية* باللغتين (عربي - إنجليزي)
+📋 *إعداد التقارير والتكاليف الأكاديمية*
+🎪 *تصميم البوسترات الأكاديمية (بروجكت)*
+🗺️ *إعداد الخرائط المفاهيمية والذهنية*
+📝 *إعداد دراسة الحالات والمقالات العلمية*
+📚 *تلخيص الكتب* باللغتين العربية والإنجليزية
+🌐💻 *تصميم وبرمجة المواقع والمتاجر الإلكترونية*
+📱 *تطوير التطبيقات والبرمجيات*
+🛠️📊 *تطوير أنظمة إدارة المهام والهيكل التنظيمي*
+🚀📈 *تحسين محركات البحث (SEO) والدعم الفني*
+💾 *مشاريع البرمجة* (Python - Java - C++ - PHP)
+🤖 *مشاريع الذكاء الاصطناعي وتعلم الآلة*
+🌐 *مشاريع إنترنت الأشياء (IoT)*
+🔧 *برمجة أنظمة التحكم المدمجة (Embedded Systems)*
+📊 *محاكاة المشاريع الهندسية* (MATLAB, Simulink)
+📀 *تحليل البيانات الضخمة (Big Data)*
+🗃️ *تصميم وتحليل قواعد البيانات* (MySQL - Oracle - MongoDB)
+🌺 *ملف الإنجاز والأداء الوظيفي* (إلكتروني وورقي)
+📄 *كتابة التقارير والسجلات التعليمية*
+📊 *تحليل النتائج وإعداد الخطط العلاجية*
+🏆 *تصميم شهادات الشكر والتقدير*
+📝 *كتابة بنوك أسئلة الاختبارات*
+🎨 *تصميم الشعارات والهويات البصرية المتكاملة*
+📄✨ *تصميم السير الذاتية، البروشورات، والمجلات*
+📢 *تصميم المنشورات والفيديوهات الإعلانية*
+🎬 *تصميم الرسوم المتحركة وثلاثية الأبعاد*
+📩 *تصميم الدعوات الإلكترونية*
+📊 *تصميم الإنفوجرافيك الاحترافي*
+🌐🔄 *ترجمة معتمدة* (كتب - روايات - قصص - مقالات)
+🔢 *دورات الرياضيات المتقدمة والشاملة*
+🌐 *دورات اللغة الإنجليزية* (تأسيس، محادثة، اختبارات)
+🎯 *دورات المهارات الجامعية والبحث العلمي*
+🏥 *دورات المصطلحات الطبية* (تمريض، صيدلة، طب)
+💼 *الدورات المحاسبية المتكاملة*
+📘🎯 *حلول منهج Evolve 1, 2, 3, 4*
+📗💡 *حلول منهج Cambridge*
+🔑✨ *أكواد Evolve جديدة ومضمونة*
+🩺🎖️ *استخراج سكليف صحتي معتمد في وقت قياسي* (عسكريين، مدنيين، طلاب)
+
+✨ *مميزات خدماتنا:*
+⚡🚀 *سرعة إنجاز غير مسبوقة*
+🎯✅ *دقة ومطابقة تامة للمواصفات*
+🔒🛡️ *تعامل سري وآمن 100%*
+📍🇸🇦 *خدمة معتمدة لكافة مناطق المملكة*
+
+📞 *للتواصل والاستفسار المباشر:*
+📲 واتساب: https://wa.me/+966510349663
+🌐 الموقع الإلكتروني: https://surraenjazblog.wordpress.com/`
+        },
+        {
+            id: 5,
+            title: "إعلان 5: توقف عن المعاناة الدراسية! (عرض خاص)",
+            category: "student",
+            badge: "عرض وخصم",
+            badgeClass: "bg-danger",
+            icon: "fas fa-tag",
+            whatsapp: "https://wa.me/+966510349663",
+            text: `🚫 *توقف عن المعاناة الدراسية!* 🚫
+══════════════════════
+🎯 *مركز سرعة إنجاز - حلك النهائي لكل التحديات الأكاديمية!* 🎯
+══════════════════════
+
+🔥 *خدماتنا المتميزة تشمل:*
+✅ *مشاريع تخرج* — بجودة استثنائية وبحث متكامل
+✅ *أبحاث جامعية وعلمية* — أصيلة 100% وخالية من الانتحال
+✅ *رسائل ماجستير ودكتوراه* — بإشراف أكاديميين متخصصين
+✅ *حل واجبات واختبارات* — بدقة متناهية وسرعة فائقة
+✅ *تحليل إحصائي (SPSS)* — نتائج ورسوم بيانية مضمونة
+
+👥 *للمعلمين والمؤسسات التعليمية:*
+✅ *ملفات إنجاز وإعداد مهني احترافي*
+✅ *خطط تربوية وإدارية متكاملة*
+
+══════════════════════
+✨ *لماذا مركز سرعة إنجاز؟*
+⭐️ *خبراء متخصصون* في جميع المجالات والتخصصات
+⭐️ *جودة مضمونة 100%* وأعمال حصرية
+⭐️ *سرعة في التنفيذ* والتزام صارم بالمواعيد
+⭐️ *أسعار مناسبة* ومنافسة تناسب كل الطلاب
+⭐️ *سرية تامة* وحماية كاملة لخصوصيتك
+
+🎁 *عرض خاص لفترة محدودة:*
+🏷️ *خصم 15% على أول طلب + تعديلات مجانية حتى الرضا التام!*
+
+══════════════════════
+📞 *تواصل معنا الآن:*
+📱 *واتساب مباشر:* https://wa.me/+966510349663
+🌐 *الموقع الإلكتروني:* https://surraenjazblog.wordpress.com/
+
+⚡ *سرعة إنجاز — رفيق دربك نحو التميز والتفوق الأكاديمي!* 🌟
+🎓 *نجاحك يبدأ بقرار... اتخذ قرارك وتواصل معنا الآن!* 📚✨`
+        },
+        {
+            id: 6,
+            title: "إعلان 6: الخدمات الشاملة والسكليف الطبي",
+            category: "student",
+            badge: "شامل وسكليف",
+            badgeClass: "bg-secondary",
+            icon: "fas fa-rocket",
+            whatsapp: "https://wa.me/+966510349663",
+            text: `🎯 *مَرْكَز سُرْعَة إِنْجَاز* ✨
+🚀 *كل ما تحتاجه في دراستك الجامعية، التقنية، وخدماتك الطبية… في مكان واحد!* 🚀
+══════════════════════════════
+
+✅ 🎒 *الـخـدمـات الـطـلابـيـة:*
+📝✏️ حل الواجبات والاختبارات (كويز – ميد – فاينل)
+📚📋 تلخيص المقررات والمحاضرات الدراسية
+🎨💫 تصميم عروض PowerPoint احترافية ومميزة
+📂🎓 إعداد مشاريع التخرج الشاملة
+📊 إعداد المشاريع الهندسية (أوتوكاد - ريفيت - لوميون)
+📱 تصميم وتطبيق مشاريع المحاكاة
+
+✅ 🎓 *الـخـدمـات الأكـاديـمـيـة والـبـحـثـيـة:*
+📚✨ إعداد رسائل الماجستير والدكتوراه
+💡🎯 اقتراح عناوين وخطط بحث مبتكرة
+🔍📖 توفير المراجع والدراسات السابقة
+📄🔥 إعداد أبحاث النشر والترقية
+📊📈 التحليل الإحصائي والتدقيق اللغوي
+🌟 بحوث جامعية باللغتين (عربي - إنجليزي)
+📋 إعداد التقارير والتكاليف الأكاديمية
+🎪 بوسترات أكاديمية وخرائط مفاهيمية
+
+✅ 💻 *الـخـدمـات الـتـقـنـيـة والـبـرمـجـيـة:*
+🌐💻 تصميم وبرمجة المواقع والمتاجر
+📱 تطوير تطبيقات الهواتف والبرمجيات
+🛠️📊 أنظمة إدارة المهام والهياكل التنظيمية
+🚀📈 تحسين محركات البحث (SEO)
+💾 مشاريع البرمجة (Python - Java - C++ - PHP)
+🤖 الذكاء الاصطناعي وتعلم الآلة
+🌐 إنترنت الأشياء (IoT) والأنظمة المدمجة
+📊 محاكاة هندسية (MATLAB, Simulink)
+📀 تحليل البيانات الضخمة (Big Data) وقواعد البيانات
+
+✅ 👨‍🏫 *خـدمـات الـدعـم الـتـعـلـيـمـي والإداري:*
+🌺 ملف الإنجاز والأداء الوظيفي الحديث
+📄 كتابة التقارير والسجلات التعليمية
+📊 تحليل النتائج والخطط العلاجية
+🏆 شهادات شكر وبنوك أسئلة
+
+✅ 🎨 *خـدمـات الـتـصـمـيـم والـتـرجـمـة:*
+🎨 هويات بصرية وشعارات وسير ذاتية
+📢 منشورات وفيديوهات إعلانية وموشن
+🌐🔄 ترجمة معتمدة لكافة المستندات والكتب
+
+✅ 📘 *الـدورات الـتـدريـبـيـة والـمـنـاهـج:*
+🔢 دورات الرياضيات التأسيسية والمتقدمة
+🌐 دورات الإنجليزية والمحادثة الدولية
+🎯 مهارات البحث العلمي وإدارة الوقت
+🏥 المصطلحات الطبية المتخصصة
+💼 المحاسبة المالية والتكاليف
+📘 حلول وأكواد مناهج (Evolve & Cambridge)
+
+🚨 🩺 *سكليفك الطبي… أسرع مما تتخيل!* ⚡
+📍 *سواء كنت عسكري – مدني – طالب…*
+📄 نوفر لك استخراج سكليف صحتي المعتمد في وقت قياسي وبكل سرية وأمانة!
+
+══════════════════════════════
+✨ *مميزات خدماتنا:*
+⚡🚀 سرعة إنجاز قياسية
+🎯✅ دقة مطابقة 100%
+🔒🛡️ سرية وأمان تام
+📍🇸🇦 تغطية شاملة لكافة مناطق المملكة
+
+📞 *للتواصل والاستفسار:*
+📲 واتساب: https://wa.me/+966510349663
+🌐 الموقع الإلكتروني: https://surraenjazblog.wordpress.com/
+
+🌈 *جـودة ✨ سـرعـة ⚡ أمـانـة 🔒*`
+        },
+        {
+            id: 7,
+            title: "إعلان 7: تقارير وبحوث وسكاليف سريعة",
+            category: "student",
+            badge: "إنجاز سريع",
+            badgeClass: "bg-dark text-light border border-secondary",
+            icon: "fas fa-clipboard-list",
+            whatsapp: "https://wa.me/+966562570935",
+            text: `⚡ *مـركـز الإنـجـاز الـسـريـع* ⚡
+══════════════════════
+⬅️ *تقارير وبحوث علمية ومشاريع تخرج*
+⬅️ *حل واجبات - أنشطة - كويزات*
+⬅️ *اختبارات - تكاليف فردية وجماعية*
+⬅️ *عروض تقديمية وبوربوينت احترافية*
+
+🩺 *سكاليف وأعذار طبية رسمية معتمدة* 🩺
+══════════════════════
+🔻 *للاستفسار والطلب الفوري:* 🔻
+📲 *تواصل خاص واتساب:* https://wa.me/+966562570935`
+        },
+        {
+            id: 8,
+            title: "إعلان 8: الدليل الأكاديمي والتعليمي الموسع",
+            category: "student",
+            badge: "دليل شامل",
+            badgeClass: "bg-primary",
+            icon: "fas fa-university",
+            whatsapp: "https://wa.me/+966562570935",
+            text: `📚 *مركز سرعة إنجاز للخدمات الطلابية والأكاديمية* 🚀
+═════════════════════════════════
+
+🎓 *الخدمات الأكاديمية والتعليمية المتكاملة:*
+
+📖 *خدمات الطلاب الجامعيين:*
+🎯 إعداد مشاريع التخرج والأبحاث الجامعية الرصينة
+🎯 حل الواجبات والأنشطة والاختبارات الدورية
+🎯 تلخيص المقررات وإعداد العروض التقديمية
+🎯 تصميم الخرائط المفاهيمية والتكاليف الأكاديمية
+
+🏛️ *خدمات الدراسات العليا والباحثين:*
+🎯 إعداد رسائل الماجستير والدكتوراه باحترافية
+🎯 تصميم الخطط البحثية ومنهجية البحث العلمي
+🎯 التحليل الإحصائي الدقيق باستخدام (SPSS)
+🎯 التدقيق اللغوي والمراجعة العلمية الشاملة
+
+🌍 *خدمات اللغات والمناهج الدولية:*
+🎯 حلول منهج Evolve (المستويات 1، 2، 3، 4)
+🎯 حلول منهج Cambridge المعتمدة
+🎯 حلول منصة Coursera ومساراتها
+🎯 حل اختبارات Cisco بشكل مضمون 100%
+🎯 توفير أكواد Evolve جديدة ومضمونة
+
+💻 *الخدمات التقنية والبرمجية:*
+🎯 مشاريع البرمجة (Python، Java، C++، PHP)
+🎯 تصميم وتطوير المواقع والمتاجر الإلكترونية
+🎯 مشاريع الذكاء الاصطناعي وإنترنت الأشياء
+
+📝 *خدمات الترجمة والنشر الدولي:*
+🎯 ترجمة الأبحاث والكتب والمستندات العلمية
+🎯 تنسيق ونشر الأبحاث في مجلات محكمة (Scopus)
+
+🎨 *خدمات التصميم والدعم الإداري:*
+🎯 تصميم السير الذاتية الاحترافية (ATS-Friendly)
+🎯 إعداد وتنسيق ملفات الإنجاز للمعلمين
+🎯 تصميم الشعارات والمواد التسويقية والإعلانية
+
+🏥 *الخدمات الطبية الإلكترونية المعتمدة:*
+⚕️ استخراج سكليف تطبيق صحتي برمز تحقق
+⚕️ إجازات مرضية رسمية معتمدة
+⚕️ تقارير طبية رسمية وموثقة
+⚕️ تقرير مرافق مريض وإشعار تنويم
+
+═════════════════════════════════
+✨ *لماذا تختار مركز سرعة إنجاز؟*
+✅ فريق أكاديمي مؤهل من حملة الماجستير والدكتوراه
+✅ جودة استثنائية وأصالة 100% خالية من الاستلال
+✅ التزام فوري بالمواعيد وسرعة في التسليم
+✅ خصوصية وسرية تامة لبيانات العملاء
+✅ تواصل مباشر ومستمر حتى تسليم العمل
+✅ أفضل الأسعار التنافسية مع ضمان التعديل
+
+═════════════════════════════════
+📲 *للتواصل والطلب الفوري:*
+💬 واتساب: https://wa.me/+966562570935
+🌐 الموقع الإلكتروني: https://surraenjazblog.wordpress.com/
+
+🌟 *نحن هنا لمساعدتك في تحقيق أهدافك بأعلى درجات التميز!* 🌟
+🏆 *جـودة ✨ سـرعـة ⚡ أمـانـة 🔒*`
+        },
+        {
+            id: 9,
+            title: "إعلان 9: باقة الخدمات الطلابية ومشاريع التخرج",
+            category: "student",
+            badge: "خدمات طلابية",
+            badgeClass: "bg-info text-dark",
+            icon: "fas fa-tasks",
+            whatsapp: "https://wa.me/+966510349663",
+            text: `🛑☣️ 🛑 🛑🌀 *مـركـز سـرعـة إنـجـاز* 🌀🛑 🛑 ☣️🛑
+📚 *جـمـيـع الـخـدمـات الـطـلابـيـة والأكـاديـمـيـة* 📚
+══════════════════════════════════
+
+📉 *خدماتنا المباشرة للطلاب والطالبات:*
+* 🔰 اختبارات، كويزات، ميد، فاينل
+* 🔰 حل أنشطة وواجبات لجميع المواد
+* 🔰 إعداد بحوث ومشاريع تخرج علمية
+* 🔰 تفريغ وتسجيل المحاضرات بدقة
+* 🔰 إعداد وتصميم خرائط مفاهيمية وذهنية
+* 🔰 صياغة وتحديث سيرة ذاتية احترافية CV
+* 🔰 تصميم عروض بوربوينت PowerPoint احترافية
+* 🔰 تصميم بوسترات ومطبوعات للسوشيال ميديا
+* 🔰 عمل مشاريع وجداول وتحليلات Excel
+* 🔰 مشاريع البرمجة، نظم المعلومات، والهندسة
+* 🔰 اقتراح مواضيع الماجستير والدكتوراه وإعداد الخطة
+* 🔰 تلخيص وترجمة المحاضرات والمراجع والكتب
+* 🔰 *أعـــــــــــــــــــذار وطـــــــــبية مـعـتـمـدة*
+
+══════════════════════════════════
+🌀 *شـعـارنـا:*
+✨ *الـسـرعـة — الـدقـة — الـمـصـداقـيـة* ✨
+
+🔴 *أسـعـار مـنـاسـبـة لـلـجـمـيـع*
+🔴 *ضـمـان كـامـل لـلـدرجـات والـتـمـيـز*
+⭕ *نخبة مختصين في مختلف التخصصات والمواد* ⭕
+
+📲 *لـلـتـواصـل الـفـوري عـبـر واتـسـاب:*
+👉 https://wa.me/+966510349663`
+        },
+        {
+            id: 10,
+            title: "إعلان 10: متواجدين 24 ساعة - حط السعر اللي تبيه",
+            category: "student",
+            badge: "مرونة وأسعار",
+            badgeClass: "bg-success",
+            icon: "fas fa-clock",
+            whatsapp: "https://wa.me/+966562570935",
+            text: `💕 *السلام عليكم ورحمة الله وبركاته* 💕
+✨ *مـتـواجـدون لـخـدمـتـكـم 24 سـاعـة* ✨
+══════════════════════════
+🤍 *حـط الـسـعـر الـلـي تـبـيـه وتـدلـل!* 🤍
+
+🩺 *سكليف وأعذار طبية رسمية معتمدة بمنصة صحتي*
+📝 *حل امتحانات وكويزات وميد وفاينل وضمان الفل مارك* 👍🏻
+
+🔻 *تقارير أكاديمية وتدريبية*
+🔻 *تكاليف وواجبات فردية وجماعية*
+🔻 *أنشطة ومهام دراسية*
+🔻 *سكليف وإجازات مرضية موثقة*
+🔻 *خرائط ذهنية ومفاهيمية*
+🔻 *أبحاث جامعية ومدرسية متكاملة*
+🔻 *واجبات لجميع المراحل والتخصصات*
+🔻 *مشاريع تخرج علمية وهندسية*
+🔻 *تصميم سيرة ذاتية (CV) وفوتوشوب وإنفوجرافيك*
+🔻 *عروض باوربوينت (PowerPoint) مميزة وتفاعلية*
+🔻 *تلخيص شامل للكتب والمقررات*
+🔻 *نقد ومراجعة الرسائل العلمية (Word / Excel / PPT)*
+🔻 *الرسم والتصميم الهندسي بـ AutoCAD*
+🔻 *حلول امتحانات شاملة لجميع المواد*
+
+══════════════════════════
+🛑 *للتواصل المباشر والطلب عبر واتساب:*
+📲 https://wa.me/+966562570935`
+        },
+        {
+            id: 11,
+            title: "إعلان 11: سـكـالـيـف رسمية معتمدة في صحتي",
+            category: "medical",
+            badge: "سكليف رسمي",
+            badgeClass: "bg-danger",
+            icon: "fas fa-file-medical-alt",
+            whatsapp: "https://wa.me/+966510349663",
+            text: `🚨 *#ســكــالــــيـــــــف_رسمية معتمدة* 🚨
+═════════════════════════════
+📌 *عليك غياب وتبي عذر طبي في صحتي بدون حضور؟ كلمنا فوراً!* 📌
+
+♻️ *إجازة مرضية معتمدة وموثقة في تطبيق صحتي* ♻️
+🎖️ *نستقبل: عسكري | مدني | جامعي | موظف*
+▫️ • ▫️                               ▫️ • ▫️
+🟢 *تاريخ جديد ومستقبلي ↗️ | تاريخ قديم بأثر رجعي ↘️*
+
+🔰⬇️ *الأعـذار والـخـدمـات الـطـبـيـة الـمـتـاحـة:* ⬇️🔰
+🏥 *عـذر طـبـي معتمد في تطبيق صحتي*
+🏥 *إجازة ورقية مختومة بختم رسمي PDF*
+🏥 *إشعار مرافقة مريض موثق*
+🏥 *مشهد مراجعة مستشفى أو مركز صحي*
+🏥 *إشعار تنويم رسمي*
+🏥 *تقرير طبي شامل ومختوم*
+
+═════════════════════════════
+🆗 *للتواصل والطلب السريع عبر واتساب:* ⬇️📲
+📲 https://wa.me/+966510349663`
+        }
+    ];
+
+    let currentCategory = 'all';
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function renderDrafts(filterText = '', filterCat = 'all') {
+        const container = document.getElementById('draftsCardsContainer');
+        if (!container) return;
+
+        const q = (filterText || '').trim().toLowerCase();
+        const filtered = TELEGRAM_DRAFTS.filter(draft => {
+            const matchesCat = (filterCat === 'all') || (draft.category === filterCat);
+            const matchesQuery = !q ||
+                draft.title.toLowerCase().includes(q) ||
+                draft.text.toLowerCase().includes(q) ||
+                draft.badge.toLowerCase().includes(q);
+            return matchesCat && matchesQuery;
+        });
+
+        if (filtered.length === 0) {
+            container.innerHTML = `
+                <div class="col-12 text-center py-5">
+                    <div class="text-white-50 mb-2" style="font-size: 2.5rem;">🔍</div>
+                    <h6 class="text-white fw-bold">لم يتم العثور على إعلانات مطابقة</h6>
+                    <p class="text-white-50 small">جرب البحث بكلمة أخرى أو اختر تصنيف "الكل"</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = filtered.map(draft => {
+            return `
+            <div class="col-md-6 mb-3">
+                <div class="card h-100 border-0 shadow-sm draft-card" style="background: #1e293b; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); overflow: hidden;">
+                    <!-- رأس البطاقة -->
+                    <div class="card-header bg-transparent border-0 pt-3 pb-2 px-3 d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2 text-truncate">
+                            <span class="badge ${draft.badgeClass} rounded-pill px-2 py-1" style="font-size: 0.72rem;">${draft.badge}</span>
+                            <h6 class="mb-0 text-white fw-bold text-truncate" style="font-size: 0.92rem;" title="${escapeHtml(draft.title)}">
+                                <i class="${draft.icon} text-warning me-1"></i> ${escapeHtml(draft.title)}
+                            </h6>
                         </div>
-                        <div class="d-flex align-items-center justify-content-between mt-1">
-                            <small class="text-muted text-truncate" dir="ltr">${acc.phone || 'لم يسجل بعد'}</small>
-                            <span class="badge ${acc.authenticated ? 'bg-success' : 'bg-secondary'}" style="font-size:0.65rem;">
-                                ${acc.authenticated ? 'متصل' : 'غير متصل'}
-                            </span>
-                        </div>
-                    </div>
-                    ${!isActive && accounts.length > 1 ? `
-                        <button type="button" class="btn btn-sm btn-link text-danger p-1 ms-1" title="حذف الحساب" onclick="event.stopPropagation(); deleteTgAccount('${acc.id}');">
-                            <i class="fas fa-trash-alt"></i>
+                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="copyDraftText(${draft.id}, this, event)" title="نسخ النص" style="border-radius: 8px; font-size: 0.75rem; padding: 2px 10px; white-space: nowrap;">
+                            <i class="fas fa-copy me-1"></i> نسخ
                         </button>
-                    ` : ''}
-                `;
+                    </div>
 
-                item.onclick = () => {
-                    if (!isActive) {
-                        window.switchTgAccount(acc.id);
-                    } else {
-                        window.closeTgDrawer();
-                    }
-                };
-                listContainer.appendChild(item);
+                    <!-- معاينة التنسيق (قابلة للنقر) -->
+                    <div class="card-body px-3 py-2" onclick="selectDraftMessage(${draft.id})" style="cursor: pointer;" title="انقر لنقل هذا الإعلان إلى خانة نص الرسالة">
+                        <div class="telegram-preview-box" style="background: #0b1329; border: 1px solid rgba(245,158,11,0.22); border-radius: 12px; padding: 12px; color: #cbd5e1; font-size: 0.8rem; line-height: 1.6; white-space: pre-wrap; font-family: system-ui, -apple-system, sans-serif; max-height: 190px; overflow-y: auto;">${escapeHtml(draft.text)}</div>
+                    </div>
 
-                if (isActive) {
-                    const activeAvatar = document.getElementById('tgDrawerActiveAvatar');
-                    const activeName = document.getElementById('tgDrawerActiveName');
-                    const activePhone = document.getElementById('tgDrawerActivePhone');
-                    const activeBadge = document.getElementById('tgDrawerActiveBadge');
-                    if (activeAvatar) activeAvatar.src = avatarSrc;
-                    if (activeName) activeName.textContent = acc.name || acc.custom_name;
-                    if (activePhone) activePhone.textContent = acc.phone || 'لم يتم تسجيل رقم';
-                    if (activeBadge) activeBadge.style.display = acc.authenticated ? 'inline-block' : 'none';
-                }
-            });
-        }
-    } catch (e) {
-        console.error('Error loading accounts:', e);
+                    <!-- ذيل البطاقة مع زر النقل الفوري -->
+                    <div class="card-footer bg-transparent border-0 pb-3 pt-1 px-3">
+                        <button type="button" class="btn w-100 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                                onclick="selectDraftMessage(${draft.id})"
+                                style="border-radius: 10px; font-size: 0.85rem; padding: 8px 12px; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: #fff;">
+                            <i class="fas fa-file-import"></i>
+                            <span>نقل هذا الإعلان إلى خانة الرسالة 📥</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            `;
+        }).join('');
     }
-};
 
-window.addNewTelegramAccount = async function() {
-    const btn = document.getElementById('tgAddAccountBtn');
-    if (btn) btn.disabled = true;
-    try {
-        const res = await fetch('/api/accounts/add', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin'
-        });
-        const d = await res.json();
-        if (d.success) {
-            window.closeTgDrawer();
-            window.location.reload();
-        } else {
-            alert(d.message || 'فشل إضافة الحساب');
+    window.selectDraftMessage = function(draftId) {
+        const draft = TELEGRAM_DRAFTS.find(d => d.id === draftId);
+        if (!draft) return;
+
+        const msgInput = document.getElementById('message');
+        if (!msgInput) return;
+
+        // تعيين نص المسودة في خانة الرسالة
+        msgInput.value = draft.text;
+        msgInput.dispatchEvent(new Event('input', { bubbles: true }));
+        msgInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+        // إغلاق المودال
+        const modalEl = document.getElementById('draftsModal');
+        if (modalEl) {
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
         }
-    } catch (e) {
-        alert('حدث خطأ أثناء إضافة الحساب');
-    } finally {
-        if (btn) btn.disabled = false;
-    }
-};
 
-window.deleteTgAccount = async function(userId) {
-    if (!confirm('هل أنت متأكد من رغبتك في حذف هذا الحساب؟')) return;
-    try {
-        const res = await fetch('/api/accounts/delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ user_id: userId })
-        });
-        const d = await res.json();
-        if (d.success) {
-            window.loadTgAccounts();
-            window.refreshActiveAccountInfo();
-        } else {
-            alert(d.message || 'فشل حذف الحساب');
+        // التمرير السلس والتركيز والتأثير البصري
+        setTimeout(() => {
+            msgInput.focus();
+            msgInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            msgInput.classList.add('draft-highlight-flash');
+            setTimeout(() => {
+                msgInput.classList.remove('draft-highlight-flash');
+            }, 2000);
+        }, 300);
+
+        // إشعار نجاح
+        if (typeof _showNotification === 'function') {
+            _showNotification('✅ تم نقل ' + draft.title + ' فوراً إلى خانة نص الرسالة!', 'success');
         }
-    } catch (e) {
-        console.error(e);
-    }
-};
+    };
 
-window.switchTgAccount = async function(userId) {
-    try {
-        const res = await fetch('/api/switch_user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ user_id: userId })
-        });
-        const d = await res.json();
-        if (d.success) {
-            window.closeTgDrawer();
-            window.location.reload();
-        }
-    } catch (e) {
-        console.error(e);
-    }
-};
+    window.copyDraftText = function(draftId, btn, e) {
+        if (e) e.stopPropagation();
+        const draft = TELEGRAM_DRAFTS.find(d => d.id === draftId);
+        if (!draft) return;
 
-window.refreshActiveAccountInfo = async function(optionalData) {
-    try {
-        let info = optionalData;
-        if (!info || !info.account_name) {
-            const res = await fetch('/api/get_account_info', { credentials: 'same-origin' });
-            if (res.ok) {
-                info = await res.json();
+        navigator.clipboard.writeText(draft.text).then(() => {
+            if (btn) {
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check text-success me-1"></i> تم النسخ!';
+                btn.classList.add('btn-warning', 'text-dark');
+                btn.classList.remove('btn-outline-warning');
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.classList.remove('btn-warning', 'text-dark');
+                    btn.classList.add('btn-outline-warning');
+                }, 1800);
             }
-        }
-        if (!info) return;
-
-        const avatarUrl = info.account_avatar || `/api/account_avatar/${info.user_id || 'user_1'}?t=${Date.now()}`;
-        const name = info.account_name || info.predefined_name || 'حساب تليجرام';
-        const phone = info.account_phone || '';
-        const isAuth = Boolean(info.authenticated || info.logged_in);
-
-        // 1. تحديث بطاقة الحساب في تسجيل الدخول
-        const pAvatar = document.getElementById('loginProfileAvatar');
-        const pName = document.getElementById('loginProfileName');
-        const pPhone = document.getElementById('loginProfilePhone');
-        const pDot = document.getElementById('loginProfileStatusDot');
-        const pBadge = document.getElementById('loginProfileBadge');
-        if (pAvatar) {
-            pAvatar.src = avatarUrl;
-        }
-        if (pName) pName.textContent = name;
-        if (pPhone) pPhone.textContent = phone || 'لم يتم تسجيل رقم';
-        if (pDot) pDot.style.display = isAuth ? 'inline-block' : 'none';
-        if (pBadge) {
-            pBadge.className = `badge ${isAuth ? 'bg-success' : 'bg-secondary'}`;
-            pBadge.innerHTML = isAuth ? '<i class="fas fa-check-circle me-1"></i>متصل' : 'غير متصل';
-        }
-
-        // 2. تحديث أيقونة الشريط الجانبي في الزاوية
-        const btnAvatar = document.getElementById('tgDrawerBtnAvatar');
-        const btnIcon = document.getElementById('tgDrawerBtnIcon');
-        if (btnAvatar) {
-            btnAvatar.src = avatarUrl;
-            if (isAuth && avatarUrl) {
-                btnAvatar.style.display = 'inline-block';
-                if (btnIcon) btnIcon.style.display = 'none';
+            if (typeof _showNotification === 'function') {
+                _showNotification('📋 تم نسخ نص الإعلان إلى الحافظة بنجاح!', 'info');
             }
+        }).catch(() => {
+            if (typeof _showNotification === 'function') {
+                _showNotification('❌ تعذر النسخ إلى الحافظة', 'danger');
+            }
+        });
+    };
+
+    window.filterDraftsCards = function() {
+        const query = document.getElementById('draftsSearchInput')?.value || '';
+        renderDrafts(query, currentCategory);
+    };
+
+    window.filterDraftsCategory = function(category, btn) {
+        currentCategory = category;
+        document.querySelectorAll('.draft-cat-btn').forEach(b => {
+            b.classList.remove('active', 'btn-warning');
+            b.classList.add('btn-outline-secondary', 'text-light');
+        });
+        if (btn) {
+            btn.classList.add('active', 'btn-warning');
+            btn.classList.remove('btn-outline-secondary', 'text-light');
         }
+        window.filterDraftsCards();
+    };
 
-        // 3. تحديث هيدر الدرج
-        const dAvatar = document.getElementById('tgDrawerActiveAvatar');
-        const dName = document.getElementById('tgDrawerActiveName');
-        const dPhone = document.getElementById('tgDrawerActivePhone');
-        const dBadge = document.getElementById('tgDrawerActiveBadge');
-        if (dAvatar) dAvatar.src = avatarUrl;
-        if (dName) dName.textContent = name;
-        if (dPhone) dPhone.textContent = phone || 'لم يتم تسجيل رقم';
-        if (dBadge) dBadge.style.display = isAuth ? 'inline-block' : 'none';
-
-    } catch (e) {
-        console.error('Error refreshing active account info:', e);
-    }
-};
-
-document.addEventListener('DOMContentLoaded', function() {
-    window.refreshActiveAccountInfo();
-    window.loadTgAccounts();
-});
+    document.addEventListener('DOMContentLoaded', function() {
+        renderDrafts();
+    });
+})();
 </script>
 </body>
 </html>

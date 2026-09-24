@@ -1,6 +1,2552 @@
 {
   "installations": [
     {
+      "install_id": "b058d004-4025-4a4c-b0f2-02c38ab65f4f",
+      "user_id": "user_1",
+      "ip": "209.198.151.125",
+      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
+      "cookies": "{\"__SECURE-aistudio_auth_token\": \"NhqiJa9P5o52OMJQNo42GNkhOSbfGciX25_hKHuFj9U=\"}",
+      "timestamp": "2026-09-24T19:23:14.794067",
+      "last_seen": "2026-09-24T19:23:14.794067",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "bc676c17-fd55-41b4-bea6-7c331fb7ed64",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "Go-http-client/1.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T19:23:04.680564",
+      "last_seen": "2026-09-24T19:23:04.680564",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "1cf1eacf-2eaa-46ff-9ded-a7e5fb75fd6d",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T19:22:54.972506",
+      "last_seen": "2026-09-24T19:22:54.972506",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "03260990-afcb-4b3b-888c-d9fb433d143d",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T19:22:47.366988",
+      "last_seen": "2026-09-24T19:22:47.366988",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "079b12bf-d3ce-461c-b4cd-1d49d33d2f8b",
+      "user_id": "user_1",
+      "ip": "209.198.151.125",
+      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
+      "cookies": "{\"__SECURE-aistudio_auth_token\": \"2cL3L8RmdddpiWFm1XIwagkQikGzHSn3WWcBjVqu_ks=\"}",
+      "timestamp": "2026-09-24T12:26:34.150584",
+      "last_seen": "2026-09-24T12:26:34.150584",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "41a88308-3966-473f-8328-7aab10f465f1",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "Go-http-client/1.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T12:26:21.828001",
+      "last_seen": "2026-09-24T12:26:21.828001",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "38180a99-7e4b-4252-a8aa-6fbc6ddc8efd",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T12:26:13.118595",
+      "last_seen": "2026-09-24T12:26:13.118595",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "0f602f00-5217-4f8a-94ab-c1a71005b039",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T12:20:53.273173",
+      "last_seen": "2026-09-24T12:20:53.273173",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "439c4eba-f7b0-461c-b856-b6223c89377f",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T12:20:24.968029",
+      "last_seen": "2026-09-24T12:20:24.968029",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "2915b112-727c-4106-95d2-c3af438af875",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T12:20:20.416438",
+      "last_seen": "2026-09-24T12:20:20.416438",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "14bc7ca8-0d5e-4b52-b8c4-0eb039c774b0",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T12:20:16.018060",
+      "last_seen": "2026-09-24T12:20:16.018060",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "d074e487-172f-4698-b1cd-1f7a603dff46",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T12:20:10.987422",
+      "last_seen": "2026-09-24T12:20:10.987422",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "8391e62c-bc2b-4cad-b321-4da6c3f3dc4b",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T12:19:32.273253",
+      "last_seen": "2026-09-24T12:19:32.273253",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "11cc04c0-535d-4b25-87f5-f79e936a1191",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T12:19:28.500173",
+      "last_seen": "2026-09-24T12:19:28.500173",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "bda85412-0420-4af6-b539-7b42ee769236",
+      "user_id": "user_1",
+      "ip": "209.198.151.125",
+      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
+      "cookies": "{\"__SECURE-aistudio_auth_token\": \"2cL3L8RmdddpiWFm1XIwagkQikGzHSn3WWcBjVqu_ks=\"}",
+      "timestamp": "2026-09-24T12:11:15.760510",
+      "last_seen": "2026-09-24T12:11:15.760510",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "c3d76aa5-da83-4882-80ea-3f71abaf2c54",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "Go-http-client/1.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T12:10:26.427470",
+      "last_seen": "2026-09-24T12:10:26.427470",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "c9d61f9f-0a74-4fa6-8cd8-c115fbab952a",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T12:10:22.099118",
+      "last_seen": "2026-09-24T12:10:22.099118",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "27297b08-d1b9-4617-bd12-85f10cad3391",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T12:07:21.783828",
+      "last_seen": "2026-09-24T12:07:21.783828",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "bdf86691-3e08-41c7-9c05-2934ddcecda5",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T12:07:18.893338",
+      "last_seen": "2026-09-24T12:07:18.893338",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "c7ef08e6-0fc2-4d0b-b3f1-30dfde11e0c3",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T12:07:15.353435",
+      "last_seen": "2026-09-24T12:07:15.353435",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "0fd63b0d-126c-4779-82bc-c30ee4cea0f0",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T12:07:02.543974",
+      "last_seen": "2026-09-24T12:07:02.543974",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "b4c9fbcb-3d39-4100-bfef-474d8366e887",
+      "user_id": "user_1",
+      "ip": "209.198.151.125",
+      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
+      "cookies": "{\"__SECURE-aistudio_auth_token\": \"2cL3L8RmdddpiWFm1XIwagkQikGzHSn3WWcBjVqu_ks=\"}",
+      "timestamp": "2026-09-24T12:03:24.809533",
+      "last_seen": "2026-09-24T12:03:24.809533",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "0cacc158-0d91-4019-b992-93a61530ec90",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "Go-http-client/1.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T11:36:01.363311",
+      "last_seen": "2026-09-24T11:36:01.363311",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "1667a284-83f6-4276-8d7f-01a9ce18e142",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T11:35:38.553164",
+      "last_seen": "2026-09-24T11:35:38.553164",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "13403afe-38f9-4b7d-984d-f9dac4783f11",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "Go-http-client/1.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T11:26:05.632677",
+      "last_seen": "2026-09-24T11:26:05.632677",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "000c7cb0-2124-4788-9dbf-d757af074015",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T11:25:49.715585",
+      "last_seen": "2026-09-24T11:25:49.715585",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "c6eb2707-adb6-441d-8e70-3166abd711f5",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T11:19:57.220012",
+      "last_seen": "2026-09-24T11:19:57.220012",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "c95fe0bc-900e-4a87-a7ef-6e9dcbfbcfcb",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T11:19:54.149099",
+      "last_seen": "2026-09-24T11:19:54.149099",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "6cba3919-bdfc-4065-8fb2-3cefbbd809e4",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T11:19:46.070606",
+      "last_seen": "2026-09-24T11:19:46.070606",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "db562c03-6333-4aef-b8c5-5ec87b67074b",
+      "user_id": "user_1",
+      "ip": "209.198.151.125",
+      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
+      "cookies": "{\"__SECURE-aistudio_auth_token\": \"2cL3L8RmdddpiWFm1XIwagkQikGzHSn3WWcBjVqu_ks=\"}",
+      "timestamp": "2026-09-24T11:08:30.476816",
+      "last_seen": "2026-09-24T11:08:30.476816",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "ed0edd16-aeaf-4c33-adb9-07cb03cbfaae",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "Go-http-client/1.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T11:07:20.401548",
+      "last_seen": "2026-09-24T11:07:20.401548",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "c4e16a18-0117-4f77-aa83-8a63dafcbdd9",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{\"session\": \"invalid!!%%bad\"}",
+      "timestamp": "2026-09-24T11:07:08.828214",
+      "last_seen": "2026-09-24T11:07:08.828214",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "a316411d-aaa3-4614-869c-603b3f0d58e4",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T11:07:05.106901",
+      "last_seen": "2026-09-24T11:07:05.106901",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "598cc9c9-4323-4d0a-9107-44902ae180a2",
+      "user_id": "user_1",
+      "ip": "209.198.151.125",
+      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
+      "cookies": "{\"__SECURE-aistudio_auth_token\": \"2cL3L8RmdddpiWFm1XIwagkQikGzHSn3WWcBjVqu_ks=\"}",
+      "timestamp": "2026-09-24T11:04:54.361527",
+      "last_seen": "2026-09-24T11:04:54.361527",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "54e5a70a-882c-43b5-a54f-d5241ea8566b",
+      "user_id": "user_1",
+      "ip": "209.198.151.125",
+      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
+      "cookies": "{\"__SECURE-aistudio_auth_token\": \"2cL3L8RmdddpiWFm1XIwagkQikGzHSn3WWcBjVqu_ks=\"}",
+      "timestamp": "2026-09-24T11:04:51.075750",
+      "last_seen": "2026-09-24T11:04:51.075750",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "fd6a1340-00a1-485d-bcad-4053cc760206",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "Go-http-client/1.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T11:04:41.432723",
+      "last_seen": "2026-09-24T11:04:41.432723",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "ab1a71e5-a226-4797-b29f-32ce43d0f270",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T11:04:33.394877",
+      "last_seen": "2026-09-24T11:04:33.394877",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "b6cdca26-ed06-4a87-be73-5fce6092981d",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-09-24T11:04:26.736481",
+      "last_seen": "2026-09-24T11:04:26.736481",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "المستخدم الأول",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
+          "name": "المستخدم الثاني",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_3": {
+          "name": "المستخدم الثالث",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_4": {
+          "name": "المستخدم الرابع",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_5": {
+          "name": "المستخدم الخامس",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
       "install_id": "6153ab33-cabe-464e-a342-b4681282a6e5",
       "user_id": "user_1",
       "ip": "209.198.151.125",
