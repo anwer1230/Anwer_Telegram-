@@ -1,7 +1,7 @@
 {
     "phone": "+201120945094",
     "password": "",
-    "login_time": 1790185196.5579178,
+    "login_time": 1790280516.701442,
     "watch_words": [
         "اريد مساعدة",
         "ابي مساعدة",
@@ -30,5 +30,11 @@
         "مين يعرف مختص",
         "من يعرف احد كويس"
     ],
-    "monitoring_persistent": true
+    "monitoring_persistent": true,
+    "my_alerts_enabled": true,
+    "my_alerts_replies": true,
+    "my_alerts_actions": true,
+    "my_alerts_reply_sound_enabled": true,
+    "my_alerts_reply_sound_tone": "chime",
+    "user_auto_replies": []
 }

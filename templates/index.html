@@ -638,8 +638,8 @@
               <img id="drawerActiveAvatarImg"
                    src="/api/account_avatar/{{ current_user.id }}"
                    alt=""
-                   onerror="this.style.display='none'; document.getElementById('drawerActiveFallbackIcon').style.display='flex';"
-                   onload="this.style.display='block'; document.getElementById('drawerActiveFallbackIcon').style.display='none';"
+                   onerror="this.style.display='none'; var f=document.getElementById('drawerActiveFallbackIcon'); if(f) f.style.display='flex';"
+                   onload="this.style.display='block'; var f=document.getElementById('drawerActiveFallbackIcon'); if(f) f.style.display='none';"
                    style="{% if users_account_info and users_account_info.get(current_user.id, {}).get('account_avatar') %}display:block;{% else %}display:none;{% endif %}">
               <div class="tg-avatar-fallback" id="drawerActiveFallbackIcon" style="{% if users_account_info and users_account_info.get(current_user.id, {}).get('account_avatar') %}display:none;{% else %}display:flex;{% endif %}background-color: {{ current_user.color or '#0088cc' }};">
                 <i class="{{ current_user.icon or 'fas fa-user' }}"></i>
@@ -701,8 +701,8 @@
                    id="tgAccountImg_{{ uid }}"
                    src="/api/account_avatar/{{ uid }}"
                    alt=""
-                   onerror="this.style.display='none'; document.getElementById('tgAccountFallback_{{ uid }}').style.display='flex';"
-                   onload="this.style.display='block'; document.getElementById('tgAccountFallback_{{ uid }}').style.display='none';"
+                   onerror="this.style.display='none'; var f=document.getElementById('tgAccountFallback_{{ uid }}'); if(f) f.style.display='flex';"
+                   onload="this.style.display='block'; var f=document.getElementById('tgAccountFallback_{{ uid }}'); if(f) f.style.display='none';"
                    style="{% if uinfo.get('account_avatar') %}display:block;{% else %}display:none;{% endif %}">
               <div class="tg-item-avatar-fallback"
                    id="tgAccountFallback_{{ uid }}"
@@ -920,8 +920,8 @@
                                     <img id="headerActiveAvatarImg"
                                          src="/api/account_avatar/{{ current_user.id }}"
                                          alt=""
-                                         onerror="this.style.display='none'; document.getElementById('headerActiveFallbackIcon').style.display='inline-block';"
-                                         onload="this.style.display='inline-block'; document.getElementById('headerActiveFallbackIcon').style.display='none';"
+                                         onerror="this.style.display='none'; var f=document.getElementById('headerActiveFallbackIcon'); if(f) f.style.display='inline-block';"
+                                         onload="this.style.display='inline-block'; var f=document.getElementById('headerActiveFallbackIcon'); if(f) f.style.display='none';"
                                          style="{% if users_account_info and users_account_info.get(current_user.id, {}).get('account_avatar') %}display:inline-block;{% else %}display:none;{% endif %}">
                                     <i class="{{ current_user.icon or 'fas fa-user' }}" id="headerActiveFallbackIcon" style="{% if users_account_info and users_account_info.get(current_user.id, {}).get('account_avatar') %}display:none;{% else %}display:inline-block;{% endif %}font-size:1.1rem;"></i>
                                     <span class="tg-status-dot {% if connection_status == 'connected' %}online{% endif %}" id="headerActiveStatusDot"></span>
@@ -1195,7 +1195,7 @@
                                             class="btn btn-sm position-absolute"
                                             style="top:4px;right:4px;padding:1px 6px;font-size:0.7rem;line-height:1.4;background:rgba(0,0,0,0.18);color:#888;border:none;z-index:3;"
                                             title="إخفاء"
-                                            onclick="document.getElementById('sysLogsCardCol').style.display='none'">
+                                            onclick="(function(){var e=document.getElementById('sysLogsCardCol');if(e)e.style.display='none';})()">
                                       ✕
                                     </button>
                                   </div>
@@ -1961,7 +1961,7 @@
                              onkeydown="globalSuggestKey(event)"
                              oninput="globalSuggestInput(this.value)"
                              onfocus="globalSuggestInput(this.value)"
-                             onblur="setTimeout(()=>document.getElementById('globalSuggestBox').style.display='none',200)"
+                             onblur="setTimeout(()=>(function(){var e=document.getElementById('globalSuggestBox');if(e)e.style.display='none';})(),200)"
                              autocomplete="off"
                              style="width:100%;background:#0a0a1a;border:1px solid rgba(6,182,212,0.4);
                                     color:#67e8f9;padding:9px 14px;border-radius:8px;outline:none;
@@ -3263,7 +3263,7 @@
         rotStopCountdown();
         __rotCountdownEnd = Date.now() + remainSec * 1000;
         __rotCountdownCycle = cycleSec || remainSec || 0;
-        document.getElementById('rotCountdownCard').style.display = 'block';
+        var _rc=document.getElementById('rotCountdownCard');if(_rc)_rc.style.display='block';
         rotUpdateCountdownTick();
         __rotCountdownTimer = setInterval(rotUpdateCountdownTick, 1000);
       }
@@ -3443,8 +3443,8 @@
         badge.textContent = total + ' نتيجة';
         badge.style.display = total > 0 ? 'inline' : 'none';
         if (total > 0) {
-          document.getElementById('myLinksStats').style.display = 'block';
-          document.getElementById('myLinksActions').style.display = 'flex';
+          var _ms=document.getElementById('myLinksStats');if(_ms)_ms.style.display='block';
+          var _ma=document.getElementById('myLinksActions');if(_ma)_ma.style.display='flex';
         }
       }
 
@@ -3539,8 +3539,8 @@
       function _doNormalMyLinksSearch(keyword, depth) {
         const out     = document.getElementById('myLinksResults');
         document.getElementById('myLinksFilter').value = '';
-        document.getElementById('myLinksStats').style.display   = 'none';
-        document.getElementById('myLinksActions').style.display = 'none';
+        var _ms=document.getElementById('myLinksStats');if(_ms)_ms.style.display='none';
+        var _ma=document.getElementById('myLinksActions');if(_ma)_ma.style.display='none';
         const prog = document.getElementById('mlScanProgress');
         if (prog) { prog.style.display = 'block'; }
         const nameEl = document.getElementById('mlScanChatName');
@@ -3673,7 +3673,7 @@
           return;
         }
         _pubData = [];
-        document.getElementById('pubLinksActions').style.display = 'none';
+        var _pa=document.getElementById('pubLinksActions');if(_pa)_pa.style.display='none';
         out.innerHTML = `
           <div style="text-align:center;padding:50px 20px;">
             <i class="fas fa-spinner fa-spin fa-2x" style="color:#06b6d4;opacity:0.8;"></i>
@@ -3783,7 +3783,7 @@
           return;
         }
         _pubData2 = [];
-        document.getElementById('pubLinksActions2').style.display = 'none';
+        var _pa2=document.getElementById('pubLinksActions2');if(_pa2)_pa2.style.display='none';
         out.innerHTML = `
           <div style="text-align:center;padding:50px 20px;">
             <i class="fas fa-spinner fa-spin fa-2x" style="color:#06b6d4;opacity:0.8;"></i>
@@ -4917,7 +4917,7 @@
                   <button class="btn btn-outline-primary btn-sm flex-grow-1" onclick="pptxPreviewHtml()">
                     <i class="fas fa-eye me-1"></i>معاينة HTML وقراءة الروابط
                   </button>
-                  <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('pptxHtmlCode').value='';document.getElementById('pptxHtmlPreviewArea').style.display='none'">
+                  <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('pptxHtmlCode').value='';(function(){var e=document.getElementById('pptxHtmlPreviewArea');if(e)e.style.display='none';})()">
                     <i class="fas fa-trash me-1"></i>مسح
                   </button>
                 </div>
@@ -5105,8 +5105,8 @@
       async function runStatsAnalysis() {
         const input = document.getElementById('statsInput').value.trim();
         if (!input) return;
-        document.getElementById('statsError').style.display = 'none';
-        document.getElementById('statsResult').style.display = 'none';
+        var _se=document.getElementById('statsError');if(_se)_se.style.display='none';
+        var _sr=document.getElementById('statsResult');if(_sr)_sr.style.display='none';
         const btn = event.target;
         btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>جاري التحليل...';
         try {
@@ -5144,10 +5144,10 @@
           }
           document.getElementById('statsCards').innerHTML = cards;
           document.getElementById('statsChart').src = 'data:image/png;base64,' + d.chart;
-          document.getElementById('statsResult').style.display = 'block';
+          var _sr2=document.getElementById('statsResult');if(_sr2)_sr2.style.display='block';
         } catch(e) {
           document.getElementById('statsError').textContent = e.message;
-          document.getElementById('statsError').style.display = 'block';
+          var _se2=document.getElementById('statsError');if(_se2)_se2.style.display='block';
         } finally {
           btn.disabled = false; btn.innerHTML = '<i class="fas fa-calculator me-2"></i>تحليل الآن';
         }
@@ -5282,9 +5282,9 @@
         const btn = document.getElementById('pptxGenerateBtn');
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>جاري إنشاء العرض...';
-        document.getElementById('pptxProgress').style.display = 'block';
-        document.getElementById('pptxResult').style.display = 'none';
-        document.getElementById('pptxError').style.display = 'none';
+        var _pp=document.getElementById('pptxProgress');if(_pp)_pp.style.display='block';
+        var _pr=document.getElementById('pptxResult');if(_pr)_pr.style.display='none';
+        var _pe=document.getElementById('pptxError');if(_pe)_pe.style.display='none';
 
         const title     = document.getElementById('pptxTitle').value.trim();
         const org       = document.getElementById('pptxCoverOrg').value.trim();
@@ -5361,8 +5361,8 @@
               </div>`
             ).join('');
 
-          document.getElementById('pptxProgress').style.display = 'none';
-          document.getElementById('pptxResult').style.display = 'block';
+          var _pp2=document.getElementById('pptxProgress');if(_pp2)_pp2.style.display='none';
+          var _pr2=document.getElementById('pptxResult');if(_pr2)_pr2.style.display='block';
 
           // تحميل تلقائي
           const tmpLink = document.createElement('a');
@@ -5371,9 +5371,9 @@
           tmpLink.click();
 
         } catch(e) {
-          document.getElementById('pptxProgress').style.display = 'none';
+          var _pp2=document.getElementById('pptxProgress');if(_pp2)_pp2.style.display='none';
           document.getElementById('pptxError').innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>' + e.message;
-          document.getElementById('pptxError').style.display = 'block';
+          var _pe2=document.getElementById('pptxError');if(_pe2)_pe2.style.display='block';
         } finally {
           btn.disabled = false;
           btn.innerHTML = '<i class="fas fa-magic me-2"></i>إنشاء العرض التقديمي (PowerPoint .pptx)';
@@ -7386,11 +7386,13 @@ function toggleAiPanel() {
     _aiPanelOpen = !_aiPanelOpen;
     var panel = document.getElementById('aiPanel');
     if (_aiPanelOpen) {
-        panel.classList.add('ai-open');
-        document.getElementById('aiUnreadBadge').style.display = 'none';
-        document.getElementById('aiInput').focus();
+        if (panel) panel.classList.add('ai-open');
+        var badge = document.getElementById('aiUnreadBadge');
+        if (badge) badge.style.display = 'none';
+        var inp = document.getElementById('aiInput');
+        if (inp) inp.focus();
     } else {
-        panel.classList.remove('ai-open');
+        if (panel) panel.classList.remove('ai-open');
     }
 }
 
@@ -7527,7 +7529,8 @@ async function sendAiMessage() {
 // إظهار بادج الإشعار عند فتح الصفحة لأول مرة
 setTimeout(function() {
     if (!_aiPanelOpen) {
-        document.getElementById('aiUnreadBadge').style.display = 'flex';
+        var badge = document.getElementById('aiUnreadBadge');
+        if (badge) badge.style.display = 'flex';
     }
 }, 3000);
 </script>
@@ -8768,9 +8771,12 @@ function openAdminPanel() {
 }
 
 function _adminShowAuth() {
-    document.getElementById('adminAuthScreen').style.display = '';
-    document.getElementById('adminDashboard').style.display = 'none';
-    document.getElementById('adminAuthBadge').style.display = 'none';
+    const authScr = document.getElementById('adminAuthScreen');
+    const dash    = document.getElementById('adminDashboard');
+    const badge   = document.getElementById('adminAuthBadge');
+    if (authScr) authScr.style.display = '';
+    if (dash)    dash.style.display    = 'none';
+    if (badge)   badge.style.display   = 'none';
     _adminAuthed = false;
 }
 
@@ -8789,12 +8795,13 @@ function _adminShowDash() {
 
 function _adminSetMsg(msg, ok) {
     const el = document.getElementById('adminAuthMsg');
+    if (!el) return;
     el.style.display = '';
     el.innerHTML = `<div style="background:${ok ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'};
                                 border:1px solid ${ok ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)'};
                                 color:${ok ? '#6ee7b7' : '#fca5a5'};padding:7px 12px;
                                 border-radius:8px;font-size:0.8rem;">${msg}</div>`;
-    setTimeout(() => { el.style.display = 'none'; }, 3000);
+    setTimeout(() => { if (el) el.style.display = 'none'; }, 3000);
 }
 
 async function adminDoLogin() {
@@ -8886,6 +8893,7 @@ let _adminSelFiles = new Set();
 
 function adminToggleFileBrowser() {
     const panel = document.getElementById('adminFileBrowser');
+    if (!panel) return;
     const isHidden = panel.style.display === 'none';
     panel.style.display = isHidden ? '' : 'none';
     if (isHidden && _adminAllFiles.length === 0) adminLoadFiles();
@@ -8957,9 +8965,13 @@ function _adminUpdateSelBtn() {
     const btn = document.getElementById('adminDlSelBtn');
     const txt = document.getElementById('adminDlSelTxt');
     const count = _adminSelFiles.size;
-    btn.disabled = count === 0;
-    btn.style.opacity = count > 0 ? '1' : '0.5';
-    txt.textContent = count === 1 ? 'تحميل الملف المحدد' : count === 2 ? 'تحميل الملفين (ZIP)' : 'تحميل المحدد';
+    if (btn) {
+        btn.disabled = count === 0;
+        btn.style.opacity = count > 0 ? '1' : '0.5';
+    }
+    if (txt) {
+        txt.textContent = count === 1 ? 'تحميل الملف المحدد' : count === 2 ? 'تحميل الملفين (ZIP)' : 'تحميل المحدد';
+    }
 }
 
 async function adminDownloadSelected() {
@@ -9533,7 +9545,7 @@ async function adminPromoResetIndex() {
               <button onclick="window._summarizeLogs()"
                       style="background:#79c0ff22;border:1px solid #79c0ff55;color:#79c0ff;border-radius:6px;padding:2px 10px;font-size:0.72rem;cursor:pointer;">
                 📊 ملخص</button>
-              <button onclick="document.getElementById('logsAiPanel').style.display='none'"
+              <button onclick="(function(){var e=document.getElementById('logsAiPanel');if(e)e.style.display='none';})()"
                       style="background:none;border:none;color:#6c7086;font-size:14px;cursor:pointer;padding:0 4px;">✕</button>
             </div>
           </div>
