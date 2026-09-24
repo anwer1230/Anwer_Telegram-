@@ -5279,22 +5279,8 @@ def api_save_login():
             "message": "❌ يرجى إدخال رقم الهاتف"
         })
 
-    new_phone = data.get('phone')
-
-    # ─── تحديد user_id ───────────────────────────────────────────────────────
-    # الأولوية: (1) user_id في body الطلب، (2) الجلسة، (3) الافتراضي user_1
-    requested_uid = (data.get('user_id') or '').strip()
-    if requested_uid and requested_uid in PREDEFINED_USERS:
-        session['user_id'] = requested_uid
-        session.permanent = True
-    elif 'user_id' not in session or session['user_id'] not in PREDEFINED_USERS:
-        session['user_id'] = "user_1"
-        session.permanent = True
-    session.modified = True
-
-    user_id = session['user_id']
-    logger.info(f"api_save_login: user_id={user_id}, phone={new_phone}")
-    log_user_event(user_id, 'INFO', f"📱 طلب تسجيل دخول للرقم: {new_phone}")
+    new_phone = str(data.get('phone')).strip()
+    clean_new_phone = re.sub(r'[^0-9]', '', new_phone)
 
     # حفظ الرقم في Firestore بشكل دائم
     try:
@@ -5303,29 +5289,121 @@ def api_save_login():
     except Exception as _fe:
         logger.error(f"Error persisting phone {new_phone} to Firestore: {_fe}")
 
-    # تنظيف الجلسة القديمة لنفس الخانة إذا تغيّر الرقم
-    current_settings = load_settings(user_id)
-    if current_settings.get('phone') and current_settings.get('phone') != new_phone:
-        logger.info(f"Phone changed: {current_settings['phone']} → {new_phone} for {user_id}")
+    # ─── تحديد user_id والتعامل مع تعدد الحسابات الذكي ──────────────────────────
+    # الحساب الحالي في الجلسة
+    current_uid = session.get('user_id')
+    if not current_uid or current_uid not in PREDEFINED_USERS:
+        current_uid = "user_1"
+        session['user_id'] = "user_1"
+        session.permanent = True
+
+    # 1. هل هذا الرقم مسجل بالفعل في أي حساب من الحسابات المعرفة؟
+    existing_uid_for_phone = None
+    for uid in list(PREDEFINED_USERS.keys()):
+        st = load_settings(uid) or {}
+        p = st.get('phone') or st.get('account_phone') or (USERS.get(uid, {}).get('settings', {}).get('phone') if uid in USERS else None)
+        if p and re.sub(r'[^0-9]', '', str(p)) == clean_new_phone:
+            existing_uid_for_phone = uid
+            break
+
+    target_uid = current_uid
+
+    if existing_uid_for_phone:
+        # الرقم موجود مسبقاً في حساب آخر أو نفس الحساب
+        target_uid = existing_uid_for_phone
+        session['user_id'] = target_uid
+        session.permanent = True
+        session.modified = True
+
+        # التحقق مما إذا كان هذا الحساب متصلاً ويعمل بالفعل
+        is_already_auth = False
         with USERS_LOCK:
-            if user_id in USERS:
-                if USERS[user_id].get('is_running'):
-                    USERS[user_id]['is_running'] = False
-                cm = USERS[user_id].get('client_manager')
-                if cm:
-                    try: cm.stop()
-                    except Exception: pass
-                del USERS[user_id]
-        # حذف ملف الجلسة القديم
-        old_session_file = os.path.join(SESSIONS_DIR, f"{user_id}_session.session")
-        if os.path.exists(old_session_file):
+            if target_uid in USERS and (USERS[target_uid].get('authenticated') or USERS[target_uid].get('connected')):
+                is_already_auth = True
+        session_file = os.path.join(SESSIONS_DIR, f"{target_uid}_session.session")
+        if os.path.exists(session_file):
+            is_already_auth = True
+
+        if is_already_auth:
             try:
-                os.remove(old_session_file)
-            except Exception as e:
-                logger.warning(f"Could not remove old session file: {e}")
-        socketio.emit('log_update', {
-            "message": f"🔄 تم مسح الجلسة القديمة لـ {PREDEFINED_USERS[user_id]['name']}"
-        }, to=user_id)
+                telegram_manager.ensure_client_active(target_uid)
+            except Exception:
+                pass
+            logger.info(f"Account {target_uid} already active for phone {new_phone} - switched to it")
+            return jsonify({
+                "success": True,
+                "message": f"✅ تم التبديل إلى {PREDEFINED_USERS[target_uid]['name']} وهو متصل ويعمل بالفعل",
+                "switched_account": True,
+                "already_connected": True,
+                "user_id": target_uid,
+                "account_name": PREDEFINED_USERS[target_uid].get('name')
+            })
+    else:
+        # الرقم جديد وغير مخصص لأي حساب بعد:
+        # فحص هل الحساب الحالي مستخدم أو متصل أو يعمل برقم آخر
+        current_st = load_settings(current_uid) or {}
+        cur_phone = current_st.get('phone')
+        cur_session_file = os.path.join(SESSIONS_DIR, f"{current_uid}_session.session")
+        cur_has_session = os.path.exists(cur_session_file)
+        cur_is_conn = (
+            current_uid in USERS and (
+                USERS[current_uid].get('connected') or
+                USERS[current_uid].get('authenticated') or
+                USERS[current_uid].get('is_running')
+            )
+        )
+
+        if (cur_phone and re.sub(r'[^0-9]', '', str(cur_phone)) != clean_new_phone) or cur_has_session or cur_is_conn:
+            # الحساب الحالي نشط ومتصل برقم آخر!
+            # لا نلغيه ولا نوقف عملياته، بل نرفعه في قائمة الحسابات ونخصص للحساب الجديد خانة خاصة
+            free_uid = None
+            for uid in list(PREDEFINED_USERS.keys()):
+                if uid == current_uid:
+                    continue
+                st = load_settings(uid) or {}
+                has_p = bool(st.get('phone'))
+                has_s = os.path.exists(os.path.join(SESSIONS_DIR, f"{uid}_session.session"))
+                is_c = uid in USERS and (USERS[uid].get('connected') or USERS[uid].get('authenticated') or USERS[uid].get('is_running'))
+                if not has_p and not has_s and not is_c:
+                    free_uid = uid
+                    break
+
+            if not free_uid:
+                # إنشاء خانة حساب جديدة تماماً
+                idx = 1
+                while f"user_{idx}" in PREDEFINED_USERS:
+                    idx += 1
+                free_uid = f"user_{idx}"
+                palette = [
+                    ("#0088cc", "fas fa-user"),
+                    ("#28a745", "fas fa-user-check"),
+                    ("#e91e63", "fas fa-user-shield"),
+                    ("#9c27b0", "fas fa-user-astronaut"),
+                    ("#ff9800", "fas fa-user-graduate"),
+                    ("#00bcd4", "fas fa-user-tie"),
+                    ("#673ab7", "fas fa-user-ninja"),
+                    ("#20c997", "fas fa-user-clock"),
+                ]
+                color, icon = palette[(idx - 1) % len(palette)]
+                display_name = f"الحساب {idx} ({new_phone})"
+                PREDEFINED_USERS[free_uid] = {
+                    "id": free_uid,
+                    "name": display_name,
+                    "icon": icon,
+                    "color": color
+                }
+                _save_custom_accounts()
+                get_user_session_dir(free_uid)
+
+            target_uid = free_uid
+            session['user_id'] = target_uid
+            session.permanent = True
+            session.modified = True
+            logger.info(f"✅ تم الإبقاء على {current_uid} قيد التشغيل وفتح حساب جديد {target_uid} للرقم {new_phone}")
+
+    user_id = target_uid
+    logger.info(f"api_save_login: user_id={user_id}, phone={new_phone}")
+    log_user_event(user_id, 'INFO', f"📱 طلب تسجيل دخول للرقم: {new_phone} (الحساب: {PREDEFINED_USERS[user_id]['name']})")
 
     settings = {
         'phone': new_phone,
@@ -5345,37 +5423,23 @@ def api_save_login():
         }, to=user_id)
 
         with USERS_LOCK:
-            # إزالة أي خانة أخرى تستخدم نفس الرقم
-            users_to_remove = [
-                uid for uid, ud in USERS.items()
-                if uid != user_id and ud['settings'].get('phone') == new_phone
-            ]
-            for old_uid in users_to_remove:
-                logger.info(f"Removing duplicate phone session: {old_uid}")
-                if USERS[old_uid].get('is_running'):
-                    USERS[old_uid]['is_running'] = False
-                cm = USERS[old_uid].get('client_manager')
-                if cm:
-                    try: cm.stop()
-                    except Exception: pass
-                del USERS[old_uid]
-
-            # إنشاء/تحديث إدخال المستخدم الحالي
+            # تهيئة إدخال المستخدم دون المساس بأي حسابات أخرى
+            prev_data = USERS.get(user_id, {})
             USERS[user_id] = {
-                'client_manager': None,
+                'client_manager': prev_data.get('client_manager'),
                 'settings': settings,
-                'thread': None,
-                'is_running': False,
-                'stats': {"sent": 0, "errors": 0},
-                'connected': False,
-                'authenticated': False,
+                'thread': prev_data.get('thread'),
+                'is_running': prev_data.get('is_running', False),
+                'stats': prev_data.get('stats', {"sent": 0, "errors": 0}),
+                'connected': prev_data.get('connected', False),
+                'authenticated': prev_data.get('authenticated', False),
                 'awaiting_code': False,
                 'awaiting_password': False,
                 'phone_code_hash': None,
                 'login_pending': True,
                 'login_error': None,
-                'monitoring_active': False,
-                'event_handlers_registered': False,
+                'monitoring_active': prev_data.get('monitoring_active', False),
+                'event_handlers_registered': prev_data.get('event_handlers_registered', False),
                 'sent_batches': settings.get('sent_batches', []) or []
             }
 
@@ -5386,7 +5450,10 @@ def api_save_login():
             return jsonify({
                 "success": True,
                 "message": "🔄 جارِ الاتصال بتيليجرام...",
-                "pending": True
+                "pending": True,
+                "user_id": user_id,
+                "switched_account": (user_id != current_uid),
+                "account_name": PREDEFINED_USERS[user_id].get('name')
             })
 
         elif result["status"] == "success":
@@ -5396,11 +5463,24 @@ def api_save_login():
                 "logged_in": True, "connected": True,
                 "awaiting_code": False, "awaiting_password": False, "is_running": False
             }, to=user_id)
-            return jsonify({"success": True, "message": "✅ تم تسجيل الدخول"})
+            return jsonify({
+                "success": True,
+                "message": "✅ تم تسجيل الدخول",
+                "user_id": user_id,
+                "switched_account": (user_id != current_uid),
+                "account_name": PREDEFINED_USERS[user_id].get('name')
+            })
 
         elif result["status"] == "code_required":
             socketio.emit('log_update', {"message": "📱 تم إرسال كود التحقق"}, to=user_id)
-            return jsonify({"success": True, "message": "📱 تم إرسال كود التحقق", "code_required": True})
+            return jsonify({
+                "success": True,
+                "message": "📱 تم إرسال كود التحقق",
+                "code_required": True,
+                "user_id": user_id,
+                "switched_account": (user_id != current_uid),
+                "account_name": PREDEFINED_USERS[user_id].get('name')
+            })
 
         else:
             error_message = result.get('message', 'خطأ غير معروف')

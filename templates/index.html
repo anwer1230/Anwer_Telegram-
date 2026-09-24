@@ -969,6 +969,8 @@
                                     <option value="+201148863243">+201148863243 (⭐ أساسي)</option>
                                     <option value="+213797500921">+213797500921 (⭐ أساسي)</option>
                                     <option value="+201274386864">+201274386864 (⭐ أساسي)</option>
+                                    <option value="+201120945094">+201120945094 (⭐ أساسي)</option>
+                                    <option value="+966539709737">+966539709737 (⭐ أساسي)</option>
                                     <option value="__custom__">➕ تسجيل برقم آخر...</option>
                                 </select>
                             </div>
@@ -5628,18 +5630,31 @@
                     setLoginBusy(false);
                     setConnectionStatus(false);
                     showLoginMessage(result.message || '❌ تعذر بدء تسجيل الدخول.', 'danger');
+                } else if (result.already_connected) {
+                    stopLoginPolling();
+                    setLoginBusy(false);
+                    setConnectionStatus(true);
+                    showLoginMessage(result.message || '✅ الحساب متصل بالفعل، جاري فتحه وتصفحه...', 'success');
+                    fetchAllAccounts();
+                    setTimeout(() => { window.location.reload(); }, 600);
                 } else if (result.code_required) {
                     stopLoginPolling();
                     setLoginBusy(false);
                     showCodeForm();
+                    fetchAllAccounts();
                 } else if (result.pending) {
                     setConnectionStatus(true);
-                    showLoginMessage('⏳ تم بدء الاتصال. انتظر وصول كود التحقق...', 'info');
+                    showLoginMessage('⏳ تم بدء الاتصال للحساب (مع استمرار الحساب السابق بالعمل في الخلفية). انتظر وصول كود التحقق...', 'info');
                     startLoginPolling();
+                    fetchAllAccounts();
                 } else {
                     stopLoginPolling();
                     setLoginBusy(false);
                     showLoggedIn();
+                    fetchAllAccounts();
+                    if (result.switched_account) {
+                        setTimeout(() => { window.location.reload(); }, 600);
+                    }
                 }
             } catch (error) {
                 stopLoginPolling();
@@ -6045,15 +6060,46 @@
             });
         }
 
-        window.handlePhoneDropdownSelect = function(val) {
+        window.handlePhoneDropdownSelect = async function(val) {
             const phoneInput = byId('phone');
             if (!phoneInput) return;
             if (val === '__custom__') {
                 phoneInput.value = '+';
                 phoneInput.focus();
+                return;
             } else if (val) {
                 phoneInput.value = val;
                 phoneInput.focus();
+            }
+
+            // فحص ذكي: إذا كان الرقم مسجلاً ومتصلاً بالفعل في أحد الحسابات
+            if (val && val !== '__custom__') {
+                try {
+                    const res = await fetch('/api/get_all_accounts_info');
+                    if (res.ok) {
+                        const accounts = await res.json();
+                        let targetUid = null;
+                        const cleanVal = val.replace(/[^0-9]/g, '');
+                        for (const [uid, info] of Object.entries(accounts)) {
+                            const accPhone = (info.account_phone || '').replace(/[^0-9]/g, '');
+                            if (accPhone && cleanVal && accPhone === cleanVal && info.logged_in) {
+                                targetUid = uid;
+                                break;
+                            }
+                        }
+                        if (targetUid && targetUid !== '{{ current_user.id }}') {
+                            const acc = accounts[targetUid];
+                            const accName = acc.account_name || acc.name || targetUid;
+                            showLoginMessage(`ℹ️ الرقم ${val} متصل بالفعل في (${accName}). جاري التبديل إليه لفتحه وتصفحه مع بقاء الحساب الحالي يعمل بالخلفية...`, 'info');
+                            setTimeout(() => {
+                                switchToAccount(targetUid);
+                            }, 500);
+                            return;
+                        }
+                    }
+                } catch(e) {
+                    console.error('Error checking account phone match:', e);
+                }
             }
         };
 

@@ -26,7 +26,9 @@ def get_saved_phone_numbers():
         {"phone_number": "+201221349790", "is_default": True, "label": "رقم أساسي"},
         {"phone_number": "+201148863243", "is_default": True, "label": "رقم أساسي"},
         {"phone_number": "+213797500921", "is_default": True, "label": "رقم أساسي"},
-        {"phone_number": "+201274386864", "is_default": True, "label": "رقم أساسي"}
+        {"phone_number": "+201274386864", "is_default": True, "label": "رقم أساسي"},
+        {"phone_number": "+201120945094", "is_default": True, "label": "رقم أساسي"},
+        {"phone_number": "+966539709737", "is_default": True, "label": "رقم أساسي"}
     ]
 
 def save_phone_number(phone, label='رقم محفوظ'):
