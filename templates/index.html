@@ -1321,12 +1321,12 @@
                                 </div>
                             </div>
 
-                            <!-- زر فحص المجموعات -->
+                            <!-- زر فحص المجموعات بالذكاء الاصطناعي -->
                             <div class="mb-3">
-                                <button type="button" class="btn btn-outline-warning btn-sm w-100" id="scanGroupsBtn">
-                                    <i class="fas fa-search-plus me-2"></i>فحص المجموعات (كشف المحمية منها)
+                                <button type="button" class="btn btn-outline-info btn-sm w-100 fw-bold shadow-sm" id="scanGroupsBtn" style="border-radius: 8px;">
+                                    <i class="fas fa-brain me-2 text-primary"></i>فحص المجموعات وتحليل 50 محادثة بالذكاء الاصطناعي (AI Safety)
                                 </button>
-                                <div id="scanGroupsResult" class="mt-2" style="display:none;max-height:200px;overflow-y:auto;"></div>
+                                <div id="scanGroupsResult" class="mt-2 p-2 border rounded bg-light" style="display:none;max-height:300px;overflow-y:auto;font-size:0.85rem;"></div>
                             </div>
 
                             <div class="mb-3">
@@ -10793,6 +10793,87 @@ document.addEventListener('DOMContentLoaded', function() {
             notify(result.success ? 'success' : 'danger', result.message || '');
         } catch (error) { notify('danger', '❌ تعذر الإرسال الآن: ' + error.message); }
     }
+    async function handleScanGroupsAI() {
+        const btn = byId('scanGroupsBtn');
+        const resBox = byId('scanGroupsResult');
+        const groupsInput = byId('groups');
+        const msgInput = byId('message');
+        const groupsVal = groupsInput ? groupsInput.value.trim() : '';
+        const msgVal = msgInput ? msgInput.value.trim() : '';
+
+        if (!groupsVal) {
+            notify('warning', '⚠️ يرجى إدخال رابط أو معرف مجموعة واحدة على الأقل لفحصها.');
+            return;
+        }
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>جاري استخراج 50 محادثة وتحليل العقوبات بالذكاء الاصطناعي...';
+        }
+        if (resBox) {
+            resBox.style.display = 'block';
+            resBox.innerHTML = '<div class="text-center py-2 text-muted"><i class="fas fa-robot fa-spin me-2"></i>جاري استخراج آخر 50 رسالة من كل مجموعة وفحص قرارات الحظر والكتم وإرسال التقرير لرسائلك المحفوظة...</div>';
+        }
+
+        try {
+            const resp = await requestJson('/api/pre_send_scan', {
+                groups: groupsVal,
+                message: msgVal,
+                send_report_to_me: true
+            });
+
+            if (!resp.success) {
+                if (resBox) resBox.innerHTML = `<div class="alert alert-danger py-1 mb-0">${resp.message || 'فشل الفحص'}</div>`;
+                return;
+            }
+
+            let html = `
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                    <strong class="text-dark"><i class="fas fa-shield-alt text-success me-1"></i>نتائج التحليل الذكي لحماية الحساب:</strong>
+                    <span class="badge bg-primary"><i class="fas fa-paper-plane me-1"></i>أُرسل للرسائل المحفوظة</span>
+                </div>
+            `;
+
+            (resp.results || []).forEach(r => {
+                const riskBadge = r.risk_assessment === 'low' ? '<span class="badge bg-success">آمنة 🟢</span>'
+                    : r.risk_assessment === 'medium' ? '<span class="badge bg-warning text-dark">متوسطة 🟡</span>'
+                    : r.risk_assessment === 'high' ? '<span class="badge bg-danger">شديدة الرقابة 🔴</span>'
+                    : '<span class="badge bg-dark">حظر فوري ⛔</span>';
+
+                const punishments = (r.details_of_punishments || []).map(p => `<li>${p}</li>`).join('');
+                const mistakes = (r.mistakes_by_others || []).map(m => `<li>${m}</li>`).join('');
+                const actions = (r.actions_taken || []).map(a => `<span class="badge bg-info text-dark me-1 mb-1">${a}</span>`).join(' ');
+
+                html += `
+                    <div class="card mb-2 p-2 shadow-sm border">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <strong>${r.group_title || r.entity_label}</strong>
+                            ${riskBadge}
+                        </div>
+                        <div class="text-muted small mt-1">تم تحليل ${r.messages_analyzed || 50} محادثة أخيرة</div>
+                        ${punishments ? `<div class="text-danger small mt-1"><strong>⚠️ عقوبات رُصدت للأعضاء:</strong><ul class="mb-1 ps-3">${punishments}</ul></div>` : '<div class="text-success small mt-1"><i class="fas fa-check-circle me-1"></i>لم يُرصد حظر أو كتم حديث في آخر 50 رسالة.</div>'}
+                        ${mistakes ? `<div class="text-secondary small mt-1"><strong>❌ أخطاء ارتكبها الآخرون:</strong><ul class="mb-1 ps-3">${mistakes}</ul></div>` : ''}
+                        <div class="mt-1"><strong>🛡️ الإجراءات الوقائية المفعلة آلياً:</strong><div>${actions}</div></div>
+                        ${r.should_skip ? `<div class="alert alert-warning py-1 mt-1 mb-0 small"><strong>تنبيه:</strong> سيتم تخطي المجموعة آلياً لحماية حسابك من الحظر.</div>` : ''}
+                    </div>
+                `;
+            });
+
+            html += `<div class="alert alert-success py-1 mt-2 mb-0 small text-center"><i class="fas fa-check-double me-1"></i>تم إرسال التقرير التفصيلي الكامل إلى <strong>الرسائل المحفوظة (Saved Messages)</strong> بحسابك في تيليجرام.</div>`;
+
+            if (resBox) resBox.innerHTML = html;
+            notify('success', '✅ اكتمل فحص المجموعات وتحليل 50 محادثة بالذكاء الاصطناعي وتم إرسال التقرير لحسابك.');
+
+        } catch (err) {
+            if (resBox) resBox.innerHTML = `<div class="alert alert-danger py-1 mb-0">خطأ: ${err.message}</div>`;
+            notify('danger', '❌ حدث خطأ أثناء الفحص: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-brain me-2 text-primary"></i>فحص المجموعات وتحليل 50 محادثة بالذكاء الاصطناعي (AI Safety)';
+            }
+        }
+    }
     function bindSocket() {
         const socket = window.socket;
         if (!socket) { window.setTimeout(bindSocket, 300); return; }
@@ -10807,6 +10888,7 @@ document.addEventListener('DOMContentLoaded', function() {
         byId('startMonitoringBtn')?.addEventListener('click', handleStart);
         byId('stopMonitoringBtn')?.addEventListener('click', handleStop);
         byId('sendNowBtn')?.addEventListener('click', handleSendNow);
+        byId('scanGroupsBtn')?.addEventListener('click', handleScanGroupsAI);
         bindSocket();
     });
 })();

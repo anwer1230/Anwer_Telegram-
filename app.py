@@ -1396,6 +1396,10 @@ PROTECTION_BOT_SUBSTRINGS = (
 PROTECTED_GROUPS_CACHE = {}
 PROTECTED_GROUPS_LOCK = Lock()
 
+# كاش التحليل الذكي لمحادثات المجموعات وحماية الحساب
+AI_GROUP_SAFETY_CACHE = {}
+AI_GROUP_SAFETY_LOCK = Lock()
+
 # ── نظام التعلم التلقائي للبوتات ────────────────────────────────────────────
 BOTS_DISCOVERED_FILE = os.path.join(DATA_DIR, "discovered_bots.json")
 _BOTS_FILE_LOCK = threading.Lock()
@@ -3883,6 +3887,92 @@ class TelegramManager:
                 "error": True
             }
 
+    def scan_and_analyze_group_with_ai(self, user_id, client_manager, entity_obj, entity_label, sample_message=None, send_report_to_me=True):
+        """
+        فحص المجموعة بالذكاء الاصطناعي:
+        1. استخراج آخر 50 محادثة داخل المجموعة
+        2. تحليلها بالذكاء الاصطناعي لكشف حالات الكتم، الطرد، الحظر وأسبابها
+        3. استخراج أخطاء الآخرين وتوليد خطة التلافي التلقائية
+        4. تكييف الرسالة آلياً وتلافي المشاكل
+        5. إرسال تقرير مفصل إلى 'Saved Messages' (الرسائل المحفوظة)
+        """
+        try:
+            import group_ai_analyzer
+            chat_id = getattr(entity_obj, 'id', entity_label)
+            cache_key = f"{user_id}_{chat_id}"
+            
+            with AI_GROUP_SAFETY_LOCK:
+                cached = AI_GROUP_SAFETY_CACHE.get(cache_key)
+                if cached and (time.time() - cached.get('timestamp', 0) < 1800):
+                    return cached['result']
+
+            group_data = client_manager.run_coroutine(
+                group_ai_analyzer.fetch_group_recent_messages(client_manager.client, entity_obj, limit=50)
+            )
+            analysis = group_ai_analyzer.analyze_group_conversations_with_ai(group_data)
+            adaptation = group_ai_analyzer.adapt_message_safely(
+                sample_message or "", analysis, has_media=False
+            )
+
+            # إرسال تقرير مفصل إلى الرسائل المحفوظة
+            if send_report_to_me:
+                try:
+                    report_text = group_ai_analyzer.format_saved_messages_report(
+                        group_data, analysis, adaptation, sent_status="تم الفحص والتحليل الذكي بنجاح"
+                    )
+                    client_manager.run_coroutine(
+                        group_ai_analyzer.send_report_to_saved_messages(client_manager.client, report_text)
+                    )
+                except Exception as _rep_err:
+                    logger.warning(f"Could not send AI report to saved messages for {user_id}: {_rep_err}")
+
+            res = {
+                "entity_label": entity_label,
+                "group_title": group_data.get("group_title", entity_label),
+                "messages_analyzed": group_data.get("messages_count", 0),
+                "protected": analysis.get("has_recent_punishments", False) or analysis.get("risk_assessment") in ("high", "critical"),
+                "risk_assessment": analysis.get("risk_assessment", "low"),
+                "punished_count": analysis.get("punished_count", 0),
+                "details_of_punishments": analysis.get("details_of_punishments", []),
+                "causes": analysis.get("causes", []),
+                "mistakes_by_others": analysis.get("mistakes_by_others", []),
+                "actions_taken": adaptation.get("actions_taken", []),
+                "should_skip": adaptation.get("should_skip", False),
+                "skip_reason": adaptation.get("skip_reason", ""),
+                "adapted_message": adaptation.get("adapted_message", ""),
+                "delay_seconds": adaptation.get("delay_seconds", 3),
+                "summary_ar": analysis.get("summary_ar", ""),
+                "recommended_action": analysis.get("recommended_action", ""),
+                "error": False
+            }
+
+            with AI_GROUP_SAFETY_LOCK:
+                AI_GROUP_SAFETY_CACHE[cache_key] = {
+                    "result": res,
+                    "adaptation": adaptation,
+                    "analysis": analysis,
+                    "timestamp": time.time()
+                }
+
+            return res
+        except Exception as e:
+            logger.error(f"Error in scan_and_analyze_group_with_ai for {entity_label}: {e}")
+            return {
+                "entity_label": entity_label,
+                "group_title": entity_label,
+                "messages_analyzed": 0,
+                "protected": False,
+                "risk_assessment": "unknown",
+                "punished_count": 0,
+                "details_of_punishments": [],
+                "causes": [],
+                "mistakes_by_others": [],
+                "actions_taken": [],
+                "should_skip": False,
+                "error": True,
+                "reason": str(e)
+            }
+
     def _send_protection_warning(self, user_id, group_name, reason):
         """إرسال تحذير للمستخدم عن المجموعة المحمية"""
         try:
@@ -4640,7 +4730,30 @@ def execute_scheduled_messages(user_id, settings):
 
         for i, group in enumerate(groups, 1):
             try:
-                result = telegram_manager.send_message_async(user_id, group, message)
+                curr_message = message
+                try:
+                    with USERS_LOCK:
+                        cm = USERS.get(user_id, {}).get('client_manager')
+                    if cm and cm.client:
+                        ent_obj = telegram_manager._resolve_entity(cm, group)
+                        ai_check = telegram_manager.scan_and_analyze_group_with_ai(
+                            user_id, cm, ent_obj, group, sample_message=message, send_report_to_me=True
+                        )
+                        if ai_check.get('should_skip'):
+                            socketio.emit('log_update', {
+                                "message": f"⏭️ [{i}/{len(groups)}] تخطي آلي لـ {group}: {ai_check.get('skip_reason', 'رُصد حظر قطعي للأعضاء')}"
+                            }, to=user_id)
+                            continue
+                        if ai_check.get('adapted_message'):
+                            curr_message = ai_check.get('adapted_message')
+                        if ai_check.get('actions_taken'):
+                            socketio.emit('log_update', {
+                                "message": f"🛡️ [{i}/{len(groups)}] تلافي أخطاء الآخرين في {group}: {', '.join(ai_check['actions_taken'][:2])}"
+                            }, to=user_id)
+                except Exception as _ai_ex:
+                    logger.debug(f"AI inspection fallback in scheduled send: {_ai_ex}")
+
+                result = telegram_manager.send_message_async(user_id, group, curr_message)
 
                 if isinstance(result, dict) and result.get('skipped'):
                     socketio.emit('log_update', {
@@ -6001,11 +6114,11 @@ def api_stop_monitoring():
 @app.route("/api/pre_send_scan", methods=["POST"])
 def api_pre_send_scan():
     """
-    يفحص قائمة المجموعات المطلوبة ويرجع تقريراً مفصلاً:
-      - protected: bool
-      - bots: list
-      - reason: str
-    لكل مجموعة، ثم يحسب الإحصائيات الإجمالية.
+    يفحص قائمة المجموعات المطلوبة بالذكاء الاصطناعي:
+      - يستخرج آخر 50 محادثة داخل كل مجموعة
+      - يحللها بالذكاء لكشف حالات الكتم، الطرد، الحظر وأسبابها
+      - يستخرج أخطاء الآخرين وتجنبها آلياً وتلقائياً
+      - يرسل تقريراً مفصلاً إلى الرسائل المحفوظة في الحساب
     """
     if 'user_id' not in session:
         return jsonify({"success": False, "message": "❌ الجلسة غير صالحة"}), 401
@@ -6027,24 +6140,37 @@ def api_pre_send_scan():
     if not groups_raw:
         return jsonify({"success": False, "message": "❌ لا توجد مجموعات للفحص"}), 400
 
+    sample_msg = data.get('message', '')
+    send_report = data.get('send_report_to_me', True)
+
     results = []
-    for group in groups_raw:
+    for group in groups_raw[:30]:
         try:
             entity_obj = telegram_manager._resolve_entity(client_manager, group)
-            info = telegram_manager._check_group_protection_detailed(
-                user_id, client_manager, entity_obj, group
+            info = telegram_manager.scan_and_analyze_group_with_ai(
+                user_id, client_manager, entity_obj, group,
+                sample_message=sample_msg,
+                send_report_to_me=send_report
             )
         except Exception as e:
             info = {
                 "entity_label": group,
+                "group_title": group,
+                "messages_analyzed": 0,
                 "protected": False,
-                "bots": [],
-                "reason": f"خطأ في حل الكيان: {str(e)[:80]}",
+                "risk_assessment": "unknown",
+                "punished_count": 0,
+                "details_of_punishments": [],
+                "causes": [],
+                "mistakes_by_others": [],
+                "actions_taken": [],
+                "should_skip": False,
+                "reason": f"خطأ في الفحص: {str(e)[:80]}",
                 "error": True
             }
         results.append(info)
 
-    protected_count = sum(1 for r in results if r.get('protected'))
+    protected_count = sum(1 for r in results if r.get('protected') or r.get('should_skip'))
     total = len(results)
 
     return jsonify({
@@ -6053,7 +6179,8 @@ def api_pre_send_scan():
         "protected_count": protected_count,
         "safe_count": total - protected_count,
         "total": total,
-        "all_clear": protected_count == 0
+        "all_clear": protected_count == 0,
+        "reported_to_saved_messages": send_report
     })
 
 
@@ -6205,17 +6332,44 @@ def api_send_now():
 
             for i, group in enumerate(groups_list, 1):
                 try:
-                    if images and message:
+                    # ── فحص المجموعة بالذكاء الاصطناعي وتلافي أخطاء الآخرين ──
+                    curr_message = message
+                    curr_images = image_files
+                    try:
+                        with USERS_LOCK:
+                            cm = USERS.get(user_id, {}).get('client_manager')
+                        if cm and cm.client:
+                            ent_obj = telegram_manager._resolve_entity(cm, group)
+                            ai_check = telegram_manager.scan_and_analyze_group_with_ai(
+                                user_id, cm, ent_obj, group, sample_message=message, send_report_to_me=True
+                            )
+                            if ai_check.get('should_skip'):
+                                socketio.emit('log_update', {
+                                    "message": f"⏭️ [{i}/{len(groups_list)}] تخطي آلي لـ {group}: {ai_check.get('skip_reason', 'تم رصد حظر قطعي للأعضاء')}"
+                                }, to=user_id)
+                                continue
+                            if ai_check.get('adapted_message'):
+                                curr_message = ai_check.get('adapted_message')
+                            if not ai_check.get('can_send_media', True):
+                                curr_images = []
+                            if ai_check.get('actions_taken'):
+                                socketio.emit('log_update', {
+                                    "message": f"🛡️ [{i}/{len(groups_list)}] تلافي أخطاء الآخرين في {group}: {', '.join(ai_check['actions_taken'][:2])}"
+                                }, to=user_id)
+                    except Exception as _ai_ex:
+                        logger.debug(f"AI inspection fallback for {group}: {_ai_ex}")
+
+                    if curr_images and curr_message:
                         result = telegram_manager.send_message_with_media_async(
-                            user_id, group, message, image_files
+                            user_id, group, curr_message, curr_images
                         )
-                    elif images:
+                    elif curr_images:
                         result = telegram_manager.send_media_async(
-                            user_id, group, image_files
+                            user_id, group, curr_images
                         )
                     else:
                         result = telegram_manager.send_message_async(
-                            user_id, group, message,
+                            user_id, group, curr_message,
                             forced_action=pre_scan_action  # None = استخدم الإعدادات الافتراضية
                         )
 
