@@ -606,6 +606,116 @@
                 width:min(480px,92vw);display:flex;flex-direction:column;gap:8px;pointer-events:none;">
     </div>
 
+    <!-- حاوية الإشعارات اللحظية العامة والتنبيهات المباشرة -->
+    <div id="globalToastContainer"
+         style="position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:100000;
+                width:min(500px,94vw);display:flex;flex-direction:column;gap:10px;pointer-events:none;">
+    </div>
+
+    <script>
+    (function() {
+        window.showAlert = function(arg1, arg2, duration = 5000) {
+            let type = 'info';
+            let message = '';
+
+            const validTypes = ['success', 'danger', 'error', 'warning', 'info'];
+            if (typeof arg1 === 'string' && validTypes.includes(arg1.toLowerCase())) {
+                type = arg1.toLowerCase();
+                message = String(arg2 || '');
+            } else if (typeof arg2 === 'string' && validTypes.includes(arg2.toLowerCase())) {
+                type = arg2.toLowerCase();
+                message = String(arg1 || '');
+            } else {
+                message = String(arg1 || arg2 || '');
+                if (message.includes('✅') || message.includes('نجح') || message.includes('تم ')) type = 'success';
+                else if (message.includes('❌') || message.includes('خطأ') || message.includes('فشل') || message.includes('تعذر')) type = 'danger';
+                else if (message.includes('⚠️') || message.includes('تحذير')) type = 'warning';
+            }
+
+            if (type === 'error') type = 'danger';
+
+            const container = document.getElementById('globalToastContainer');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = 'global-toast shadow-lg';
+            toast.style.cssText = `
+                pointer-events: auto;
+                min-height: 52px;
+                padding: 12px 18px;
+                border-radius: 12px;
+                direction: rtl;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                color: #ffffff;
+                font-size: 0.95rem;
+                font-weight: 600;
+                backdrop-filter: blur(10px);
+                animation: toastSlideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+                position: relative;
+                overflow: hidden;
+            `;
+
+            let bgStyle = '';
+            let iconClass = 'fa-info-circle';
+            if (type === 'success') {
+                bgStyle = 'background: linear-gradient(135deg, rgba(16,185,129,0.95), rgba(5,150,105,0.95)); border: 1px solid rgba(52,211,153,0.5);';
+                iconClass = 'fa-check-circle';
+            } else if (type === 'danger') {
+                bgStyle = 'background: linear-gradient(135deg, rgba(239,68,68,0.95), rgba(185,28,28,0.95)); border: 1px solid rgba(248,113,113,0.5);';
+                iconClass = 'fa-times-circle';
+            } else if (type === 'warning') {
+                bgStyle = 'background: linear-gradient(135deg, rgba(245,158,11,0.95), rgba(217,119,6,0.95)); border: 1px solid rgba(251,191,36,0.5); color: #fff;';
+                iconClass = 'fa-exclamation-triangle';
+            } else {
+                bgStyle = 'background: linear-gradient(135deg, rgba(59,130,246,0.95), rgba(29,78,216,0.95)); border: 1px solid rgba(96,165,250,0.5);';
+                iconClass = 'fa-info-circle';
+            }
+            toast.style.cssText += bgStyle;
+
+            toast.innerHTML = `
+                <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
+                    <i class="fas ${iconClass}" style="font-size:1.35rem;flex-shrink:0;"></i>
+                    <div style="line-height:1.45;word-break:break-word;">${message}</div>
+                </div>
+                <button type="button" style="background:none;border:none;color:#fff;opacity:0.75;font-size:1.3rem;cursor:pointer;padding:0 4px;margin-right:6px;line-height:1;" onclick="this.parentElement.remove()">&times;</button>
+                <div class="toast-progress-bar" style="position:absolute;bottom:0;left:0;height:3px;background:rgba(255,255,255,0.7);width:100%;transition:width ${duration}ms linear;"></div>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                const bar = toast.querySelector('.toast-progress-bar');
+                if (bar) bar.style.width = '0%';
+            }, 30);
+
+            let timer = setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-10px)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 320);
+            }, duration);
+
+            toast.addEventListener('mouseenter', () => clearTimeout(timer));
+            toast.addEventListener('mouseleave', () => {
+                timer = setTimeout(() => toast.remove(), 2500);
+            });
+        };
+
+        window.showToast = window.showAlert;
+        window.notify = function(type, msg) { window.showAlert(type, msg); };
+    })();
+    </script>
+    <style>
+    @keyframes toastSlideDown {
+        from { opacity: 0; transform: translateY(-20px) scale(0.96); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    </style>
+
     <!-- شاشة البداية (Splash) -->
     <div id="splashScreen" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#1e3c78 0%,#2a5298 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s ease;">
       <img src="/static/icons/app-logo.png" alt="splash" style="width:min(80vw,420px);height:min(80vw,420px);object-fit:contain;border-radius:32px;drop-shadow(0 8px 32px rgba(0,0,0,0.4));">
@@ -1384,7 +1494,7 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-2">
-                                    <button type="submit" class="btn btn-success w-100">
+                                    <button type="submit" class="btn btn-success w-100" id="btnSaveSettings">
                                         <i class="fas fa-save me-2"></i>
                                         حفظ الإعدادات
                                     </button>
@@ -1394,6 +1504,23 @@
                                         <i class="fas fa-paper-plane me-2"></i>
                                         إرسال الآن
                                     </button>
+                                </div>
+                            </div>
+                            <!-- كارت المتابعة الحية للإرسال الفوري -->
+                            <div id="sendLiveProgressCard" style="display:none;margin-top:12px;border-radius:12px;padding:14px;background:rgba(30,41,59,0.85);border:1px solid rgba(56,189,248,0.3);box-shadow:0 8px 24px rgba(0,0,0,0.25);">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span style="font-weight:700;color:#38bdf8;font-size:0.9rem;" id="sendLiveProgressTitle">
+                                        <i class="fas fa-circle-notch fa-spin me-2"></i>جارٍ الإرسال الفوري...
+                                    </span>
+                                    <span class="badge bg-primary" id="sendLiveProgressBadge" style="font-size:0.8rem;">0%</span>
+                                </div>
+                                <div class="progress mb-2" style="height:8px;background:rgba(255,255,255,0.1);border-radius:4px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" id="sendLiveProgressBar" role="progressbar" style="width:0%;"></div>
+                                </div>
+                                <div id="sendLiveCurrentStatus" style="font-size:0.82rem;color:#cbd5e1;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                    🚀 جاري تجهيز القائمة والبدء...
+                                </div>
+                                <div id="sendLiveProgressLog" style="max-height:120px;overflow-y:auto;font-size:0.78rem;background:rgba(15,23,42,0.6);border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:4px;">
                                 </div>
                             </div>
                         </form>
@@ -10131,7 +10258,7 @@ async function adminPromoResetIndex() {
             btnConfirm.addEventListener('click', () => {
                 const checkedBoxes = Array.from(document.querySelectorAll('.acc-group-cb:checked'));
                 if (checkedBoxes.length === 0) {
-                    alert('يرجى تحديد مجموعة واحدة على الأقل');
+                    window.showAlert('warning', '⚠️ يرجى تحديد مجموعة أو قناة واحدة على الأقل');
                     return;
                 }
 
@@ -10156,11 +10283,7 @@ async function adminPromoResetIndex() {
                 const modal = getModal();
                 if (modal) modal.hide();
 
-                if (window.showToast) {
-                    window.showToast(`✅ تم جلب ${selectedTargets.length} مجموعة بنجاح إلى مجموعات الإرسال`, 'success');
-                } else {
-                    console.log(`✅ تم جلب ${selectedTargets.length} مجموعة بنجاح`);
-                }
+                window.showAlert('success', `✅ تم إضافة ${selectedTargets.length} مجموعة وقناة بنجاح إلى مجموعات الإرسال!`);
             });
         }
     });
@@ -10844,36 +10967,118 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function handleSave(event) {
         event.preventDefault();
+        const btn = byId('btnSaveSettings');
+        const origHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>جارٍ الحفظ...';
+        }
+        window.showAlert('info', '💾 جارٍ حفظ الإعدادات...', 2500);
         try {
             const result = await saveSettings();
-            notify(result.success ? 'success' : 'danger', result.message || (result.success ? 'تم حفظ الإعدادات' : 'فشل حفظ الإعدادات'));
-        } catch (error) { notify('danger', '❌ تعذر حفظ الإعدادات: ' + error.message); }
+            if (result.success) {
+                window.showAlert('success', result.message || '✅ تم حفظ جميع الإعدادات بنجاح!');
+                if (btn) btn.innerHTML = '<i class="fas fa-check-circle me-2"></i>تم الحفظ بنجاح!';
+            } else {
+                window.showAlert('danger', '❌ ' + (result.message || 'فشل حفظ الإعدادات'));
+                if (btn) btn.innerHTML = '<i class="fas fa-times me-2"></i>فشل الحفظ';
+            }
+        } catch (error) { 
+            window.showAlert('danger', '❌ تعذر حفظ الإعدادات: ' + error.message); 
+            if (btn) btn.innerHTML = '<i class="fas fa-times me-2"></i>خطأ في الحفظ';
+        } finally {
+            setTimeout(() => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = origHtml || '<i class="fas fa-save me-2"></i>حفظ الإعدادات';
+                }
+            }, 1800);
+        }
     }
     async function handleStart() {
         const button = byId('startMonitoringBtn');
         if (button) button.disabled = true;
         try {
             const saved = await saveSettings();
-            if (!saved.success) { notify('danger', saved.message || 'فشل حفظ الإعدادات'); return; }
+            if (!saved.success) { window.showAlert('danger', saved.message || 'فشل حفظ الإعدادات'); return; }
             const result = await requestJson('/api/start_monitoring');
-            notify(result.success ? 'success' : 'danger', result.message || '');
+            window.showAlert(result.success ? 'success' : 'danger', result.message || (result.success ? 'تم بدء المراقبة بنجاح' : 'تعذر بدء المراقبة'));
             if (result.success) setButtonState(true);
-        } catch (error) { notify('danger', '❌ تعذر بدء الإرسال: ' + error.message); }
+        } catch (error) { window.showAlert('danger', '❌ تعذر بدء الإرسال: ' + error.message); }
         finally { if (button) button.disabled = false; }
     }
     async function handleStop() {
         try {
             const result = await requestJson('/api/stop_monitoring');
-            notify(result.success ? 'success' : 'danger', result.message || '');
+            window.showAlert(result.success ? 'success' : 'danger', result.message || (result.success ? 'تم إيقاف المراقبة' : 'تعذر الإيقاف'));
             if (result.success) setButtonState(false);
-        } catch (error) { notify('danger', '❌ تعذر إيقاف الإرسال: ' + error.message); }
+        } catch (error) { window.showAlert('danger', '❌ تعذر إيقاف الإرسال: ' + error.message); }
     }
     async function handleSendNow() {
+        const btn = byId('sendNowBtn');
+        const origHtml = btn ? btn.innerHTML : '';
+        const payload = settingsPayload();
+
+        if (!payload.message && (!window.selectedImages || window.selectedImages.length === 0)) {
+            window.showAlert('warning', '⚠️ يرجى كتابة نص الرسالة أو إرفاق صورة قبل الإرسال');
+            return;
+        }
+
+        if (!payload.groups || !payload.groups.trim()) {
+            window.showAlert('warning', '⚠️ يرجى تحديد مجموعة واحدة على الأقل في خانة مجموعات الإرسال');
+            return;
+        }
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>جارٍ الإرسال...';
+        }
+
+        // إظهار كارت المتابعة الحية
+        const progressCard = byId('sendLiveProgressCard');
+        const progressTitle = byId('sendLiveProgressTitle');
+        const progressBadge = byId('sendLiveProgressBadge');
+        const progressBar = byId('sendLiveProgressBar');
+        const currentStatus = byId('sendLiveCurrentStatus');
+        const progressLog = byId('sendLiveProgressLog');
+
+        if (progressCard) progressCard.style.display = 'block';
+        if (progressTitle) progressTitle.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i>جارٍ الإرسال الفوري...';
+        if (progressBadge) progressBadge.textContent = '0%';
+        if (progressBar) {
+            progressBar.style.width = '0%';
+            progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-info';
+        }
+        if (currentStatus) currentStatus.innerHTML = '🚀 جاري تحضير المجموعات والاتصال بالخادم...';
+        if (progressLog) progressLog.innerHTML = '<div style="color:#94a3b8;"><i class="fas fa-info-circle me-1"></i>بدأت العملية...</div>';
+
+        window.showAlert('info', '🚀 بدأ الإرسال الفوري للرسالة، تابع التقدم اللحظي بالأسفل...', 4000);
+
         try {
-            const payload = settingsPayload();
-            const result = await requestJson('/api/send_now', { message: payload.message, groups: payload.groups, send_to_all: false, images: [] });
-            notify(result.success ? 'success' : 'danger', result.message || '');
-        } catch (error) { notify('danger', '❌ تعذر الإرسال الآن: ' + error.message); }
+            const result = await requestJson('/api/send_now', { 
+                message: payload.message, 
+                groups: payload.groups, 
+                send_to_all: false, 
+                images: window.selectedImages || [] 
+            });
+
+            if (!result.success) {
+                window.showAlert('danger', '❌ ' + (result.message || 'تعذر الإرسال'));
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = origHtml || '<i class="fas fa-paper-plane me-2"></i>إرسال الآن';
+                }
+                if (progressCard) progressCard.style.display = 'none';
+            } else {
+                if (currentStatus) currentStatus.innerHTML = `<span class="text-info">${result.message}</span>`;
+            }
+        } catch (error) { 
+            window.showAlert('danger', '❌ تعذر الإرسال الآن: ' + error.message);
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origHtml || '<i class="fas fa-paper-plane me-2"></i>إرسال الآن';
+            }
+        }
     }
     async function handleScanGroupsAI() {
         const btn = byId('scanGroupsBtn');
@@ -10961,6 +11166,75 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!socket) { window.setTimeout(bindSocket, 300); return; }
         socket.on('monitoring_status', (data) => setButtonState(Boolean(data && (data.is_running || data.monitoring_active))));
         socket.on('update_monitoring_buttons', (data) => setButtonState(Boolean(data && data.is_running)));
+
+        // ── متابعة تقدم الإرسال الفوري اللحظي ──
+        socket.on('send_progress', (data) => {
+            if (!data) return;
+            const card = byId('sendLiveProgressCard');
+            const title = byId('sendLiveProgressTitle');
+            const badge = byId('sendLiveProgressBadge');
+            const bar = byId('sendLiveProgressBar');
+            const curStatus = byId('sendLiveCurrentStatus');
+            const log = byId('sendLiveProgressLog');
+            const sendBtn = byId('sendNowBtn');
+
+            if (card) card.style.display = 'block';
+
+            if (data.status === 'completed') {
+                if (badge) badge.textContent = '100%';
+                if (bar) {
+                    bar.style.width = '100%';
+                    bar.className = 'progress-bar bg-success';
+                }
+                if (title) title.innerHTML = '<i class="fas fa-check-double text-success me-2"></i>اكتمل الإرسال الفوري بنجاح!';
+                if (curStatus) curStatus.innerHTML = `<strong class="text-success">${data.message || 'اكتملت جميع العمليات'}</strong>`;
+                window.showAlert('success', `🎉 ${data.message || 'انتهى الإرسال بنجاح'}`, 8000);
+                if (sendBtn) {
+                    sendBtn.disabled = false;
+                    sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>إرسال الآن';
+                }
+                return;
+            }
+
+            const percent = (data.total && data.total > 0) ? Math.round((data.index / data.total) * 100) : 0;
+            if (badge) badge.textContent = `${percent}% (${data.index}/${data.total})`;
+            if (bar) bar.style.width = `${percent}%`;
+
+            if (data.status === 'success') {
+                const msg = data.message || `✅ نجح الإرسال إلى: ${data.group}`;
+                if (curStatus) curStatus.innerHTML = `<span class="text-success">${msg}</span>`;
+                if (log) {
+                    const row = document.createElement('div');
+                    row.style.color = '#4ade80';
+                    row.innerHTML = `<i class="fas fa-check-circle me-1"></i> [${data.index}/${data.total}] ${data.group}`;
+                    log.appendChild(row);
+                    log.scrollTop = log.scrollHeight;
+                }
+                window.showAlert('success', msg, 4000);
+            } else if (data.status === 'skipped') {
+                const msg = data.message || `⏭️ تم تخطي: ${data.group}`;
+                if (curStatus) curStatus.innerHTML = `<span class="text-warning">${msg}</span>`;
+                if (log) {
+                    const row = document.createElement('div');
+                    row.style.color = '#fbbf24';
+                    row.innerHTML = `<i class="fas fa-forward me-1"></i> [${data.index}/${data.total}] ${data.group} (تخطي)`;
+                    log.appendChild(row);
+                    log.scrollTop = log.scrollHeight;
+                }
+                window.showAlert('warning', msg, 4000);
+            } else if (data.status === 'error') {
+                const msg = data.message || `❌ فشل إلى ${data.group}: ${data.error_type || 'خطأ'}`;
+                if (curStatus) curStatus.innerHTML = `<span class="text-danger">${msg}</span>`;
+                if (log) {
+                    const row = document.createElement('div');
+                    row.style.color = '#f87171';
+                    row.innerHTML = `<i class="fas fa-times-circle me-1"></i> [${data.index}/${data.total}] ${data.group}: <span style="font-size:0.75rem;color:#e2e8f0;">${data.error_type || 'خطأ'}</span>`;
+                    log.appendChild(row);
+                    log.scrollTop = log.scrollHeight;
+                }
+                window.showAlert('danger', msg, 6000);
+            }
+        });
     }
     document.addEventListener('DOMContentLoaded', () => {
         const type = byId('sendType');

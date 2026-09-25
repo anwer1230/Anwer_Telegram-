@@ -1701,11 +1701,13 @@ def load_string_session(user_id):
 
 def _clean_group_entry(raw: str) -> str:
     import re
-    cleaned = raw.strip()
+    cleaned = str(raw).strip()
     if not cleaned:
         return ''
+    cleaned = cleaned.strip('"\'`()[]{}<>')
     # حماية الروابط والمعرفات الرقمية من التجريد غير المقصود
     if (cleaned.startswith('https://') or cleaned.startswith('http://')
+            or cleaned.startswith('t.me/') or cleaned.startswith('telegram.me/')
             or cleaned.startswith('@') or re.match(r'^-?\d+$', cleaned)):
         return cleaned
     # تجريد البوليتات والأرقام والرموز من بداية السطر فقط
@@ -1716,11 +1718,13 @@ def dedupe_groups(groups):
     seen = set()
     result = []
     if isinstance(groups, str):
-        groups = [g for g in groups.replace('\n', ',').split(',')]
+        import re as _re
+        raw_items = _re.split(r'[\r\n,;\t]+|\s+(?=(?:https?://|t\.me/|telegram\.me/|@|-?\d+))', groups.strip())
+        groups = [g.strip() for g in raw_items if g and g.strip()]
     for g in groups or []:
         if not g:
             continue
-        original = _clean_group_entry(g)
+        original = _clean_group_entry(str(g))
         if not original:
             continue
         norm = original.lower()
@@ -3726,56 +3730,100 @@ class TelegramManager:
         if not entity:
             raise Exception("اسم المجموعة فارغ بعد التنظيف")
 
-        # ── معرّف رقمي (chat ID مثل -1001234567890) ──
-        if _re.match(r'^-?\d+$', entity):
+        # ── روابط المنشورات في المجموعات والقنوات الخاصة t.me/c/1234567890/... ──
+        m_c = _re.search(r't\.me/c/(\d+)', entity)
+        if m_c:
+            channel_id = int(f"-100{m_c.group(1)}")
             try:
                 return client_manager.run_coroutine(
-                    client_manager.client.get_entity(int(entity))
+                    client_manager.client.get_entity(channel_id)
+                )
+            except Exception as e_c:
+                logger.warning(f"Failed to get entity for c/{m_c.group(1)}: {e_c}")
+
+        # ── معرّف رقمي (chat ID مثل -1001234567890 أو رقم موجب) ──
+        if _re.match(r'^-?\d+$', entity):
+            int_id = int(entity)
+            try:
+                return client_manager.run_coroutine(
+                    client_manager.client.get_entity(int_id)
                 )
             except Exception as e:
+                # إذا كان رقماً موجباً بدون -100، قد يكون معرّف سوبرجروب أو قناة
+                if int_id > 0 and not str(entity).startswith('-100'):
+                    try:
+                        return client_manager.run_coroutine(
+                            client_manager.client.get_entity(int(f"-100{entity}"))
+                        )
+                    except Exception:
+                        pass
                 raise Exception(f"لا يمكن الوصول إلى المعرّف الرقمي {entity}: {e}")
 
-        # ── رابط دعوة خاص (invite link يحتوي على +) ──
-        m_invite = _re.search(r't\.me/\+([A-Za-z0-9_\-]+)', entity)
+        # ── رابط دعوة خاص (invite link يحتوي على + أو joinchat) ──
+        m_invite = _re.search(r't\.me/(?:\+|joinchat/)([A-Za-z0-9_\-]+)', entity)
         if m_invite:
             invite_hash = m_invite.group(1)
             # جرّب ImportChatInviteRequest (ينضم إن لم يكن عضواً)
             try:
-                from telethon.tl.functions.messages import ImportChatInviteRequest
-                result = client_manager.run_coroutine(
-                    client_manager.client(ImportChatInviteRequest(invite_hash))
-                )
-                if result and hasattr(result, 'chats') and result.chats:
-                    return result.chats[0]
-            except Exception as invite_err:
-                inv_msg = str(invite_err).lower()
-                # إذا كان مصادقاً عليه مسبقاً، جرّب get_entity بالرابط كاملاً
-                if 'already' in inv_msg or 'joined' in inv_msg or 'user_already' in inv_msg:
-                    try:
-                        return client_manager.run_coroutine(
-                            client_manager.client.get_entity(entity)
+                from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
+                from telethon.errors import UserAlreadyParticipantError, InviteHashExpiredError, InviteHashInvalidError, ChannelsTooMuchError
+                try:
+                    result = client_manager.run_coroutine(
+                        client_manager.client(ImportChatInviteRequest(invite_hash))
+                    )
+                    if result and hasattr(result, 'chats') and result.chats:
+                        return result.chats[0]
+                except UserAlreadyParticipantError:
+                    chk = client_manager.run_coroutine(
+                        client_manager.client(CheckChatInviteRequest(invite_hash))
+                    )
+                    if hasattr(chk, 'chat') and chk.chat:
+                        return chk.chat
+                except Exception as _inv_err:
+                    err_s = str(_inv_err).lower()
+                    if 'already' in err_s or 'participant' in err_s:
+                        chk = client_manager.run_coroutine(
+                            client_manager.client(CheckChatInviteRequest(invite_hash))
                         )
-                    except Exception:
-                        pass
-                # جرّب get_entity بالرابط كاملاً على كل حال
+                        if hasattr(chk, 'chat') and chk.chat:
+                            return chk.chat
+                    elif 'expired' in err_s:
+                        raise Exception("رابط الدعوة منتهي الصلاحية")
+                    elif 'invalid' in err_s:
+                        raise Exception("رابط الدعوة غير صالح")
+                    elif 'request' in err_s or 'approval' in err_s:
+                        raise Exception("تم إرسال طلب انضمام وبانتظار موافقة المشرفين")
+                    elif 'too much' in err_s or 'channels_too_much' in err_s:
+                        raise Exception("وصل الحساب للحد الأقصى المسموح من القنوات/المجموعات (500)")
+                    else:
+                        raise _inv_err
+            except Exception as invite_err:
+                inv_msg = str(invite_err)
+                if any(x in inv_msg for x in ["منتهي", "غير صالح", "موافقة", "الحد الأقصى"]):
+                    raise Exception(inv_msg)
+                # إذا كان مصادقاً عليه مسبقاً، جرّب get_entity بالرابط كاملاً
                 try:
                     return client_manager.run_coroutine(
                         client_manager.client.get_entity(entity)
                     )
                 except Exception:
                     pass
-            raise Exception(f"لا يمكن الوصول إلى رابط الدعوة: {entity}")
+                raise Exception(f"لا يمكن الوصول إلى رابط الدعوة {entity}: {inv_msg}")
 
-        # ── روابط t.me العامة (@username) ──
-        # استخراج اسم المستخدم من الروابط مثل https://t.me/username
-        username_clean = entity.lstrip('@')
-        m = _re.search(r't\.me/([^/\s\?#+]+)', entity)  # استثناء + من الأسماء
-        if m:
-            username_clean = m.group(1)
+        # ── روابط t.me العامة (@username أو https://t.me/username) ──
+        m_uname = _re.search(r'(?:https?://)?(?:t\.me|telegram\.me)/([^/\s\?#+]+)', entity)
+        if m_uname:
+            username_clean = m_uname.group(1).lstrip('@')
+        else:
+            username_clean = entity.strip().lstrip('@')
+            if '/' in username_clean:
+                username_clean = username_clean.split('/')[-1]
+            if '?' in username_clean:
+                username_clean = username_clean.split('?')[0]
 
         last_exc = None
 
-        # ── المحاولة 1: get_entity مع الرابط كما هو (نجح لو كان في الـ cache) ──
+        # ── المحاولة 1: get_entity مع الرابط أو الاسم كما هو ──
         try:
             return client_manager.run_coroutine(
                 client_manager.client.get_entity(entity)
@@ -3793,7 +3841,6 @@ class TelegramManager:
                 last_exc = e
 
         # ── المحاولة 3: ResolveUsernameRequest — يستعلم مباشرة من سيرفرات تيليجرام ──
-        # يعمل لأي مجموعة/قناة عامة حتى لو لم يسبق التفاعل معها
         if username_clean and not username_clean.startswith('+'):
             try:
                 result = client_manager.run_coroutine(
@@ -3876,9 +3923,28 @@ class TelegramManager:
                 return {"success": False, "skipped": True,
                         "message": "تم تخطي الإرسال: المجموعة محمية أو الرسالة فارغة بعد التنقية"}
 
-            result = client_manager.run_coroutine(
-                client_manager.client.send_message(entity_obj, final_message)
-            )
+            try:
+                result = client_manager.run_coroutine(
+                    client_manager.client.send_message(entity_obj, final_message)
+                )
+            except Exception as _send_err:
+                _err_str = str(_send_err).lower()
+                # إذا تطلب الإرسال الانضمام للمجموعة أولاً
+                if "write" in _err_str or "forbidden" in _err_str or "not a member" in _err_str or "participant" in _err_str:
+                    try:
+                        logger.info(f"Auto-joining {entity} before sending message...")
+                        from telethon.tl.functions.channels import JoinChannelRequest
+                        client_manager.run_coroutine(
+                            client_manager.client(JoinChannelRequest(entity_obj))
+                        )
+                        time.sleep(1)
+                        result = client_manager.run_coroutine(
+                            client_manager.client.send_message(entity_obj, final_message)
+                        )
+                    except Exception as _join_err:
+                        raise Exception(f"لا يمكن الإرسال في {entity}: تتطلب الانضمام للمجموعة ({_join_err})")
+                else:
+                    raise _send_err
 
             return {"success": True, "message_id": result.id}
 
@@ -6413,7 +6479,9 @@ def api_send_now():
                 "success": False,
                 "message": "❌ يجب تحديد المجموعات للإرسال إليها"
             })
-        raw_groups = [g.strip() for g in groups.replace('\n', ',').split(',') if g.strip()]
+        import re as _re
+        raw_items = _re.split(r'[\r\n,;\t]+|\s+(?=https?://|@|-?\d+)', groups.strip())
+        raw_groups = [g.strip() for g in raw_items if g and g.strip()]
         original_count = len(raw_groups)
         groups_list = dedupe_groups(raw_groups)
         duplicates_removed = original_count - len(groups_list)
@@ -6489,32 +6557,23 @@ def api_send_now():
 
             for i, group in enumerate(groups_list, 1):
                 try:
-                    # ── فحص المجموعة بالذكاء الاصطناعي وتلافي أخطاء الآخرين ──
                     curr_message = message
                     curr_images = image_files
-                    try:
-                        with USERS_LOCK:
-                            cm = USERS.get(user_id, {}).get('client_manager')
-                        if cm and cm.client:
-                            ent_obj = telegram_manager._resolve_entity(cm, group)
-                            ai_check = telegram_manager.scan_and_analyze_group_with_ai(
-                                user_id, cm, ent_obj, group, sample_message=message, send_report_to_me=True
-                            )
-                            if ai_check.get('should_skip'):
-                                socketio.emit('log_update', {
-                                    "message": f"⏭️ [{i}/{len(groups_list)}] تخطي آلي لـ {group}: {ai_check.get('skip_reason', 'تم رصد حظر قطعي للأعضاء')}"
-                                }, to=user_id)
-                                continue
-                            if ai_check.get('adapted_message'):
-                                curr_message = ai_check.get('adapted_message')
-                            if not ai_check.get('can_send_media', True):
-                                curr_images = []
-                            if ai_check.get('actions_taken'):
-                                socketio.emit('log_update', {
-                                    "message": f"🛡️ [{i}/{len(groups_list)}] تلافي أخطاء الآخرين في {group}: {', '.join(ai_check['actions_taken'][:2])}"
-                                }, to=user_id)
-                    except Exception as _ai_ex:
-                        logger.debug(f"AI inspection fallback for {group}: {_ai_ex}")
+
+                    # إذا حدد المستخدم إجراء التخطي المسبق
+                    if pre_scan_action == 'skip':
+                        skip_msg = f"⏭️ [{i}/{len(groups_list)}] تم تخطي {group} (بناءً على اختيارك)"
+                        socketio.emit('log_update', {"message": skip_msg}, to=user_id)
+                        socketio.emit('send_progress', {
+                            "index": i,
+                            "total": len(groups_list),
+                            "group": group,
+                            "status": "skipped",
+                            "message": skip_msg
+                        }, to=user_id)
+                        continue
+
+                    action_to_use = 'salam' if pre_scan_action == 'salam' else 'send'
 
                     if curr_images and curr_message:
                         result = telegram_manager.send_message_with_media_async(
@@ -6527,16 +6586,28 @@ def api_send_now():
                     else:
                         result = telegram_manager.send_message_async(
                             user_id, group, curr_message,
-                            forced_action=pre_scan_action  # None = استخدم الإعدادات الافتراضية
+                            forced_action=action_to_use
                         )
 
                     if isinstance(result, dict) and result.get('skipped'):
-                        socketio.emit('log_update', {
-                            "message": f"⏭️ [{i}/{len(groups_list)}] تم تخطي المجموعة المحمية: {group}"
+                        skip_msg = f"⏭️ [{i}/{len(groups_list)}] تم تخطي {group}: {result.get('message', 'محمية')}"
+                        socketio.emit('log_update', {"message": skip_msg}, to=user_id)
+                        socketio.emit('send_progress', {
+                            "index": i,
+                            "total": len(groups_list),
+                            "group": group,
+                            "status": "skipped",
+                            "message": skip_msg
                         }, to=user_id)
                     else:
-                        socketio.emit('log_update', {
-                            "message": f"✅ [{i}/{len(groups_list)}] نجح إلى: {group}"
+                        success_msg = f"✅ [{i}/{len(groups_list)}] نجح الإرسال إلى: {group}"
+                        socketio.emit('log_update', {"message": success_msg}, to=user_id)
+                        socketio.emit('send_progress', {
+                            "index": i,
+                            "total": len(groups_list),
+                            "group": group,
+                            "status": "success",
+                            "message": success_msg
                         }, to=user_id)
                         successful += 1
                         # حفظ معرف الرسالة لدفعة "رسائلي"
@@ -6548,39 +6619,55 @@ def api_send_now():
                         with USERS_LOCK:
                             if user_id in USERS:
                                 USERS[user_id]['stats']['sent'] += 1
-                        with USERS_LOCK:
-                            if user_id in USERS:
                                 socketio.emit('stats_update', USERS[user_id]['stats'], to=user_id)
 
                     if i < len(groups_list):
-                        time.sleep(3)
+                        time.sleep(2)
 
                 except Exception as e:
                     error_msg = str(e)
-                    if "banned" in error_msg.lower() or "ban" in error_msg.lower():
-                        error_type = "محظور من المجموعة"
-                    elif "flood" in error_msg.lower():
-                        # استخرج وقت الانتظار إذا كان متاحاً
+                    error_lower = error_msg.lower()
+                    if "banned" in error_lower or "ban" in error_lower:
+                        error_type = "الحساب محظور أو مكتوم في هذه المجموعة"
+                    elif "flood" in error_lower:
                         import re as _re
                         m = _re.search(r'(\d+)', error_msg)
-                        wait_s = int(m.group(1)) if m else '?'
-                        error_type = f"تجاوز حد الإرسال — انتظر {wait_s} ثانية"
-                    elif "timeout" in error_msg.lower():
-                        error_type = "انتهت مهلة الاتصال (timeout)"
-                    elif "private" in error_msg.lower():
-                        error_type = "مجموعة خاصة/محدودة"
-                    elif "can't write" in error_msg.lower() or "write" in error_msg.lower():
-                        error_type = "لا يُسمح بالإرسال في هذه المجموعة"
-                    elif "not found" in error_msg.lower() or "invalid" in error_msg.lower() or "username" in error_msg.lower():
-                        error_type = "المجموعة غير موجودة أو الرابط خاطئ"
-                    elif "يُعاد تشغيله" in error_msg or "restart" in error_msg.lower():
-                        error_type = "العميل يُعاد تشغيله، أعد المحاولة"
+                        wait_s = int(m.group(1)) if m else '؟'
+                        error_type = f"تجاوز حد الإرسال المؤقت (يرجى الانتظار {wait_s} ثانية)"
+                    elif "slow" in error_lower:
+                        error_type = "مفعّل الوضع البطيء (Slow Mode) في المجموعة"
+                    elif "timeout" in error_lower:
+                        error_type = "انتهت مهلة الاتصال بخادم تيليجرام"
+                    elif "expired" in error_lower or "منتهي" in error_msg:
+                        error_type = "رابط الدعوة منتهي الصلاحية"
+                    elif "approval" in error_lower or "موافقة" in error_msg or "request" in error_lower:
+                        error_type = "المجموعة خاصة وبانتظار موافقة المشرفين"
+                    elif "too much" in error_lower or "الحد الأقصى" in error_msg:
+                        error_type = "الحساب وصل للحد الأقصى من القنوات والمجموعات (500)"
+                    elif "private" in error_lower or "join" in error_lower or "تتطلب الانضمام" in error_msg:
+                        error_type = "تتطلب الانضمام للمجموعة أو موافقة المشرفين"
+                    elif "write" in error_lower or "forbidden" in error_lower or "غير مسموح" in error_msg:
+                        error_type = "غير مسموح بالنشر (مخصصة للمشرفين فقط أو النشر مقفل)"
+                    elif "not found" in error_lower or "invalid" in error_lower or "username" in error_lower:
+                        error_type = "المجموعة غير موجودة أو الرابط غير صالح"
+                    elif "cannot find any entity" in error_lower or "لا يمكن الوصول" in error_msg:
+                        error_type = "تعذر الوصول للمجموعة (تأكد من صحة الرابط أو الانضمام)"
+                    elif "يُعاد تشغيله" in error_msg or "restart" in error_lower:
+                        error_type = "العميل يُعاد تشغيله، حاول مجدداً"
                     else:
-                        error_type = error_msg[:150]  # رسالة خطأ كاملة لتسهيل التشخيص
-                    log_user_event(user_id, 'ERROR', f"❌ فشل الإرسال إلى {group}: {error_type}")
+                        error_type = error_msg[:120]
+
+                    fail_msg = f"❌ [{i}/{len(groups_list)}] فشل إلى {group}: {error_type}"
+                    log_user_event(user_id, 'ERROR', fail_msg)
                     logger.error(f"Send error to {group}: {error_msg}")
-                    socketio.emit('log_update', {
-                        "message": f"❌ [{i}/{len(groups_list)}] فشل إلى {group}: {error_type}"
+                    socketio.emit('log_update', {"message": fail_msg}, to=user_id)
+                    socketio.emit('send_progress', {
+                        "index": i,
+                        "total": len(groups_list),
+                        "group": group,
+                        "status": "error",
+                        "error_type": error_type,
+                        "message": fail_msg
                     }, to=user_id)
 
                     failed += 1
@@ -6589,8 +6676,14 @@ def api_send_now():
                             USERS[user_id]['stats']['errors'] += 1
                             socketio.emit('stats_update', USERS[user_id]['stats'], to=user_id)
 
-            socketio.emit('log_update', {
-                "message": f"📊 انتهى الإرسال: ✅ {successful} نجح | ❌ {failed} فشل"
+            summary_msg = f"📊 انتهى الإرسال: ✅ {successful} نجح | ❌ {failed} فشل من إجمالي {len(groups_list)} مجموعة"
+            socketio.emit('log_update', {"message": summary_msg}, to=user_id)
+            socketio.emit('send_progress', {
+                "status": "completed",
+                "total": len(groups_list),
+                "successful": successful,
+                "failed": failed,
+                "message": summary_msg
             }, to=user_id)
 
             # ── حفظ الدفعة في "رسائلي" ──
@@ -17053,7 +17146,7 @@ def api_promo_status():
 # ──────────────────────────────────────────────────────────────────────────
 @app.route("/api/get_all_groups", methods=["GET"])
 def api_get_all_groups():
-    user_id = session.get('user_id')
+    user_id = resolve_request_user_id()
     if not user_id:
         return jsonify({"success": False, "message": "❌ غير مسجل - يرجى تسجيل الدخول أولاً"}), 401
     
@@ -17070,31 +17163,77 @@ def api_get_all_groups():
     if not client_manager or not client_manager.client:
         return jsonify({"success": False, "message": "❌ العميل غير متصل - يرجى تسجيل الدخول للحساب"}), 400
     try:
-        dialogs = client_manager.run_coroutine(client_manager.client.get_dialogs())
+        from telethon.tl import types
+
+        async def _fetch_all_dialogs(client):
+            seen_ids = set()
+            dialogs_list = []
+            # 1. جلب المحادثات الرئيسية المباشرة بدون فلتر
+            try:
+                main_dialogs = await client.get_dialogs(limit=None)
+                for d in main_dialogs:
+                    if d.id not in seen_ids:
+                        seen_ids.add(d.id)
+                        dialogs_list.append(d)
+            except Exception as _me:
+                logger.warning(f"get_dialogs main error: {_me}")
+
+            # 2. جلب المحادثات المؤرشفة
+            try:
+                archived_dialogs = await client.get_dialogs(limit=None, folder=1)
+                for d in archived_dialogs:
+                    if d.id not in seen_ids:
+                        seen_ids.add(d.id)
+                        dialogs_list.append(d)
+            except Exception as _ae:
+                logger.debug(f"get_dialogs archived error: {_ae}")
+
+            return dialogs_list
+
+        dialogs = client_manager.run_coroutine(_fetch_all_dialogs(client_manager.client))
         groups = []
         for d in dialogs:
-            entity = d.entity
-            is_group = bool(getattr(d, 'is_group', False) or hasattr(entity, 'megagroup') or hasattr(entity, 'gigagroup'))
-            is_channel = bool(getattr(d, 'is_channel', False) and getattr(entity, 'broadcast', False))
-            if is_group or is_channel or hasattr(entity, 'megagroup') or hasattr(entity, 'broadcast') or hasattr(entity, 'gigagroup'):
+            entity = getattr(d, 'entity', None)
+            if not entity:
+                continue
+
+            # استبعاد المستخدمين والمحادثات الخاصة الفردية والبوتات
+            if getattr(d, 'is_user', False) or isinstance(entity, types.User) or getattr(entity, 'bot', False):
+                continue
+
+            # استبعاد المجموعات التي غادرها المستخدم أو تم حذفها
+            if getattr(entity, 'left', False) or getattr(entity, 'deactivated', False):
+                continue
+            if isinstance(entity, (types.ChatForbidden, types.ChannelForbidden)):
+                continue
+
+            is_megagroup = bool(getattr(entity, 'megagroup', False))
+            is_gigagroup = bool(getattr(entity, 'gigagroup', False))
+            is_chat = isinstance(entity, types.Chat) or bool(getattr(d, 'is_group', False))
+            is_channel = bool(getattr(d, 'is_channel', False) or (hasattr(entity, 'broadcast') and entity.broadcast))
+
+            if is_megagroup or is_gigagroup or is_chat or is_channel or getattr(d, 'is_group', False):
                 title = getattr(d, 'title', None) or getattr(entity, 'title', None) or getattr(d, 'name', 'مجموعة بدون عنوان')
                 username = getattr(entity, 'username', None)
                 link = f"https://t.me/{username}" if username else None
                 if username:
                     target = f"https://t.me/{username}"
                 else:
-                    eid_str = str(entity.id)
-                    target = eid_str if eid_str.startswith("-") else f"-100{entity.id}"
+                    target = str(d.id)
 
+                g_type = "قناة" if (is_channel and not is_megagroup and not is_chat) else "مجموعة"
                 groups.append({
-                    "id": str(entity.id),
-                    "title": title,
+                    "id": str(d.id),
+                    "title": str(title),
                     "username": username,
                     "link": link or target,
                     "target": target,
-                    "type": "قناة" if is_channel else "مجموعة"
+                    "type": g_type,
+                    "participants_count": getattr(entity, 'participants_count', None)
                 })
+
         groups.sort(key=lambda x: str(x.get('title', '')).lower())
+        logger.info(f"✅ Fetched {len(groups)} total groups/channels for user {user_id}")
         return jsonify({"success": True, "groups": groups, "count": len(groups)})
     except Exception as e:
         logger.error(f"خطأ في جلب المجموعات: {e}")
