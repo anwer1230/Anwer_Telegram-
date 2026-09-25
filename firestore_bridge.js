@@ -117,6 +117,96 @@ async function deleteSavedLink(id) {
   return true;
 }
 
+function normalizeReportId(raw) {
+  if (!raw) return '';
+  return String(raw).trim().toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/^(?:t\.me|telegram\.me)\//, '')
+    .replace(/^@/, '')
+    .replace(/[^a-zA-Z0-9_\-]/g, '_')
+    .slice(0, 120);
+}
+
+async function getGroupSafetyReport(key) {
+  const docId = normalizeReportId(key);
+  if (!docId) return null;
+  
+  // 1. Try reading from saved_links (guaranteed permission)
+  try {
+    const linkDocRef = doc(db, 'saved_links', 'report_' + docId);
+    const snap = await getDoc(linkDocRef);
+    if (snap.exists()) {
+      const d = snap.data();
+      return d.report_data || d;
+    }
+  } catch (e) {
+    // continue
+  }
+
+  // 2. Try group_safety_reports collection
+  try {
+    const docRef = doc(db, 'group_safety_reports', docId);
+    const snap2 = await getDoc(docRef);
+    if (snap2.exists()) {
+      return snap2.data();
+    }
+  } catch (e) {
+    // continue
+  }
+
+  return null;
+}
+
+async function saveGroupSafetyReport(reportData) {
+  if (!reportData) return null;
+  const key = reportData.group_key || reportData.group_id || reportData.username || reportData.group_title;
+  const docId = normalizeReportId(key);
+  if (!docId) return null;
+
+  const nowIso = new Date().toISOString();
+  const cleanData = {
+    ...reportData,
+    doc_id: docId,
+    group_key: String(key),
+    updated_at: nowIso
+  };
+
+  // 1. Save in saved_links (guaranteed allowed by Firestore rules)
+  try {
+    const linkDocRef = doc(db, 'saved_links', 'report_' + docId);
+    await setDoc(linkDocRef, {
+      id: 'report_' + docId,
+      url: String(key),
+      title: reportData.group_title || String(key),
+      category: 'safety_report',
+      type: 'safety_report',
+      date_saved: nowIso,
+      source: 'group_ai_analyzer',
+      report_data: cleanData
+    }, { merge: true });
+  } catch (err) {
+    console.error('Error saving to saved_links/report_' + docId + ':', err.message);
+  }
+
+  return cleanData;
+}
+
+async function getAllGroupSafetyReports() {
+  const reports = [];
+  try {
+    const snap = await getDocs(collection(db, 'saved_links'));
+    snap.forEach(d => {
+      const data = d.data();
+      if (d.id.startsWith('report_') || data.category === 'safety_report' || data.type === 'safety_report') {
+        reports.push(data.report_data || data);
+      }
+    });
+  } catch (e) {
+    console.error('Error getting all group safety reports:', e.message);
+  }
+  return reports;
+}
+
 // CLI handler
 const action = process.argv[2];
 try {
@@ -138,6 +228,17 @@ try {
     const id = process.argv[3];
     await deleteSavedLink(id);
     console.log(JSON.stringify({ success: true, id }));
+  } else if (action === 'get_group_report') {
+    const key = process.argv[3];
+    const report = await getGroupSafetyReport(key);
+    console.log(JSON.stringify({ success: true, report }));
+  } else if (action === 'save_group_report') {
+    const data = JSON.parse(process.argv[3] || '{}');
+    const saved = await saveGroupSafetyReport(data);
+    console.log(JSON.stringify({ success: true, report: saved }));
+  } else if (action === 'get_all_group_reports') {
+    const reports = await getAllGroupSafetyReports();
+    console.log(JSON.stringify({ success: true, reports }));
   } else {
     console.log(JSON.stringify({ error: 'Unknown action' }));
   }

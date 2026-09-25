@@ -3884,9 +3884,28 @@ class TelegramManager:
 
             entity_obj = self._resolve_entity(client_manager, entity)
 
-            # ── تحديد الإجراء: من الفحص الاستباقي أو من الإعدادات ──────────
+            # ── 1. جلب التقرير من قاعدة البيانات الخارجية (Firestore) أو فحصه وحفظه إن كانت جديدة ──
+            report, is_new = self.get_or_create_group_safety_report(
+                user_id, client_manager, entity_obj, entity, sample_message=message
+            )
+
+            # ── 2. تكييف الرسالة وتغيير أو حذف الكلمات والعبارات التي تستدعي الحظر ──
+            final_message, _, safety_actions = self.adapt_message_to_group_report(
+                message, report, has_media=False
+            )
+            if safety_actions:
+                socketio.emit('log_update', {
+                    "message": f"🛡️ [{entity}] تطبيق إجراءات الأمان للرسالة: {', '.join(safety_actions[:2])}"
+                }, to=user_id)
+
+            # ── 3. فحص هل المجموعة تمنع الإعلانات بشكل كلي وتحتوي على بوتات حماية -> إرسال ذكي ──
+            needs_smart = bool(
+                report.get('requires_smart_send') or 
+                (report.get('is_protected') and report.get('blocks_ads'))
+            )
+
+            # ── تحديد الإجراء: من الفحص المسبق أو الإعدادات أو تقرير المجموعة ──────────
             if forced_action is not None:
-                # forced_action قادم من /api/pre_send_scan — يُطبَّق مباشرة
                 action = forced_action
                 if action == 'skip':
                     socketio.emit('log_update', {
@@ -3894,11 +3913,13 @@ class TelegramManager:
                     }, to=user_id)
                     return {"success": False, "skipped": True,
                             "message": f"تم تخطي المجموعة: {entity}"}
+            elif needs_smart:
+                action = 'salam'
             else:
                 action, _ = self._check_group_protection(user_id, client_manager, entity_obj, entity)
 
-            # ── الإرسال الذكي المتقدم للمجموعات المحمية (وضع salam) ──
-            if action == 'salam':
+            # ── الإرسال الذكي للمجموعات التي بها بوتات حماية وتمنع الإعلانات كلياً (وضع salam) ──
+            if action == 'salam' or needs_smart:
                 group_id = getattr(entity_obj, 'id', None) or hash(str(entity))
                 key = f"{user_id}_{group_id}"
                 if key in self._smart_running:
@@ -3907,25 +3928,25 @@ class TelegramManager:
                 self._smart_running.add(key)
                 _OSThread(
                     target=self._run_smart_protected_send,
-                    args=(user_id, client_manager, entity_obj, entity, message, key),
+                    args=(user_id, client_manager, entity_obj, entity, final_message, key),
                     daemon=True,
                     name=f"SmartSend-{key}"
                 ).start()
                 return {"success": True, "smart": True,
-                        "message": f"🧠 بدأ الإرسال الذكي المتقدم لـ {entity}"}
+                        "message": f"🧠 بدأ الإرسال الذكي لـ {entity} (أُرسلت 'السلام عليكم' وجارٍ استيفاء الشروط للتعديل تلقائياً)"}
 
             # نمرر action مباشرة لتجنب استدعاء _check_group_protection مرة ثانية
-            final_message = self._maybe_sanitize(
-                user_id, client_manager, entity_obj, entity, message,
+            cleaned_message = self._maybe_sanitize(
+                user_id, client_manager, entity_obj, entity, final_message,
                 forced_action=action
             )
-            if final_message is None:
+            if cleaned_message is None:
                 return {"success": False, "skipped": True,
                         "message": "تم تخطي الإرسال: المجموعة محمية أو الرسالة فارغة بعد التنقية"}
 
             try:
                 result = client_manager.run_coroutine(
-                    client_manager.client.send_message(entity_obj, final_message)
+                    client_manager.client.send_message(entity_obj, cleaned_message)
                 )
             except Exception as _send_err:
                 _err_str = str(_send_err).lower()
@@ -3939,7 +3960,7 @@ class TelegramManager:
                         )
                         time.sleep(1)
                         result = client_manager.run_coroutine(
-                            client_manager.client.send_message(entity_obj, final_message)
+                            client_manager.client.send_message(entity_obj, cleaned_message)
                         )
                     except Exception as _join_err:
                         raise Exception(f"لا يمكن الإرسال في {entity}: تتطلب الانضمام للمجموعة ({_join_err})")
@@ -3952,68 +3973,206 @@ class TelegramManager:
             logger.error(f"Send message error: {str(e)}")
             raise Exception(str(e))
 
+    def get_or_create_group_safety_report(self, user_id, client_manager, entity_obj, entity_label, sample_message=None):
+        """
+        التحقق من نتائج فحص المجموعة في قاعدة البيانات الخارجية (Firestore):
+        1. إذا كانت المجموعة مفحوصة ومسجلة مسبقاً في قاعدة البيانات:
+           - يتم الرجوع إليها واستخدام نتائجها فورياً والالتزام بها دون إعادة الفحص.
+        2. إذا كانت مجموعة جديدة غير متوفرة في قاعدة البيانات:
+           - تقوم الوظيفة بتحليلها وفحصها بالذكاء الاصطناعي لكشف بوتات الحماية والقيود وأخطاء الآخرين.
+           - حفظ تقريرها ونتائجها بشكل ثابت ودائم في قاعدة البيانات الخارجية.
+        """
+        import firestore_sync
+        chat_id = getattr(entity_obj, 'id', None)
+        username = getattr(entity_obj, 'username', None)
+        title = getattr(entity_obj, 'title', None) or getattr(entity_obj, 'name', None) or str(entity_label)
+
+        # 1. الاستعلام من قاعدة البيانات الخارجية Firestore
+        saved_report = firestore_sync.get_group_safety_report_from_db(
+            group_key=str(entity_label),
+            alt_key=str(chat_id) if chat_id else (username or None)
+        )
+
+        if saved_report and not saved_report.get('error'):
+            logger.info(f"📋 Found existing group report in external DB for {entity_label}")
+            socketio.emit('log_update', {
+                "message": f"📋 [قاعدة البيانات] تم استرجاع نتائج فحص {entity_label} المحفوظة مسبقاً (مستوى الأمان: {saved_report.get('risk_assessment', 'عادي')})"
+            }, to=user_id)
+            return saved_report, False
+
+        # 2. مجموعة جديدة غير متوفرة في قاعدة البيانات -> فحص وتحليل كامل بالذكاء
+        logger.info(f"🆕 Group {entity_label} is new. Scanning and persisting to external DB...")
+        socketio.emit('log_update', {
+            "message": f"🆕 [مجموعة جديدة] {entity_label} غير مسجلة في قاعدة البيانات — جارٍ الفحص والتحليل بالذكاء وحفظ النتائج في قاعدة البيانات..."
+        }, to=user_id)
+
+        # أ) فحص بوتات الحماية
+        is_prot = False
+        prot_reason = None
+        bots = []
+        try:
+            is_prot, prot_reason, bots = client_manager.run_coroutine(
+                client_manager.get_group_protection_details(entity_obj)
+            )
+        except Exception as _pe:
+            logger.debug(f"Protection details error for {entity_label}: {_pe}")
+
+        # ب) فحص الذكاء الاصطناعي لآخر 50 محادثة
+        ai_res = self.scan_and_analyze_group_with_ai(
+            user_id, client_manager, entity_obj, entity_label,
+            sample_message=sample_message, send_report_to_me=True
+        )
+
+        # ج) تحديد إذا كانت المجموعة تمنع الإعلانات بشكل كلي
+        prohibited = set(ai_res.get('prohibited_actions', []))
+        causes_str = " ".join(ai_res.get('causes', []) + ai_res.get('mistakes_by_others', [])).lower()
+
+        blocks_ads = False
+        requires_smart_send = False
+
+        if is_prot or ai_res.get('protected') or len(bots) > 0:
+            if ('no_links' in prohibited or 'no_phones' in prohibited or 'skip_group' in prohibited 
+                or any(kw in causes_str for kw in ['إعلان', 'نشر', 'رابط', 'روابط', 'ترويج', 'تسويق', 'spam', 'ads', 'link'])):
+                blocks_ads = True
+                requires_smart_send = True
+
+        if ai_res.get('risk_assessment') in ('high', 'critical') and (is_prot or len(bots) > 0):
+            blocks_ads = True
+            requires_smart_send = True
+
+        new_report = {
+            "group_key": str(entity_label),
+            "group_id": str(chat_id) if chat_id else "",
+            "group_title": str(title),
+            "username": str(username) if username else "",
+            "is_protected": bool(is_prot or ai_res.get('protected')),
+            "blocks_ads": bool(blocks_ads),
+            "requires_smart_send": bool(requires_smart_send),
+            "protection_bots": bots or [],
+            "risk_assessment": ai_res.get('risk_assessment', 'low'),
+            "punished_count": ai_res.get('punished_count', 0),
+            "causes": ai_res.get('causes', []),
+            "mistakes_by_others": ai_res.get('mistakes_by_others', []),
+            "prohibited_actions": list(prohibited),
+            "keywords_to_avoid": ai_res.get('keywords_to_avoid', []),
+            "actions_taken": ai_res.get('actions_taken', []),
+            "summary_ar": ai_res.get('summary_ar', ''),
+            "recommended_action": 'salam' if requires_smart_send else ('sanitize' if is_prot else 'send'),
+            "can_send_media": bool(ai_res.get('can_send_media', True) and 'no_media' not in prohibited),
+            "analyzed_at": time.strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+        # د) حفظ دائم وثابت في قاعدة البيانات الخارجية
+        try:
+            firestore_sync.save_group_safety_report_to_db(new_report)
+            socketio.emit('log_update', {
+                "message": f"💾 [حفظ دائم] تم حفظ نتائج فحص {entity_label} في قاعدة البيانات الخارجية (Firestore) بنجاح"
+            }, to=user_id)
+        except Exception as _se:
+            logger.error(f"Failed to save group safety report to DB for {entity_label}: {_se}")
+
+        return new_report, True
+
+    def adapt_message_to_group_report(self, message, report, has_media=False):
+        """
+        تكييف الرسالة وتغيير أو حذف الكلمات والعبارات التي تستدعي الحظر
+        بناءً على نتائج تقرير المجموعة المخزن في قاعدة البيانات.
+        """
+        if not message:
+            return message, has_media, []
+
+        import re as _re
+        adapted = str(message)
+        actions = []
+        prohibited = set(report.get('prohibited_actions', []))
+        keywords_avoid = report.get('keywords_to_avoid', [])
+        causes = report.get('causes', [])
+        mistakes = report.get('mistakes_by_others', [])
+        all_reasons = " ".join(causes + mistakes).lower()
+
+        # 1. تغيير أو حذف الكلمات والعبارات التي تستدعي الحظر
+        for kw in keywords_avoid:
+            if kw and kw in adapted:
+                safe_kw = f"{kw[0]}..{kw[-1]}" if len(kw) > 2 else f"[{kw}]"
+                adapted = adapted.replace(kw, safe_kw)
+                actions.append(f"🔤 تمويه الكلمة الحساسة '{kw}'")
+
+        if "إعلان" in all_reasons or "ترويج" in all_reasons or "spam" in all_reasons or "no_ads" in prohibited:
+            replacements = [
+                ("إعلان", "تنويه"),
+                ("اعلان", "تنويه"),
+                ("للتواصل", "للاستفسار"),
+                ("خصم", "ميزة"),
+                ("سارع", "متاح"),
+                ("ربح", "فائدة"),
+                ("استثمار", "مشروع"),
+                ("تداول", "أعمال")
+            ]
+            for bad_w, good_w in replacements:
+                if bad_w in adapted:
+                    adapted = adapted.replace(bad_w, good_w)
+                    actions.append(f"استبدال عبارة '{bad_w}' بـ '{good_w}'")
+
+        # 2. تنقية أو تعديل الروابط
+        if 'no_links' in prohibited or 'رابط' in all_reasons or 'link' in all_reasons:
+            wa_match = _re.search(r'(?:https?://)?(?:wa\.me|api\.whatsapp\.com/send\?phone=)/?(\+?\d+)', adapted)
+            if wa_match:
+                phone_num = wa_match.group(1)
+                adapted = _re.sub(r'https?://(?:wa\.me|api\.whatsapp\.com/send\?phone=)[^\s]+', f'واتساب: {phone_num}', adapted)
+                actions.append("تحويل رابط واتساب إلى نص مباشر تجنباً للحظر")
+
+            if _re.search(r'https?://[^\s]+', adapted):
+                adapted = _re.sub(r'https?://[^\s]+', '', adapted).strip()
+                actions.append("إزالة الروابط الخارجية لتفادي البوتات")
+
+            if _re.search(r't\.me/[^\s]+', adapted):
+                adapted = _re.sub(r't\.me/[^\s]+', '', adapted).strip()
+                actions.append("إزالة روابط تليجرام")
+
+        # 3. تمويه أرقام الهواتف إذا سببت حظراً في نتائج المجموعة
+        if 'no_phones' in prohibited or 'رقم' in all_reasons or 'phone' in all_reasons:
+            def _mask_num(m):
+                n = m.group(0)
+                return " ".join(list(n.replace(" ", "")))
+            adapted = _re.sub(r'\+?\d{8,15}', _mask_num, adapted)
+            actions.append("تمويه أرقام الهواتف")
+
+        # 4. صلاحية الوسائط
+        can_media = has_media and report.get('can_send_media', True)
+        if has_media and not can_media:
+            actions.append("إلغاء الصور/الوسائط لأن المجموعة تحظرها")
+
+        return adapted, can_media, actions
+
     def _check_group_protection(self, user_id, client_manager, entity_obj, entity_label):
         """
-        التحقق من حماية المجموعة وإرجاع الإجراء المناسب.
-        الوضع الافتراضي الآن هو 'salam' (الإرسال الذكي المتقدم).
+        التحقق من حماية المجموعة وإرجاع الإجراء المناسب بناءً على فحص قاعدة البيانات.
         """
         try:
             settings = load_settings(user_id)
-            # تغيير الافتراضي من 'smart' إلى 'salam'
             mode = (settings.get('sanitize_mode') or 'salam').lower()
 
-            # إذا كان الوضع معطلاً، أرسل بدون فحص
             if mode == 'off':
                 return 'send', None
 
-            # التحقق من وجود بوتات حماية
-            try:
-                is_prot, reason = client_manager.run_coroutine(
-                    client_manager.is_group_protected(entity_obj)
-                )
-            except Exception as e:
-                logger.warning(f"Group protection check error: {e}")
-                is_prot, reason = False, None
+            report, _ = self.get_or_create_group_safety_report(user_id, client_manager, entity_obj, entity_label)
 
-            # إذا كانت المجموعة محمية
+            is_prot = bool(report.get('is_protected', False))
+            blocks_ads = bool(report.get('blocks_ads', False))
+            requires_smart = bool(report.get('requires_smart_send', False))
+
+            if requires_smart or (is_prot and blocks_ads):
+                return 'salam', report.get('summary_ar') or 'بوتات حماية تمنع الإعلانات'
+
             if is_prot:
-                # وضع التخطي
                 if mode == 'skip':
-                    msg = f"⏭️ تم تخطي المجموعة المحمية: {entity_label}"
-                    if reason:
-                        msg += f" ({reason})"
-                    socketio.emit('log_update', {"message": msg}, to=user_id)
-                    self._send_protection_warning(user_id, entity_label, reason)
-                    return 'skip', reason
-
-                # وضع الإرسال الذكي المتقدم (الافتراضي الآن)
+                    return 'skip', report.get('summary_ar')
                 if mode == 'salam':
-                    socketio.emit('log_update', {
-                        "message": f"🤖 مجموعة محمية: {entity_label} — الإرسال الذكي المتقدم (دوري)"
-                    }, to=user_id)
-                    return 'salam', reason
+                    return 'salam', report.get('summary_ar')
+                if mode in ('smart', 'always'):
+                    return 'sanitize', report.get('summary_ar')
 
-                # وضع التنقية الذكية
-                if mode == 'smart':
-                    socketio.emit('log_update', {
-                        "message": f"🧠 مجموعة محمية: {entity_label} ({reason or 'بوت حماية'}) — سيتم تنقية الرسالة"
-                    }, to=user_id)
-                    return 'sanitize', reason
-
-                # وضع التنقية الدائمة
-                if mode == 'always':
-                    socketio.emit('log_update', {
-                        "message": f"🛡️ مجموعة محمية: {entity_label} — تنقية دائمة مفعّلة"
-                    }, to=user_id)
-                    return 'sanitize', reason
-
-            # إذا كانت المجموعة غير محمية
-            if mode == 'always':
-                return 'sanitize', None
-            if mode == 'salam':
-                return 'send', None  # مجموعات غير محمية: أرسل عادي
             return 'send', None
-
         except Exception as e:
             logger.warning(f"_check_group_protection error: {e}")
             return 'send', None
@@ -4217,12 +4376,13 @@ class TelegramManager:
                     time.sleep(10)
                     continue
 
-                # ── 2. انتظار المدة المحددة مع مراقبة الرسائل ──
+                # ── 2. انتظار المدة المحددة مع مراقبة الرسائل وبوتات الحماية ──
                 start_time = time.time()
                 last_id = msg.id
                 messages_after = 0
+                max_cycle_wait = min(cycle_duration, 180)
 
-                while (time.time() - start_time) < cycle_duration:
+                while (time.time() - start_time) < max_cycle_wait:
                     if not self._smart_running or key not in self._smart_running:
                         break
                     time.sleep(2)
@@ -4238,26 +4398,77 @@ class TelegramManager:
                             socketio.emit('log_update', {
                                 "message": f"🧠 [Smart] {entity_label}: استقبل {messages_after}/{required_messages} رسالة"
                             }, to=user_id)
+                            # استيفاء الشرط مبكراً فور وصول الرسائل المطلوبة
+                            if messages_after >= required_messages:
+                                logger.info(f"[Smart] استوفت الشروط مبكراً ({messages_after}/{required_messages}) لـ {entity_label}")
+                                break
                     except Exception as poll_err:
                         logger.error(f"[Smart] خطأ في جلب الرسائل من {entity_label}: {poll_err}")
                         break
 
-                # ── 3. اتخاذ القرار بناءً على عدد الرسائل ──
-                if messages_after >= required_messages:
-                    # ✅ تعديل الرسالة إلى النص النهائي
+                    # فحص هل تم حذف رسالة السلام من قبل بوت حماية
+                    try:
+                        chk_msg = client_manager.run_coroutine(
+                            client_manager.client.get_messages(entity_obj, ids=msg.id)
+                        )
+                        if not chk_msg or getattr(chk_msg, 'action', None) or not getattr(chk_msg, 'message', None):
+                            logger.warning(f"[Smart] تم حذف رسالة السلام في {entity_label} بواسطة بوت حماية")
+                            socketio.emit('log_update', {
+                                "message": f"⚠️ [Smart] تم حذف رسالة 'السلام عليكم' في {entity_label} بواسطة بوت حماية"
+                            }, to=user_id)
+                            break
+                    except Exception:
+                        pass
+
+                    # في المجموعات الهادئة، إذا مر 35 ثانية مع رسالة واحدة أخرى على الأقل وبقيت رسالة السلام سالمة
+                    if (time.time() - start_time) >= 35 and messages_after >= 1:
+                        logger.info(f"[Smart] استوفت الشروط الزمنية الآمنة لـ {entity_label}")
+                        break
+
+                # ── 3. اتخاذ القرار وتعديل الرسالة إلى النص الأصلي ──
+                # التحقق هل الرسالة لا تزال موجودة
+                is_alive = True
+                try:
+                    chk2 = client_manager.run_coroutine(
+                        client_manager.client.get_messages(entity_obj, ids=msg.id)
+                    )
+                    if not chk2 or getattr(chk2, 'action', None) or not getattr(chk2, 'message', None):
+                        is_alive = False
+                except Exception:
+                    pass
+
+                if not is_alive:
+                    fail_msg = f"❌ [Smart] تعذر التعديل في {entity_label}: بوت حماية قام بحذف الرسالة فورياً"
+                    socketio.emit('log_update', {"message": fail_msg}, to=user_id)
+                    socketio.emit('send_progress', {
+                        "group": entity_label,
+                        "status": "error",
+                        "error_type": "حُذفت الرسالة بواسطة بوت حماية",
+                        "message": fail_msg
+                    }, to=user_id)
+                    break
+
+                if messages_after >= required_messages or (time.time() - start_time >= 35 and is_alive):
+                    # ✅ تعديل الرسالة إلى النص النهائي (الأصلي)
                     try:
                         client_manager.run_coroutine(
                             client_manager.client.edit_message(entity_obj, msg.id, final_message)
                         )
-                        logger.info(f"[Smart] تم تعديل الرسالة في {entity_label} (عدد الرسائل: {messages_after})")
+                        logger.info(f"[Smart] تم تعديل الرسالة في {entity_label} بنجاح إلى النص الأصلي")
+                        success_edit_msg = f"✅ [Smart] تم تعديل الرسالة في {entity_label} بنجاح إلى النص الأصلي بعد استيفاء الشروط"
                         socketio.emit('log_update', {
-                            "message": f"✅ [Smart] تم تعديل الرسالة في {entity_label} بعد {messages_after} رسائل"
+                            "message": success_edit_msg
+                        }, to=user_id)
+                        socketio.emit('send_progress', {
+                            "group": entity_label,
+                            "status": "success",
+                            "message": success_edit_msg
                         }, to=user_id)
                         socketio.emit('smart_send_done', {
                             "success": True,
                             "entity": entity_label,
                             "waited": messages_after,
-                            "message": f"✅ تم تعديل الرسالة في {entity_label} بعد {messages_after} رسائل"
+                            "message": success_edit_msg
                         }, to=user_id)
                         # ── إيقاف الدورة بعد نجاح الإرسال — منع إرسال "السلام عليكم" مجدداً
                         break
@@ -4266,6 +4477,7 @@ class TelegramManager:
                         socketio.emit('log_update', {
                             "message": f"❌ [Smart] فشل تعديل الرسالة في {entity_label}: {str(edit_err)[:80]}"
                         }, to=user_id)
+                        break
                 else:
                     # ❌ لم نصل إلى العدد المطلوب — احذف رسالة السلام
                     logger.info(f"[Smart] لم يتم تعديل الرسالة في {entity_label} (عدد الرسائل: {messages_after} < {required_messages})")
@@ -6560,6 +6772,31 @@ def api_send_now():
                     curr_message = message
                     curr_images = image_files
 
+                    # 1. جلب عميل المستخدم وحل المجموعة
+                    with USERS_LOCK:
+                        cm = USERS.get(user_id, {}).get('client_manager')
+                    if not cm or not cm.client:
+                        raise Exception("العميل غير متصل - يرجى تسجيل الدخول للحساب")
+
+                    entity_obj = telegram_manager._resolve_entity(cm, group)
+
+                    # 2. التحقق من قاعدة البيانات الخارجية (Firestore)
+                    # إذا كانت المجموعة مسجلة مسبقاً، يتم استرجاع نتائجها والالتزام بها
+                    # وإذا كانت جديدة، يتم فحصها بالذكاء الاصطناعي وحفظ نتائجها في قاعدة البيانات
+                    report, is_new = telegram_manager.get_or_create_group_safety_report(
+                        user_id, cm, entity_obj, group, sample_message=message
+                    )
+
+                    # 3. تكييف الرسالة والكلمات بناءً على النتائج (تغيير أو حذف الكلمات/العبارات التي تستدعي الحظر)
+                    curr_message, can_media, safety_actions = telegram_manager.adapt_message_to_group_report(
+                        message, report, has_media=bool(image_files)
+                    )
+                    curr_images = image_files if can_media else []
+                    if safety_actions:
+                        socketio.emit('log_update', {
+                            "message": f"🛡️ [{i}/{len(groups_list)}] تلافي مسببات الحظر في {group}: {', '.join(safety_actions[:2])}"
+                        }, to=user_id)
+
                     # إذا حدد المستخدم إجراء التخطي المسبق
                     if pre_scan_action == 'skip':
                         skip_msg = f"⏭️ [{i}/{len(groups_list)}] تم تخطي {group} (بناءً على اختيارك)"
@@ -6573,9 +6810,25 @@ def api_send_now():
                         }, to=user_id)
                         continue
 
-                    action_to_use = 'salam' if pre_scan_action == 'salam' else 'send'
+                    # 4. فحص هل المجموعة بها بوتات حماية تمنع الإعلانات كلياً -> إرسال ذكي
+                    needs_smart = bool(
+                        report.get('requires_smart_send') or 
+                        (report.get('is_protected') and report.get('blocks_ads'))
+                    )
 
-                    if curr_images and curr_message:
+                    if needs_smart or pre_scan_action == 'salam':
+                        action_to_use = 'salam'
+                    else:
+                        action_to_use = 'send'
+
+                    if action_to_use == 'salam':
+                        socketio.emit('log_update', {
+                            "message": f"🤖 [{i}/{len(groups_list)}] المجموعة {group} بها بوتات حماية تمنع الإعلانات — جاري الإرسال بخاصية الإرسال الذكي (السلام عليكم ثم التعديل)..."
+                        }, to=user_id)
+                        result = telegram_manager.send_message_async(
+                            user_id, group, curr_message, forced_action='salam'
+                        )
+                    elif curr_images and curr_message:
                         result = telegram_manager.send_message_with_media_async(
                             user_id, group, curr_message, curr_images
                         )
@@ -6585,8 +6838,7 @@ def api_send_now():
                         )
                     else:
                         result = telegram_manager.send_message_async(
-                            user_id, group, curr_message,
-                            forced_action=action_to_use
+                            user_id, group, curr_message, forced_action='send'
                         )
 
                     if isinstance(result, dict) and result.get('skipped'):
@@ -6599,6 +6851,21 @@ def api_send_now():
                             "status": "skipped",
                             "message": skip_msg
                         }, to=user_id)
+                    elif isinstance(result, dict) and result.get('smart'):
+                        smart_msg = f"🧠 [{i}/{len(groups_list)}] بدأ الإرسال الذكي لـ {group} (أُرسلت 'السلام عليكم' وجارٍ التحقق والتعديل للنص الأصلي)"
+                        socketio.emit('log_update', {"message": smart_msg}, to=user_id)
+                        socketio.emit('send_progress', {
+                            "index": i,
+                            "total": len(groups_list),
+                            "group": group,
+                            "status": "success",
+                            "message": smart_msg
+                        }, to=user_id)
+                        successful += 1
+                        with USERS_LOCK:
+                            if user_id in USERS:
+                                USERS[user_id]['stats']['sent'] += 1
+                                socketio.emit('stats_update', USERS[user_id]['stats'], to=user_id)
                     else:
                         success_msg = f"✅ [{i}/{len(groups_list)}] نجح الإرسال إلى: {group}"
                         socketio.emit('log_update', {"message": success_msg}, to=user_id)
