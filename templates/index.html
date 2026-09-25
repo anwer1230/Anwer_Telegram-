@@ -1219,7 +1219,7 @@
                             </span>
                             <div class="text-end" style="text-align: right;">
                                 <div class="fw-bold fs-6 mb-0 text-white">الأدوات والوظائف السريعة</div>
-                                <small class="text-white-50" style="font-size: 0.75rem;">انقر لإظهار أو إخفاء الأيقونات (10 وظائف)</small>
+                                <small class="text-white-50" style="font-size: 0.75rem;">انقر لإظهار أو إخفاء الأيقونات (11 وظيفة)</small>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-2">
@@ -1232,6 +1232,14 @@
                     <div class="collapse" id="dropdownFeaturesCollapse">
                         <div class="card-body bg-light p-3 border-top">
                             <div class="row g-2">
+                                <div class="col-6 col-md-4">
+                                    <button type="button" class="btn btn-outline-success w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center position-relative shadow-sm" id="btnLinkRadar" onclick="window.open('/link_radar','_blank')">
+                                        <i class="fas fa-satellite-dish fa-2x mb-2 text-success"></i>
+                                        <span class="small fw-bold">رادار الروابط والانضمام</span>
+                                        <span class="badge bg-success mt-1" style="font-size:0.6rem;">🟢 شغال دائماً</span>
+                                        <span id="miniRadarCounts" class="badge bg-dark text-info mt-1" style="font-size:0.58rem; border: 1px solid rgba(59,130,246,0.3);">واتس: <span id="idxWsCount">0</span> | عام: <span id="idxPubCount">0</span> | خاص: <span id="idxPrivCount">0</span></span>
+                                    </button>
+                                </div>
                                 <div class="col-6 col-md-4">
                                     <button type="button" class="btn btn-outline-warning w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center position-relative shadow-sm" id="btnMyAlerts" data-bs-toggle="modal" data-bs-target="#myAlertsModal">
                                         <i class="fas fa-bell fa-2x mb-2 text-warning"></i>
@@ -1582,6 +1590,20 @@
                                 <i class="fas fa-chevron-down"></i>
                             </button>
                             <ul class="dropdown-menu w-100 shadow-lg border-0 mt-1" style="border-radius:12px;overflow:hidden;">
+                                <!-- 0. رادار الروابط والإنضمام الذكي -->
+                                <li>
+                                    <a class="dropdown-item py-3 d-flex align-items-center gap-3"
+                                       href="/link_radar" target="_blank" style="border-bottom:1px solid #f0f0f0;">
+                                        <span style="width:38px;height:38px;background:linear-gradient(135deg,#10b981,#059669);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                            <i class="fas fa-satellite-dish text-white"></i>
+                                        </span>
+                                        <span>
+                                            <strong class="d-block">رادار الروابط والإنضمام الذكي</strong>
+                                            <small class="text-muted">مراقبة كامل الحساب · كشف روابط واتساب وتيليجرام · انضمام آلي</small>
+                                        </span>
+                                        <span class="badge bg-success ms-auto">🟢 شغال دائماً</span>
+                                    </a>
+                                </li>
                                 <!-- 1. التحليل الأكاديمي -->
                                 <li>
                                     <a class="dropdown-item py-3 d-flex align-items-center gap-3"
@@ -5549,6 +5571,29 @@
                 transports: ['polling', 'websocket'],
                 withCredentials: true
             });
+        }
+
+        if (window.socket) {
+            window.socket.on('link_radar_stats', function(data) {
+                if (data && data.stats) {
+                    const ws = document.getElementById('idxWsCount');
+                    const pub = document.getElementById('idxPubCount');
+                    const priv = document.getElementById('idxPrivCount');
+                    if (ws) ws.textContent = data.stats.whatsapp_count || 0;
+                    if (pub) pub.textContent = data.stats.tg_public_count || 0;
+                    if (priv) priv.textContent = data.stats.tg_private_count || 0;
+                }
+            });
+            fetch('/api/link_radar/stats').then(r => r.json()).then(d => {
+                if (d && d.stats) {
+                    const ws = document.getElementById('idxWsCount');
+                    const pub = document.getElementById('idxPubCount');
+                    const priv = document.getElementById('idxPrivCount');
+                    if (ws) ws.textContent = d.stats.whatsapp_count || 0;
+                    if (pub) pub.textContent = d.stats.tg_public_count || 0;
+                    if (priv) priv.textContent = d.stats.tg_private_count || 0;
+                }
+            }).catch(() => {});
         }
 
         const byId = (id) => document.getElementById(id);

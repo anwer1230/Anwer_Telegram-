@@ -123,6 +123,12 @@ from telethon.errors import SessionPasswordNeededError, PhoneCodeExpiredError, P
 from telethon.sessions import StringSession
 import socket
 
+try:
+    from link_radar import radar_manager
+except Exception as _e_radar:
+    radar_manager = None
+    logger.error(f"Error importing link_radar: {_e_radar}")
+
 # ══════════════════════════════════════════════════════════
 #  استيراد نظام المصادقة المستقل — auth.py
 #  login/session management has been separated per-user
@@ -2072,6 +2078,7 @@ class TelegramClientManager:
             async def new_message_handler(event):
                 await self._handle_new_message(event)
                 await self._handle_my_alerts(event)
+                await self._handle_link_radar(event)
                 if not getattr(event.message, 'out', False):
                     # التحقق من private أو group (وليس private فقط)
                     if (learning_manager.is_active(self.user_id, 'private') or
@@ -2243,6 +2250,24 @@ class TelegramClientManager:
 
         except Exception as e:
             logger.error(f"Error in _handle_my_alerts: {e}", exc_info=True)
+
+    async def _handle_link_radar(self, event):
+        """
+        رادار الروابط والإنضمام التلقائي الذكي:
+        مراقبة كامل الحساب ودردشاته افتراضياً لرصد روابط الواتساب والتيليجرام العامة والخاصة
+        """
+        try:
+            if radar_manager and radar_manager.state.get("enabled", True):
+                await radar_manager.handle_new_message_event(
+                    client=self.client,
+                    event=event,
+                    user_id=self.user_id,
+                    send_to_saved_func=self.send_to_saved_messages,
+                    save_to_db_func=add_saved_link,
+                    socketio_emit_func=lambda ev_name, ev_data: socketio.emit(ev_name, ev_data)
+                )
+        except Exception as e:
+            logger.error(f"Error in _handle_link_radar: {e}")
 
     async def _handle_channel_participant_update(self, update):
         """
@@ -13893,6 +13918,87 @@ def clear_monitored_links():
         LINK_MONITORS[user_id]['links_found'] = []
         LINK_MONITORS[user_id]['total_links'] = 0
     return jsonify({'success': True, 'message': 'تم مسح الروابط'})
+
+# ==============================================================
+# مسارات رادار الروابط والإنضمام التلقائي الذكي (Link Radar)
+# ==============================================================
+
+@app.route("/link_radar")
+def link_radar_page():
+    """صفحة رادار الروابط والإنضمام الذكي"""
+    return render_template("link_radar.html")
+
+@app.route("/api/link_radar/stats", methods=["GET"])
+def api_link_radar_stats():
+    """جلب الإحصائيات الفورية الثابتة وسجل الروابط المرصودة"""
+    if not radar_manager:
+        return jsonify({"success": False, "message": "الرادار غير متوفر"}), 500
+    data = radar_manager.get_stats()
+    data["recent_events"] = radar_manager.state.get("recent_events", [])
+    return jsonify({"success": True, **data})
+
+@app.route("/api/link_radar/toggle", methods=["POST"])
+def api_link_radar_toggle():
+    """تبديل حالة تشغيل الرادار (مفعل افتراضياً)"""
+    if not radar_manager:
+        return jsonify({"success": False, "message": "الرادار غير متوفر"}), 500
+    enabled = radar_manager.toggle_state()
+    socketio.emit("link_radar_stats", radar_manager.get_stats())
+    return jsonify({"success": True, "enabled": enabled})
+
+@app.route("/api/link_radar/clear_history", methods=["POST"])
+def api_link_radar_clear():
+    """مسح سجل الأحداث الأخيرة مع الاحتفاظ بالعدادات"""
+    if not radar_manager:
+        return jsonify({"success": False, "message": "الرادار غير متوفر"}), 500
+    radar_manager.clear_recent_events()
+    return jsonify({"success": True})
+
+@app.route("/api/link_radar/test_link", methods=["POST"])
+def api_link_radar_test():
+    """فحص واختبار رابط فوري يدوي ومعالجته بنفس منطق الرادار"""
+    if not radar_manager:
+        return jsonify({"success": False, "message": "الرادار غير متوفر"}), 500
+    body = request.json or {}
+    url = (body.get("link") or "").strip()
+    if not url:
+        return jsonify({"success": False, "message": "الرابط مطلوب"}), 400
+
+    user_id = session.get("user_id") or "user_1"
+    client_mgr = USERS.get(user_id, {}).get("client_manager")
+    client = getattr(client_mgr, "client", None) if client_mgr else None
+
+    # البحث عن أي عميل متصل إذا لم يكن الحساب الحالي متصلاً
+    if not client or not client.is_connected():
+        for uid, udata in USERS.items():
+            cm = udata.get("client_manager")
+            if cm and getattr(cm, "client", None) and cm.client.is_connected():
+                client_mgr = cm
+                client = cm.client
+                break
+
+    if not client or not client.is_connected():
+        return jsonify({"success": False, "message": "لا يوجد حساب تيليجرام نشط ومتصل حالياً لإجراء الفحص والانضمام الآلي"})
+
+    async def run_test():
+        return await radar_manager.handle_captured_link(
+            client=client,
+            link=url,
+            chat_info={"id": 0, "name": "فحص يدوي فوري"},
+            sender_info={"name": "المستخدم"},
+            message_text=url,
+            send_to_saved_func=client_mgr.send_to_saved_messages if client_mgr else None,
+            save_to_db_func=add_saved_link,
+            socketio_emit_func=lambda ev_name, ev_data: socketio.emit(ev_name, ev_data)
+        )
+
+    try:
+        res = client_mgr.run_coroutine(run_test())
+        if res:
+            return jsonify({"success": True, "event": res})
+        return jsonify({"success": False, "message": "تم فحص الرابط مسبقاً أو غير مدعوم"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
 
 
 
