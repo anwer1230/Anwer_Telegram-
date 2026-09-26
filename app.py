@@ -1129,8 +1129,24 @@ GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 os.environ.setdefault('GROQ_API_KEY', GROQ_API_KEY)
 
 GITHUB_TOKEN  = os.environ.get('GITHUB_TOKEN', '')
-GITHUB_REPO   = os.environ.get('GITHUB_REPO',   'anwer1230/-Anwer_program')
+GITHUB_REPO   = os.environ.get('GITHUB_REPO',   'anwer1230/Anwer_Telegram-')
 GITHUB_BRANCH = os.environ.get('GITHUB_BRANCH', 'main')
+
+# ── رابط النشر التلقائي الثابت Render Deploy Hook ─────────────────────
+RENDER_DEPLOY_HOOK_URL = "https://api.render.com/deploy/srv-daps4mm7bikc738kaflg?key=BSGAfvSu9d4"
+RENDER_DEPLOY_HOOK = os.environ.get('RENDER_DEPLOY_HOOK', RENDER_DEPLOY_HOOK_URL)
+
+def trigger_render_deploy(hook_url=None):
+    """إرسال طلب إلى Render Deploy Hook لإعادة بناء ونشر التطبيق فورياً على منصة Render"""
+    target = hook_url or RENDER_DEPLOY_HOOK or RENDER_DEPLOY_HOOK_URL
+    try:
+        import requests as _requests
+        resp = _requests.post(target, timeout=15)
+        logger.info(f"🚀 Render Deploy Hook triggered: status={resp.status_code}")
+        return True, resp.status_code
+    except Exception as e:
+        logger.error(f"❌ فشل إطلاق Render Deploy Hook: {e}")
+        return False, str(e)
 
 # ─── ملف إعدادات التحديث ──────────────────────────────────────────────
 UPDATE_SETTINGS_FILE = os.path.join(os.path.dirname(__file__), 'data', 'update_settings.json')
@@ -1217,6 +1233,13 @@ def perform_update():
         settings['last_update'] = datetime.now().isoformat()
         save_update_settings(settings)
         logs.append(f"✅ تم التحديث إلى الإصدار: {new_commit[:7] if new_commit else 'غير معروف'}")
+        # إطلاق الـ Deploy Hook لإعادة البناء في Render تلقائياً
+        try:
+            dep_ok, dep_stat = trigger_render_deploy()
+            if dep_ok:
+                logs.append(f"🚀 تم إطلاق Render Deploy Hook تلقائياً بنجاح (كود {dep_stat})")
+        except Exception as _dep_e:
+            logs.append(f"⚠️ تعذر إطلاق Render Hook: {_dep_e}")
         return True, logs
     except Exception as e:
         logs.append(f"❌ خطأ في التحديث: {str(e)}")
@@ -18227,6 +18250,18 @@ def api_check_update():
         "latest": latest[:7] if latest else None,
         "message": message
     })
+
+@app.route("/api/render/deploy", methods=["POST", "GET"])
+def api_render_deploy():
+    """إطلاق النشر الفوري على Render عبر الـ Deploy Hook الثابت"""
+    success, detail = trigger_render_deploy()
+    return jsonify({
+        "success": success,
+        "detail": detail,
+        "hook": RENDER_DEPLOY_HOOK_URL,
+        "message": "تم إرسال أمر النشر التلقائي إلى Render بنجاح" if success else f"فشل إرسال أمر النشر: {detail}"
+    })
+
 
 @app.route("/api/perform_update", methods=["POST"])
 def api_perform_update():

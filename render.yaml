@@ -18,8 +18,10 @@ services:
       - key: GITHUB_TOKEN
         sync: false
       - key: GITHUB_REPO
-        sync: false
+        value: "anwer1230/Anwer_Telegram-"
       - key: GITHUB_BRANCH
         value: main
+      - key: RENDER_DEPLOY_HOOK
+        value: "https://api.render.com/deploy/srv-daps4mm7bikc738kaflg?key=BSGAfvSu9d4"
       - key: PORT
         value: "10000"
