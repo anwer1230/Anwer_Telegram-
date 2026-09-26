@@ -1,0 +1,58 @@
+{
+  "keys": [
+    {
+      "id": "key_1",
+      "name": "Generative Language API Key",
+      "hint": "...3emA",
+      "key": "",
+      "project_id": "gen-lang-client-0197022210",
+      "tier": "Free tier",
+      "active": true,
+      "priority": 1
+    },
+    {
+      "id": "key_2",
+      "name": "G Key",
+      "hint": "...kV6A",
+      "key": "",
+      "project_id": "gen-lang-client-0197022210",
+      "tier": "Free tier",
+      "active": true,
+      "priority": 2
+    },
+    {
+      "id": "key_3",
+      "name": "Gemini API Key",
+      "hint": "...Erkk",
+      "key": "",
+      "project_id": "gen-lang-client-0197022210",
+      "tier": "Free tier",
+      "active": true,
+      "priority": 3
+    },
+    {
+      "id": "key_4",
+      "name": "Gemini API Key",
+      "hint": "...zJ8E",
+      "key": "",
+      "project_id": "gen-lang-client-0197022210",
+      "tier": "Free tier",
+      "active": true,
+      "priority": 4
+    },
+    {
+      "id": "key_5",
+      "name": "Default Gemini API Key",
+      "hint": "...DYu0",
+      "key": "",
+      "project_id": "gen-lang-client-0197022210",
+      "tier": "Free tier",
+      "active": true,
+      "priority": 5
+    }
+  ],
+  "rotation_mode": "sequential_round_robin",
+  "auto_failover": true,
+  "rate_limit_cooldown_seconds": 60,
+  "default_model": "gemini-3.8-flash"
+}

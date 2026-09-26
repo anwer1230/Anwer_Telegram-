@@ -1219,7 +1219,7 @@
                             </span>
                             <div class="text-end" style="text-align: right;">
                                 <div class="fw-bold fs-6 mb-0 text-white">الأدوات والوظائف السريعة</div>
-                                <small class="text-white-50" style="font-size: 0.75rem;">انقر لإظهار أو إخفاء الأيقونات (11 وظيفة)</small>
+                                <small class="text-white-50" style="font-size: 0.75rem;">انقر لإظهار أو إخفاء الأيقونات (12 وظيفة)</small>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-2">
@@ -1232,6 +1232,14 @@
                     <div class="collapse" id="dropdownFeaturesCollapse">
                         <div class="card-body bg-light p-3 border-top">
                             <div class="row g-2">
+                                <div class="col-6 col-md-4">
+                                    <button type="button" class="btn btn-outline-primary w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center position-relative shadow-sm" id="btnAiDocAnalyzerCollapse" data-bs-toggle="modal" data-bs-target="#aiDocAnalyzerModal" onclick="document.getElementById('aiDocAnalyzerFrame').src='/ai_doc_analyzer'">
+                                        <i class="fas fa-brain fa-2x mb-2 text-primary"></i>
+                                        <span class="small fw-bold">محلل المستندات والصور (AI)</span>
+                                        <span class="badge bg-success mt-1" style="font-size:0.6rem;">⚡ 5 مفاتيح متتالية</span>
+                                        <span class="badge bg-dark text-info mt-1" style="font-size:0.58rem; border: 1px solid rgba(59,130,246,0.3);">رفع سريع · ملفات ضخمة</span>
+                                    </button>
+                                </div>
                                 <div class="col-6 col-md-4">
                                     <button type="button" class="btn btn-outline-success w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center position-relative shadow-sm" id="btnLinkRadar" data-bs-toggle="modal" data-bs-target="#linkRadarModal" onclick="openLinkRadarModal()">
                                         <i class="fas fa-satellite-dish fa-2x mb-2 text-success"></i>
@@ -1787,7 +1795,7 @@
                                 <li>
                                     <a class="dropdown-item py-3 d-flex align-items-center gap-3"
                                        href="#"
-                                       data-bs-toggle="modal" data-bs-target="#presentationModal">
+                                       data-bs-toggle="modal" data-bs-target="#presentationModal" style="border-bottom:1px solid #f0f0f0;">
                                         <span style="width:38px;height:38px;background:linear-gradient(135deg,#8e44ad,#6c3483);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                             <i class="fas fa-desktop text-white"></i>
                                         </span>
@@ -1795,6 +1803,20 @@
                                             <strong class="d-block">استخراج عرض باوربوينت من ملف أو نص</strong>
                                             <small class="text-muted">إنشاء عرض PowerPoint احترافي تلقائياً</small>
                                         </span>
+                                    </a>
+                                </li>
+                                <!-- 7. المستكشف والمحلل الذكي للمستندات والصور (AI Q&A) -->
+                                <li>
+                                    <a class="dropdown-item py-3 d-flex align-items-center gap-3"
+                                       href="#" data-bs-toggle="modal" data-bs-target="#aiDocAnalyzerModal" onclick="document.getElementById('aiDocAnalyzerFrame').src='/ai_doc_analyzer'">
+                                        <span style="width:38px;height:38px;background:linear-gradient(135deg,#06b6d4,#3b82f6);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                            <i class="fas fa-brain text-white"></i>
+                                        </span>
+                                        <span>
+                                            <strong class="d-block">المحلل والمستكشف الذكي للمستندات والصور (AI Q&A)</strong>
+                                            <small class="text-muted">رفع فائق السرعة لملفات ضخمة · قراءة وتحليل عميق · 5 مفاتيح ذكاء متتالية دون توقف</small>
+                                        </span>
+                                        <span class="badge bg-primary ms-auto">⚡ 5 مفاتيح AI</span>
                                     </a>
                                 </li>
                             </ul>
@@ -5057,6 +5079,36 @@
               style="width:100%;height:100%;border:none;display:block;"
               allow="downloads"
               title="منسّق المستندات"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== مودال المستكشف والمحلل الذكي للمستندات والصور (AI Document & Image Q&A) ===== -->
+    <div class="modal fade" id="aiDocAnalyzerModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content" style="display:flex;flex-direction:column;">
+          <div class="modal-header text-white py-2 flex-shrink-0" style="background:linear-gradient(135deg,#06b6d4,#3b82f6)">
+            <div class="d-flex align-items-center gap-2">
+              <span class="d-inline-flex align-items-center justify-content-center bg-white bg-opacity-20 rounded-circle" style="width: 38px; height: 38px;">
+                <i class="fas fa-brain fa-lg text-warning"></i>
+              </span>
+              <div>
+                <h5 class="modal-title mb-0 fw-bold">المستكشف والمحلل الذكي للمستندات والصور (AI Q&A)</h5>
+                <small class="text-white-50" style="font-size:0.75rem;">رفع فائق السرعة لملفات ضخمة · 5 مفاتيح ذكاء متتالية دون توقف · إجابة فورية ودقيقة</small>
+              </div>
+            </div>
+            <div class="ms-auto d-flex gap-2 align-items-center">
+              <a href="/ai_doc_analyzer" target="_blank" class="btn btn-sm btn-light opacity-75" title="فتح في تبويب مستقل">
+                <i class="fas fa-external-link-alt me-1"></i> فتح في نافذة مستقلة
+              </a>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+          </div>
+          <div class="modal-body p-0 flex-grow-1" style="overflow:hidden;min-height:0;">
+            <iframe id="aiDocAnalyzerFrame" src="/ai_doc_analyzer"
+              style="width:100%;height:100%;border:none;display:block;"
+              title="المستكشف والمحلل الذكي للملفات والمستندات"></iframe>
           </div>
         </div>
       </div>

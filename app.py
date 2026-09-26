@@ -413,6 +413,7 @@ class SafeSessionInterface(SecureCookieSessionInterface):
 
 app.session_interface = SafeSessionInterface()
 app.secret_key = os.environ.get("SESSION_SECRET", "abu_malk_stable_secret_session_key_2026")
+app.config['MAX_CONTENT_LENGTH'] = 150 * 1024 * 1024  # حد أقصى 150 ميغابايت للرفع فائق السرعة للملفات الكبيرة
 app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=False,
@@ -18651,6 +18652,14 @@ register_admin_routes(
     save_settings_func=save_settings,
     reset_user_func=_do_reset_user,
 )
+
+# ── تسجيل مسارات المستكشف والمحلل الذكي للملفات والمستندات (AI Doc Analyzer) ──
+try:
+    from ai_doc_analyzer import register_ai_doc_analyzer_routes
+    register_ai_doc_analyzer_routes(app)
+    logger.info("✅ تم تسجيل مسارات المحلل الذكي للمستندات والصور (AI Doc Analyzer) بنجاح")
+except Exception as _e_ai_doc:
+    logger.error(f"❌ خطأ في تسجيل مسارات المحلل الذكي للمستندات: {_e_ai_doc}")
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
