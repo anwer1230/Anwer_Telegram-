@@ -2821,6 +2821,25 @@ class TelegramClientManager:
 
             alert_queue.add_alert(self.user_id, alert_data)
 
+            # ── إرسال تنبيه بالبريد الإلكتروني إن كانت الخدمة مهيأة ──
+            try:
+                import email_notifier
+                _en = email_notifier.EmailNotifier()
+                if _en.is_configured() and getattr(_en, 'enabled', True):
+                    asyncio.create_task(
+                        asyncio.to_thread(
+                            _en.send_keyword_alert,
+                            keyword=keyword,
+                            matched_word=keyword,
+                            message_text=full_text,
+                            sender_title=sender_name,
+                            chat_title=group_identifier,
+                            chat_link=msg_link
+                        )
+                    )
+            except Exception as _em_err:
+                logger.debug(f"فشل إرسال تنبيه البريد الإلكتروني: {_em_err}")
+
         except Exception as e:
             logger.error(f"❌ Error triggering keyword alert: {str(e)}")
 
@@ -6520,6 +6539,117 @@ def api_user_alerts_test():
         "message": "✅ تم إرسال التنبيه التجريبي الشامل بنجاح!"
     })
 
+
+# ==========================================
+# 📧 نقاط نهاية خدمة البريد الإلكتروني (Email Service API)
+# ==========================================
+@app.route("/api/email/settings", methods=["GET", "POST"])
+def api_email_settings():
+    """قراءة أو حفظ إعدادات البريد الإلكتروني"""
+    import email_notifier
+    if request.method == "POST":
+        data = request.json or {}
+        old_settings = email_notifier.load_email_settings_from_file()
+        pwd = data.get('password')
+        if not pwd or pwd == '********':
+            pwd = old_settings.get('password', '')
+
+        settings_to_save = {
+            "host": str(data.get('host', '')).strip(),
+            "port": int(data.get('port', 587) or 587),
+            "username": str(data.get('username', '')).strip(),
+            "password": pwd,
+            "recipient": str(data.get('recipient', '')).strip(),
+            "sender_name": str(data.get('sender_name', 'نظام أنور تيليجرام الذكي')).strip(),
+            "use_tls": bool(data.get('use_tls', True)),
+            "use_ssl": bool(data.get('use_ssl', False)),
+            "enabled": bool(data.get('enabled', True))
+        }
+        ok = email_notifier.save_email_settings_to_file(settings_to_save)
+        is_cfg = email_notifier.EmailNotifier().is_configured()
+        return jsonify({
+            "success": ok,
+            "message": "✅ تم حفظ إعدادات البريد الإلكتروني بنجاح" if ok else "❌ فشل حفظ إعدادات البريد",
+            "is_configured": is_cfg
+        })
+    else:
+        notifier = email_notifier.EmailNotifier()
+        return jsonify({
+            "success": True,
+            "settings": {
+                "host": notifier.host,
+                "port": notifier.port,
+                "username": notifier.username,
+                "password": "********" if notifier.password else "",
+                "recipient": notifier.recipient,
+                "sender_name": notifier.sender_name,
+                "use_tls": notifier.use_tls,
+                "use_ssl": notifier.use_ssl,
+                "enabled": notifier.enabled
+            },
+            "is_configured": notifier.is_configured()
+        })
+
+
+@app.route("/api/email/test", methods=["POST"])
+def api_email_test():
+    """اختبار اتصال البريد الإلكتروني وإرسال رسالة تجريبية"""
+    import email_notifier
+    data = request.json or {}
+    send_sample = bool(data.get('send_sample', True))
+
+    host = data.get('host')
+    username = data.get('username')
+    password = data.get('password')
+    recipient = data.get('recipient')
+
+    if password == '********' or not password:
+        old_settings = email_notifier.load_email_settings_from_file()
+        password = old_settings.get('password')
+
+    notifier = email_notifier.EmailNotifier(
+        host=host,
+        port=data.get('port'),
+        username=username,
+        password=password,
+        recipient=recipient,
+        use_tls=data.get('use_tls'),
+        use_ssl=data.get('use_ssl')
+    )
+
+    if not notifier.is_configured():
+        return jsonify({
+            "success": False,
+            "message": "❌ بيانات الاتصال غير مكتملة (يرجى إدخال الخادم والمنفذ والمستخدم وكلمة المرور والمستلم)"
+        })
+
+    conn_res = notifier.test_connection()
+    if not conn_res.get('success'):
+        return jsonify(conn_res)
+
+    if send_sample and notifier.recipient:
+        sample_res = notifier.send_keyword_alert(
+            keyword="تجربة التنبيهات",
+            matched_word="اختبار البريد",
+            message_text="رسالة تجريبية لتأكيد نجاح تشغيل خدمة تنبيهات البريد الإلكتروني وتكاملها مع منصة أنور تيليجرام.",
+            sender_title="نظام الاختبار الذكي",
+            chat_title="مجموعة تجريبية",
+            chat_link="https://t.me/telegram"
+        )
+        return jsonify(sample_res)
+
+    return jsonify(conn_res)
+
+
+# ==========================================
+# 💾 نقطة نهاية حالة المزامنة مع Firestore
+# ==========================================
+@app.route("/api/sync/status", methods=["GET"])
+def api_sync_status():
+    """استرجاع حالة مزامنة الكاش المحلي وFirestore"""
+    import firestore_sync
+    return jsonify(firestore_sync.get_sync_status())
+
 # ملاحظة: /api/smart_stop أُزيل — الإيقاف يتم الآن تلقائياً عند تغيير sanitize_mode من salam إلى غيره
 
 
@@ -7271,9 +7401,6 @@ def api_send_now():
                                 USERS[user_id]['stats']['sent'] += 1
                                 socketio.emit('stats_update', USERS[user_id]['stats'], to=user_id)
 
-                    if i < len(groups_list):
-                        time.sleep(2)
-
                 except Exception as e:
                     error_msg = str(e)
                     error_lower = error_msg.lower()
@@ -7325,6 +7452,10 @@ def api_send_now():
                         if user_id in USERS:
                             USERS[user_id]['stats']['errors'] += 1
                             socketio.emit('stats_update', USERS[user_id]['stats'], to=user_id)
+                finally:
+                    # فاصل زمني آمن بين كل مجموعة وأخرى لتفادي قيود تيليجرام
+                    if i < len(groups_list):
+                        time.sleep(3)
 
             summary_msg = f"📊 انتهى الإرسال: ✅ {successful} نجح | ❌ {failed} فشل من إجمالي {len(groups_list)} مجموعة"
             socketio.emit('log_update', {"message": summary_msg}, to=user_id)

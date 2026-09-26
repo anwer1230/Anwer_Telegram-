@@ -1233,7 +1233,7 @@
                         <div class="card-body bg-light p-3 border-top">
                             <div class="row g-2">
                                 <div class="col-6 col-md-4">
-                                    <button type="button" class="btn btn-outline-success w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center position-relative shadow-sm" id="btnLinkRadar" onclick="window.open('/link_radar','_blank')">
+                                    <button type="button" class="btn btn-outline-success w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center position-relative shadow-sm" id="btnLinkRadar" data-bs-toggle="modal" data-bs-target="#linkRadarModal" onclick="openLinkRadarModal()">
                                         <i class="fas fa-satellite-dish fa-2x mb-2 text-success"></i>
                                         <span class="small fw-bold">رادار الروابط والانضمام</span>
                                         <span class="badge bg-success mt-1" style="font-size:0.6rem;">🟢 شغال دائماً</span>
@@ -1294,9 +1294,16 @@
                                     </button>
                                 </div>
                                 <div class="col-6 col-md-4">
-                                    <button type="button" class="btn btn-outline-primary w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" onclick="window.open('/saved_links','_blank')">
+                                    <button type="button" class="btn btn-outline-primary w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center" id="btnSavedLinks" data-bs-toggle="modal" data-bs-target="#savedLinksModal" onclick="openSavedLinksModal()">
                                         <i class="fas fa-bookmark fa-2x mb-2"></i>
                                         <span class="small fw-bold">الروابط المحفوظة</span>
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <button type="button" class="btn btn-outline-info w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center position-relative shadow-sm" id="btnEmailSettings" data-bs-toggle="modal" data-bs-target="#emailSettingsModal" onclick="openEmailSettingsModal()">
+                                        <i class="fas fa-envelope-open-text fa-2x mb-2 text-info"></i>
+                                        <span class="small fw-bold">تنبيهات البريد</span>
+                                        <span id="emailStatusBadge" class="badge bg-secondary mt-1" style="font-size:0.6rem;">خدمة البريد</span>
                                     </button>
                                 </div>
                                 <div class="col-6 col-md-4" id="sysLogsCardCol">
@@ -1686,7 +1693,7 @@
                                 <!-- 0. رادار الروابط والإنضمام الذكي -->
                                 <li>
                                     <a class="dropdown-item py-3 d-flex align-items-center gap-3"
-                                       href="/link_radar" target="_blank" style="border-bottom:1px solid #f0f0f0;">
+                                       href="#" data-bs-toggle="modal" data-bs-target="#linkRadarModal" onclick="openLinkRadarModal()" style="border-bottom:1px solid #f0f0f0;">
                                         <span style="width:38px;height:38px;background:linear-gradient(135deg,#10b981,#059669);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                             <i class="fas fa-satellite-dish text-white"></i>
                                         </span>
@@ -10327,6 +10334,172 @@ async function adminPromoResetIndex() {
     </div>
 </div>
 
+<!-- ======================================================== -->
+<!-- 📡 مودال رادار الروابط والإنضمام الذكي (Link Radar Modal) -->
+<!-- ======================================================== -->
+<div class="modal fade" id="linkRadarModal" tabindex="-1" aria-labelledby="linkRadarModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 95vw;">
+        <div class="modal-content border-0 shadow-lg" style="background:#0f172a; border: 1px solid rgba(16,185,129,0.3); border-radius:18px; color:#f8fafc; overflow:hidden;">
+            <div class="modal-header border-bottom border-secondary border-opacity-25" style="background: linear-gradient(135deg, #064e3b, #0f172a); padding: 14px 22px;">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg,#10b981,#059669); display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.25rem; box-shadow:0 4px 12px rgba(16,185,129,0.35);">
+                        <i class="fas fa-satellite-dish"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="modal-title mb-0 fw-bold" id="linkRadarModalLabel" style="color:#f1f5f9; font-size:1.15rem;">رادار الروابط والإنضمام الذكي</h5>
+                            <span class="badge bg-success" style="font-size:0.65rem;">🟢 شغال دائماً</span>
+                        </div>
+                        <small class="text-muted" style="font-size:0.8rem;">مراقبة كامل الحساب فورياً · كشف روابط واتساب وتيليجرام · انضمام آلي ومزامنة سحابية</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="refreshLinkRadarFrame()" title="تحديث الرادار">
+                        <i class="fas fa-sync-alt me-1"></i> تحديث
+                    </button>
+                    <a href="/link_radar" target="_blank" class="btn btn-sm btn-outline-secondary" title="فتح في تبويب مستقل">
+                        <i class="fas fa-external-link-alt"></i>
+                    </a>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+            </div>
+            <div class="modal-body p-0" style="background:#090d16; min-height: 75vh;">
+                <iframe id="linkRadarFrame" src="" style="width:100%; height:75vh; border:none; display:block;" title="رادار الروابط"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- 🔗 مودال الروابط المحفوظة (Saved Links Modal) -->
+<!-- ======================================================== -->
+<div class="modal fade" id="savedLinksModal" tabindex="-1" aria-labelledby="savedLinksModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 95vw;">
+        <div class="modal-content border-0 shadow-lg" style="background:#0f172a; border: 1px solid rgba(59,130,246,0.3); border-radius:18px; color:#f8fafc; overflow:hidden;">
+            <div class="modal-header border-bottom border-secondary border-opacity-25" style="background: linear-gradient(135deg, #1e3a8a, #0f172a); padding: 14px 22px;">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg,#3b82f6,#1d4ed8); display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.25rem; box-shadow:0 4px 12px rgba(59,130,246,0.35);">
+                        <i class="fas fa-bookmark"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title mb-0 fw-bold" id="savedLinksModalLabel" style="color:#f1f5f9; font-size:1.15rem;">الروابط المحفوظة ومزامنة السحابة</h5>
+                        <small class="text-muted" style="font-size:0.8rem;">سجل الروابط الملتقطة والمحفوظة في قاعدة بيانات Firestore والكاش المحلي</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="refreshSavedLinksFrame()" title="تحديث القائمة">
+                        <i class="fas fa-sync-alt me-1"></i> تحديث
+                    </button>
+                    <a href="/saved_links" target="_blank" class="btn btn-sm btn-outline-secondary" title="فتح في تبويب مستقل">
+                        <i class="fas fa-external-link-alt"></i>
+                    </a>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+            </div>
+            <div class="modal-body p-0" style="background:#090d16; min-height: 75vh;">
+                <iframe id="savedLinksFrame" src="" style="width:100%; height:75vh; border:none; display:block;" title="الروابط المحفوظة"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- 📧 مودال إعدادات البريد الإلكتروني (Email Service Modal) -->
+<!-- ======================================================== -->
+<div class="modal fade" id="emailSettingsModal" tabindex="-1" aria-labelledby="emailSettingsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="background:#0f172a; border: 1px solid rgba(14,165,233,0.3); border-radius:18px; color:#f8fafc;">
+            <div class="modal-header border-bottom border-secondary border-opacity-25" style="background: linear-gradient(135deg, #0369a1, #0f172a); padding: 16px 24px;">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg,#0284c7,#0369a1); display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.25rem; box-shadow:0 4px 12px rgba(14,165,233,0.35);">
+                        <i class="fas fa-envelope-open-text"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="modal-title mb-0 fw-bold" id="emailSettingsModalLabel" style="color:#f1f5f9; font-size:1.15rem;">إعدادات خدمة البريد الإلكتروني (Email Service)</h5>
+                            <span id="emailModalStatusBadge" class="badge bg-secondary" style="font-size:0.68rem;">غير مهيأ</span>
+                        </div>
+                        <small class="text-muted" style="font-size:0.8rem;">إرسال تنبيهات فورية إلى بريدك الإلكتروني عند رصد الكلمات المفتاحية في الحساب</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body p-4" style="background:#0b1120;">
+                <!-- حالة التنبيهات في المودال -->
+                <div id="emailAlertStatusBox" class="alert d-none mb-3 py-2 px-3" style="font-size:0.88rem; border-radius:10px;"></div>
+
+                <form id="emailSettingsForm" onsubmit="event.preventDefault(); saveEmailSettingsForm();">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label small fw-bold text-light"><i class="fas fa-server text-info me-1"></i> خادم البريد (SMTP Host)</label>
+                            <input type="text" class="form-control bg-dark text-white border-secondary" id="emailHost" placeholder="مثال: smtp.gmail.com أو mail.example.com" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-light"><i class="fas fa-network-wired text-info me-1"></i> المنفذ (Port)</label>
+                            <input type="number" class="form-control bg-dark text-white border-secondary" id="emailPort" placeholder="587 أو 465" value="587" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-light"><i class="fas fa-user text-info me-1"></i> اسم المستخدم / البريد (Username)</label>
+                            <input type="email" class="form-control bg-dark text-white border-secondary" id="emailUsername" placeholder="your_email@gmail.com" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-light"><i class="fas fa-key text-info me-1"></i> كلمة المرور / كلمة مرور التطبيق (Password)</label>
+                            <input type="password" class="form-control bg-dark text-white border-secondary" id="emailPassword" placeholder="كلمة مرور التطبيق (App Password)">
+                            <div class="form-text text-muted small" style="font-size:0.75rem;">للجيميل: استخدم كلمة مرور التطبيقات المكونة من 16 حرفاً.</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-light"><i class="fas fa-inbox text-info me-1"></i> بريد استلام التنبيهات (Recipient Email)</label>
+                            <input type="email" class="form-control bg-dark text-white border-secondary" id="emailRecipient" placeholder="alert_receiver@domain.com" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-light"><i class="fas fa-signature text-info me-1"></i> اسم المرسل الظاهر (Sender Name)</label>
+                            <input type="text" class="form-control bg-dark text-white border-secondary" id="emailSenderName" placeholder="نظام أنور تيليجرام الذكي" value="نظام أنور تيليجرام الذكي">
+                        </div>
+
+                        <div class="col-12 pt-2">
+                            <div class="p-3 rounded-3" style="background: rgba(30,41,59,0.5); border: 1px solid rgba(255,255,255,0.06);">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="emailUseTls" checked>
+                                            <label class="form-check-label small text-light" for="emailUseTls">تشفير STARTTLS (منفذ 587)</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="emailUseSsl">
+                                            <label class="form-check-label small text-light" for="emailUseSsl">تشفير SSL مباشر (منفذ 465)</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="emailEnabled" checked>
+                                            <label class="form-check-label small fw-bold text-success" for="emailEnabled">تفعيل إرسال التنبيهات</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-top border-secondary border-opacity-25" style="background: rgba(15,23,42,0.9); padding: 14px 24px;">
+                <button type="button" class="btn btn-outline-info btn-sm px-3" id="btnTestEmail" onclick="testEmailConnection()">
+                    <i class="fas fa-paper-plane me-1"></i> اختبار الاتصال والإرسال
+                </button>
+                <div class="ms-auto d-flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">إغلاق</button>
+                    <button type="button" class="btn btn-primary btn-sm px-4 fw-bold" id="btnSaveEmail" onclick="saveEmailSettingsForm()" style="background: linear-gradient(135deg, #0284c7, #2563eb); border:none;">
+                        <i class="fas fa-save me-1"></i> حفظ الإعدادات
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 (function() {
     let _accountGroups = [];
@@ -12204,6 +12377,172 @@ document.addEventListener('DOMContentLoaded', function() {
         renderDrafts();
     });
 })();
+</script>
+<script>
+// ==========================================
+// 📡 دوال تشغيل رادار الروابط والروابط المحفوظة وإعدادات البريد
+// ==========================================
+function openLinkRadarModal() {
+    const frame = document.getElementById('linkRadarFrame');
+    if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('/link_radar'))) {
+        frame.src = '/link_radar';
+    }
+}
+
+function refreshLinkRadarFrame() {
+    const frame = document.getElementById('linkRadarFrame');
+    if (frame) {
+        frame.src = '/link_radar?t=' + Date.now();
+    }
+}
+
+function openSavedLinksModal() {
+    const frame = document.getElementById('savedLinksFrame');
+    if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('/saved_links'))) {
+        frame.src = '/saved_links';
+    }
+}
+
+function refreshSavedLinksFrame() {
+    const frame = document.getElementById('savedLinksFrame');
+    if (frame) {
+        frame.src = '/saved_links?t=' + Date.now();
+    }
+}
+
+async function openEmailSettingsModal() {
+    const statusBox = document.getElementById('emailAlertStatusBox');
+    if (statusBox) statusBox.className = 'alert d-none mb-3 py-2 px-3';
+    try {
+        const resp = await fetch('/api/email/settings');
+        const data = await resp.json();
+        if (data.success && data.settings) {
+            const s = data.settings;
+            if (document.getElementById('emailHost')) document.getElementById('emailHost').value = s.host || '';
+            if (document.getElementById('emailPort')) document.getElementById('emailPort').value = s.port || 587;
+            if (document.getElementById('emailUsername')) document.getElementById('emailUsername').value = s.username || '';
+            if (document.getElementById('emailPassword')) document.getElementById('emailPassword').value = s.password || '';
+            if (document.getElementById('emailRecipient')) document.getElementById('emailRecipient').value = s.recipient || '';
+            if (document.getElementById('emailSenderName')) document.getElementById('emailSenderName').value = s.sender_name || 'نظام أنور تيليجرام الذكي';
+            if (document.getElementById('emailUseTls')) document.getElementById('emailUseTls').checked = s.use_tls !== false;
+            if (document.getElementById('emailUseSsl')) document.getElementById('emailUseSsl').checked = !!s.use_ssl;
+            if (document.getElementById('emailEnabled')) document.getElementById('emailEnabled').checked = s.enabled !== false;
+            
+            const badge = document.getElementById('emailModalStatusBadge');
+            if (badge) {
+                badge.className = data.is_configured ? 'badge bg-success' : 'badge bg-secondary';
+                badge.textContent = data.is_configured ? 'جاهز ونشط' : 'غير مهيأ';
+            }
+            const mainBadge = document.getElementById('emailStatusBadge');
+            if (mainBadge) {
+                mainBadge.className = data.is_configured ? 'badge bg-success mt-1' : 'badge bg-secondary mt-1';
+                mainBadge.textContent = data.is_configured ? '🟢 مفعل' : '📧 غير مهيأ';
+            }
+        }
+    } catch (e) {
+        console.warn('Error loading email settings:', e);
+    }
+}
+
+async function saveEmailSettingsForm() {
+    const btn = document.getElementById('btnSaveEmail');
+    const statusBox = document.getElementById('emailAlertStatusBox');
+    if (btn) btn.disabled = true;
+    
+    const payload = {
+        host: document.getElementById('emailHost')?.value || '',
+        port: parseInt(document.getElementById('emailPort')?.value || '587'),
+        username: document.getElementById('emailUsername')?.value || '',
+        password: document.getElementById('emailPassword')?.value || '',
+        recipient: document.getElementById('emailRecipient')?.value || '',
+        sender_name: document.getElementById('emailSenderName')?.value || '',
+        use_tls: document.getElementById('emailUseTls')?.checked ?? true,
+        use_ssl: document.getElementById('emailUseSsl')?.checked ?? false,
+        enabled: document.getElementById('emailEnabled')?.checked ?? true
+    };
+
+    try {
+        const resp = await fetch('/api/email/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const res = await resp.json();
+        if (statusBox) {
+            statusBox.className = res.success ? 'alert alert-success mb-3 py-2 px-3' : 'alert alert-danger mb-3 py-2 px-3';
+            statusBox.textContent = res.message || (res.success ? 'تم الحفظ بنجاح' : 'حدث خطأ');
+        }
+        openEmailSettingsModal();
+    } catch (err) {
+        if (statusBox) {
+            statusBox.className = 'alert alert-danger mb-3 py-2 px-3';
+            statusBox.textContent = 'تعذر الاتصال بالخادم: ' + err.message;
+        }
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function testEmailConnection() {
+    const btn = document.getElementById('btnTestEmail');
+    const statusBox = document.getElementById('emailAlertStatusBox');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جارٍ الاختبار...';
+    }
+    if (statusBox) {
+        statusBox.className = 'alert alert-info mb-3 py-2 px-3';
+        statusBox.textContent = '🔄 جارٍ الاتصال بخادم البريد والمصادقة وإرسال رسالة تجريبية...';
+    }
+
+    const payload = {
+        host: document.getElementById('emailHost')?.value || '',
+        port: parseInt(document.getElementById('emailPort')?.value || '587'),
+        username: document.getElementById('emailUsername')?.value || '',
+        password: document.getElementById('emailPassword')?.value || '',
+        recipient: document.getElementById('emailRecipient')?.value || '',
+        use_tls: document.getElementById('emailUseTls')?.checked ?? true,
+        use_ssl: document.getElementById('emailUseSsl')?.checked ?? false,
+        send_sample: true
+    };
+
+    try {
+        const resp = await fetch('/api/email/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const res = await resp.json();
+        if (statusBox) {
+            statusBox.className = res.success ? 'alert alert-success mb-3 py-2 px-3' : 'alert alert-danger mb-3 py-2 px-3';
+            statusBox.innerHTML = (res.success ? '✅ ' : '❌ ') + (res.message || (res.success ? 'نجح الاتصال والإرسال التجريبي!' : 'فشل الاختبار'));
+        }
+    } catch (err) {
+        if (statusBox) {
+            statusBox.className = 'alert alert-danger mb-3 py-2 px-3';
+            statusBox.textContent = '❌ خطأ أثناء فحص البريد: ' + err.message;
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
+    }
+}
+
+// تحميل حالة البريد عند بدء التشغيل
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/email/settings').then(r => r.json()).then(d => {
+        if (d && d.success) {
+            const b = document.getElementById('emailStatusBadge');
+            if (b) {
+                b.className = d.is_configured ? 'badge bg-success mt-1' : 'badge bg-secondary mt-1';
+                b.textContent = d.is_configured ? '🟢 مفعل' : '📧 غير مهيأ';
+            }
+        }
+    }).catch(() => {});
+});
 </script>
 </body>
 </html>
