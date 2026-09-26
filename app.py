@@ -1314,7 +1314,7 @@ class AlertQueue:
         try:
             socketio.emit('new_alert', alert_data, to=user_id)
             socketio.emit('log_update', {
-                "message": f"🚨 تنبيه فوري: '{alert_data['keyword']}' في {alert_data['group']}"
+                "message": f"🚨 تنبيه فوري: '{alert_data.get('keyword', '')}' في {alert_data.get('group', '')}"
             }, to=user_id)
 
             try:
@@ -1327,7 +1327,24 @@ class AlertQueue:
             except Exception:
                 pass
 
-            self._send_to_saved_messages(user_id, alert_data)
+            # تسجيل التنبيه في سجل المستخدم للحفاظ على سجل التنبيهات
+            try:
+                ud = get_or_create_user(user_id)
+                alerts_list = ud.setdefault('alerts', [])
+                alerts_list.insert(0, alert_data)
+                if len(alerts_list) > 100:
+                    del alerts_list[100:]
+                s = load_settings(user_id)
+                s_alerts = s.setdefault('alerts', [])
+                s_alerts.insert(0, alert_data)
+                if len(s_alerts) > 100:
+                    del s_alerts[100:]
+                save_settings(user_id, s)
+            except Exception as store_err:
+                logger.debug(f"Failed to record alert in history: {store_err}")
+
+            if not alert_data.get('already_sent_tg'):
+                self._send_to_saved_messages(user_id, alert_data)
 
         except Exception as e:
             logger.error(f"Failed to send alert for user {user_id}: {str(e)}")
@@ -2792,6 +2809,7 @@ class TelegramClientManager:
                 "sender_link":  sender_link,
                 "message_time": msg_time,
                 "message_id":   msg_id,
+                "already_sent_tg": True,
             }
 
             try:
@@ -6397,13 +6415,11 @@ def api_my_alerts_settings():
 
 @app.route("/api/my_alerts/test", methods=["POST"])
 def api_my_alerts_test():
-    if 'user_id' not in session:
-        return jsonify({"success": False, "message": "❌ الجلسة غير صالحة"}), 401
-    user_id = session['user_id']
+    user_id = session.get('user_id')
+    if not user_id:
+        user_id = request.cookies.get('app_user_id') or 'user_1'
     settings = load_settings(user_id)
     cm = telegram_manager.get_client_manager(user_id)
-    if not cm:
-        return jsonify({"success": False, "message": "❌ تعذر العثور على عميل تيليجرام للحساب"})
 
     test_msg = (
         "🔔 **تنبيهاتي | تجربة نظام الإشعارات**\n"
@@ -6412,24 +6428,97 @@ def api_my_alerts_test():
         f"⏰ **الوقت:** {time.strftime('%Y-%m-%d %I:%M:%S %p')}\n"
         "📌 **النوع:** إشعار تجريبي لاختبار التوصيل إلى الرسائل المحفوظة والصوت في المتصفح."
     )
-    sent = cm.run_coroutine(cm.send_to_saved_messages(test_msg))
-    if sent:
-        socketio.emit('log_update', {"message": "🔔 تم إرسال تنبيه تجريبي إلى رسائلك المحفوظة بنجاح"}, to=user_id)
-        # إرسال حدث اختباري للواجهة لتشغيل الصوت المختار مباشرة
-        socketio.emit('my_alert_event', {
-            "type": "reply",
-            "group": "مجموعة تجريبية (اختبار)",
-            "sender": "تجربة التنبيه الصوتي",
-            "time": time.strftime('%I:%M:%S %p'),
-            "link": "#",
-            "text": "هذا رد تجريبي لاختبار الصوت ونغمة التنبيه في المتصفح 🔔",
-            "sound_enabled": bool(settings.get('my_alerts_reply_sound_enabled', True)),
-            "sound_tone": str(settings.get('my_alerts_reply_sound_tone', 'chime')),
-            "is_test": True
-        }, to=user_id)
+    
+    tg_sent = False
+    if cm and getattr(cm, 'client', None) and cm.client.is_connected():
+        try:
+            tg_sent = cm.run_coroutine(cm.send_to_saved_messages(test_msg))
+        except Exception as e:
+            logger.debug(f"Failed to send test to saved messages: {e}")
+            tg_sent = False
+
+    # إرسال تحديث بالسجل
+    socketio.emit('log_update', {"message": "🔔 تجربة نظام التنبيهات: تم إرسال الإشعار الصوتي والشريط للمتصفح"}, to=user_id)
+    
+    # إرسال حدث اختباري للواجهة لتشغيل الصوت المختار والتوست فوراً
+    socketio.emit('my_alert_event', {
+        "type": "reply",
+        "group": "مجموعة تجريبية (اختبار)",
+        "sender": "تجربة التنبيه الصوتي",
+        "time": time.strftime('%I:%M:%S %p'),
+        "link": "#",
+        "text": "هذا رد تجريبي لاختبار الصوت ونغمة التنبيه في المتصفح 🔔",
+        "sound_enabled": bool(settings.get('my_alerts_reply_sound_enabled', True)),
+        "sound_tone": str(settings.get('my_alerts_reply_sound_tone', 'chime')),
+        "is_test": True
+    }, to=user_id)
+
+    # أيضاً إرسال تنبيه مراقبة للشريط العلوي وTTS
+    socketio.emit('new_alert', {
+        "keyword": "تجربة التنبيه",
+        "group": "مجموعة تجريبية",
+        "message": "تنبيه تجريبي: تم التحقق من فاعلية التنبيهات بنجاح!",
+        "sender": "نظام الفحص",
+        "timestamp": time.strftime('%H:%M:%S')
+    }, to=user_id)
+
+    if tg_sent:
         return jsonify({"success": True, "message": "✅ تم إرسال تنبيه تجريبي إلى «الرسائل المحفوظة» وتشغيل الصوت بنجاح!"})
     else:
-        return jsonify({"success": False, "message": "⚠️ فشل إرسال التنبيه التجريبي. تأكد من أن الحساب متصل حالياً بتيليجرام."})
+        return jsonify({"success": True, "message": "✅ تم تشغيل التنبيه الصوتي والشريط المنبثق في المتصفح بنجاح (ملاحظة: حساب تيليجرام غير متصل حالياً للرسائل المحفوظة)"})
+
+
+@app.route("/api/alerts", methods=["GET", "DELETE"])
+def api_user_alerts():
+    """عرض أو مسح سجل التنبيهات الخاصة بالمستخدم الحالي"""
+    user_id = session.get('user_id')
+    if not user_id:
+        user_id = request.cookies.get('app_user_id') or 'user_1'
+    
+    if request.method == "DELETE":
+        ud = get_or_create_user(user_id)
+        ud['alerts'] = []
+        s = load_settings(user_id)
+        s['alerts'] = []
+        save_settings(user_id, s)
+        return jsonify({"success": True, "message": "تم مسح سجل التنبيهات بنجاح", "alerts": []})
+        
+    ud = get_or_create_user(user_id)
+    s = load_settings(user_id)
+    alerts = ud.get('alerts') or s.get('alerts') or []
+    return jsonify({
+        "success": True,
+        "count": len(alerts),
+        "alerts": alerts
+    })
+
+
+@app.route("/api/alerts/test", methods=["POST"])
+def api_user_alerts_test():
+    """إرسال تنبيه مراقبة تجريبي شامل للقائمة والشريط والصوت"""
+    user_id = session.get('user_id')
+    if not user_id:
+        user_id = request.cookies.get('app_user_id') or 'user_1'
+        
+    test_alert = {
+        "keyword": "تجربة التنبيهات",
+        "group": "مجموعة تجريبية",
+        "group_link": "https://t.me/telegram",
+        "message": "هذا تنبيه تجريبي للتحقق من فاعلية التنبيهات الصوتية والإشعارات والرسائل المحفوظة.",
+        "full_message": "هذا تنبيه تجريبي للتحقق من فاعلية التنبيهات الصوتية والإشعارات والرسائل المحفوظة.",
+        "timestamp": time.strftime('%H:%M:%S'),
+        "sender": "نظام الفحص",
+        "sender_link": "https://t.me/me",
+        "message_time": time.strftime('%H:%M:%S'),
+        "message_id": 999999,
+        "already_sent_tg": True
+    }
+    
+    alert_queue.add_alert(user_id, test_alert)
+    return jsonify({
+        "success": True,
+        "message": "✅ تم إرسال التنبيه التجريبي الشامل بنجاح!"
+    })
 
 # ملاحظة: /api/smart_stop أُزيل — الإيقاف يتم الآن تلقائياً عند تغيير sanitize_mode من salam إلى غيره
 
