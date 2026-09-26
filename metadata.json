@@ -1,6 +1,6 @@
 {
-  "name": "Telegram (DrKLO Official Build)",
-  "description": "Telegram Official DrKLO Release Build - Telegram_Anwer",
-  "requestFramePermissions": ["microphone", "camera"],
+  "name": "Anwer Telegram Services",
+  "description": "منصة خدمات وتيليجرام مركز سرعة إنجاز",
+  "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
