@@ -1601,7 +1601,12 @@
                                     <span style="font-weight:700;color:#38bdf8;font-size:0.9rem;" id="sendLiveProgressTitle">
                                         <i class="fas fa-circle-notch fa-spin me-2"></i>جارٍ الإرسال الفوري...
                                     </span>
-                                    <span class="badge bg-primary" id="sendLiveProgressBadge" style="font-size:0.8rem;">0%</span>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" id="stopSendNowBtn" style="display:none;font-size:0.75rem;padding:2px 8px;border-radius:6px;">
+                                            <i class="fas fa-stop me-1"></i>إيقاف الإرسال
+                                        </button>
+                                        <span class="badge bg-primary" id="sendLiveProgressBadge" style="font-size:0.8rem;">0%</span>
+                                    </div>
                                 </div>
                                 <div class="progress mb-2" style="height:8px;background:rgba(255,255,255,0.1);border-radius:4px;">
                                     <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" id="sendLiveProgressBar" role="progressbar" style="width:0%;"></div>
@@ -11464,6 +11469,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (progressCard) progressCard.style.display = 'block';
         if (progressTitle) progressTitle.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i>جارٍ الإرسال الفوري...';
         if (progressBadge) progressBadge.textContent = '0%';
+        const stopBtn = byId('stopSendNowBtn');
+        if (stopBtn) {
+            stopBtn.style.display = 'inline-block';
+            stopBtn.disabled = false;
+            stopBtn.innerHTML = '<i class="fas fa-stop me-1"></i>إيقاف الإرسال';
+        }
         if (progressBar) {
             progressBar.style.width = '0%';
             progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-info';
@@ -11586,7 +11597,7 @@ document.addEventListener('DOMContentLoaded', function() {
         socket.on('monitoring_status', (data) => setButtonState(Boolean(data && (data.is_running || data.monitoring_active))));
         socket.on('update_monitoring_buttons', (data) => setButtonState(Boolean(data && data.is_running)));
 
-        // ── متابعة تقدم الإرسال الفوري اللحظي ──
+        // ── متابعة تقدم الإرسال الفوري اللحظي (P3) ──
         socket.on('send_progress', (data) => {
             if (!data) return;
             const card = byId('sendLiveProgressCard');
@@ -11596,6 +11607,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const curStatus = byId('sendLiveCurrentStatus');
             const log = byId('sendLiveProgressLog');
             const sendBtn = byId('sendNowBtn');
+            const stopBtn = byId('stopSendNowBtn');
 
             if (card) card.style.display = 'block';
 
@@ -11605,12 +11617,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     bar.style.width = '100%';
                     bar.className = 'progress-bar bg-success';
                 }
-                if (title) title.innerHTML = '<i class="fas fa-check-double text-success me-2"></i>اكتمل الإرسال الفوري بنجاح!';
-                if (curStatus) curStatus.innerHTML = `<strong class="text-success">${data.message || 'اكتملت جميع العمليات'}</strong>`;
+                if (title) title.innerHTML = '<i class="fas fa-check-double text-success me-2"></i>اكتملت دفعة الإرسال!';
+                const summaryHtml = `<strong class="text-success">${data.message || 'اكتملت جميع العمليات'}</strong>`;
+                if (curStatus) curStatus.innerHTML = summaryHtml;
                 window.showAlert('success', `🎉 ${data.message || 'انتهى الإرسال بنجاح'}`, 8000);
                 if (sendBtn) {
                     sendBtn.disabled = false;
                     sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>إرسال الآن';
+                }
+                if (stopBtn) {
+                    stopBtn.style.display = 'none';
                 }
                 return;
             }
@@ -11619,39 +11635,76 @@ document.addEventListener('DOMContentLoaded', function() {
             if (badge) badge.textContent = `${percent}% (${data.index}/${data.total})`;
             if (bar) bar.style.width = `${percent}%`;
 
-            if (data.status === 'success') {
-                const msg = data.message || `✅ نجح الإرسال إلى: ${data.group}`;
-                if (curStatus) curStatus.innerHTML = `<span class="text-success">${msg}</span>`;
-                if (log) {
-                    const row = document.createElement('div');
-                    row.style.color = '#4ade80';
-                    row.innerHTML = `<i class="fas fa-check-circle me-1"></i> [${data.index}/${data.total}] ${data.group}`;
-                    log.appendChild(row);
-                    log.scrollTop = log.scrollHeight;
-                }
-                window.showAlert('success', msg, 4000);
-            } else if (data.status === 'skipped') {
-                const msg = data.message || `⏭️ تم تخطي: ${data.group}`;
-                if (curStatus) curStatus.innerHTML = `<span class="text-warning">${msg}</span>`;
-                if (log) {
-                    const row = document.createElement('div');
-                    row.style.color = '#fbbf24';
-                    row.innerHTML = `<i class="fas fa-forward me-1"></i> [${data.index}/${data.total}] ${data.group} (تخطي)`;
-                    log.appendChild(row);
-                    log.scrollTop = log.scrollHeight;
-                }
-                window.showAlert('warning', msg, 4000);
-            } else if (data.status === 'error') {
-                const msg = data.message || `❌ فشل إلى ${data.group}: ${data.error_type || 'خطأ'}`;
-                if (curStatus) curStatus.innerHTML = `<span class="text-danger">${msg}</span>`;
-                if (log) {
-                    const row = document.createElement('div');
-                    row.style.color = '#f87171';
-                    row.innerHTML = `<i class="fas fa-times-circle me-1"></i> [${data.index}/${data.total}] ${data.group}: <span style="font-size:0.75rem;color:#e2e8f0;">${data.error_type || 'خطأ'}</span>`;
-                    log.appendChild(row);
-                    log.scrollTop = log.scrollHeight;
-                }
-                window.showAlert('danger', msg, 6000);
+            // تحديد الحالة واللون والإيموجي والسبب
+            let textColor = '#4ade80';
+            let bgTint = 'rgba(74, 222, 128, 0.08)';
+            let emoji = data.emoji || '✅';
+            let reason = data.reason || data.message || 'تم الإرسال بنجاح';
+
+            if (data.status === 'success' || data.status === 'joined_then_sent') {
+                textColor = '#4ade80';
+                bgTint = 'rgba(74, 222, 128, 0.08)';
+                emoji = data.emoji || '✅';
+            } else if (data.status === 'skipped' || data.status === 'waiting_approval') {
+                textColor = '#fbbf24';
+                bgTint = 'rgba(251, 191, 36, 0.08)';
+                emoji = data.emoji || '⏭️';
+            } else {
+                textColor = '#f87171';
+                bgTint = 'rgba(248, 113, 113, 0.08)';
+                emoji = data.emoji || '❌';
+            }
+
+            const displayMsg = data.message || `${emoji} [${data.index}/${data.total}] ${data.group}: ${reason}`;
+            if (curStatus) {
+                curStatus.innerHTML = `<span style="color:${textColor};font-weight:600;">${displayMsg}</span>`;
+            }
+
+            if (log) {
+                const row = document.createElement('div');
+                row.style.padding = '4px 8px';
+                row.style.borderRadius = '6px';
+                row.style.background = bgTint;
+                row.style.border = `1px solid ${textColor}22`;
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.justifyContent = 'space-between';
+                row.style.gap = '8px';
+                row.style.fontSize = '0.78rem';
+                row.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        <span style="font-weight:bold;color:#94a3b8;font-size:0.75rem;">[${data.index}/${data.total}]</span>
+                        <span>${emoji}</span>
+                        <span style="font-weight:600;color:#f8fafc;">${data.group}</span>
+                    </div>
+                    <span style="font-size:0.73rem;color:${textColor};font-weight:500;white-space:nowrap;">${reason}</span>
+                `;
+                log.appendChild(row);
+                log.scrollTop = log.scrollHeight;
+            }
+
+            if (data.status === 'success' || data.status === 'joined_then_sent') {
+                window.showAlert('success', displayMsg, 3500);
+            } else if (data.status === 'skipped' || data.status === 'waiting_approval') {
+                window.showAlert('warning', displayMsg, 4000);
+            } else {
+                window.showAlert('danger', displayMsg, 5000);
+            }
+        });
+
+        // ربط حدث زر إيقاف الإرسال
+        byId('stopSendNowBtn')?.addEventListener('click', async () => {
+            const sBtn = byId('stopSendNowBtn');
+            if (sBtn) {
+                sBtn.disabled = true;
+                sBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>جاري الإيقاف...';
+            }
+            try {
+                const res = await requestJson('/api/send_now/stop', {});
+                window.showAlert('warning', res.message || 'تم إرسال إشارة إيقاف الإرسال');
+            } catch (e) {
+                window.showAlert('danger', 'تعذر إيقاف الإرسال: ' + e.message);
+                if (sBtn) sBtn.disabled = false;
             }
         });
     }
