@@ -4240,7 +4240,7 @@ class TelegramManager:
 
             try:
                 result = client_manager.run_coroutine(
-                    client_manager.client.send_message(entity_obj, cleaned_message)
+                    client_manager.client.send_message(entity_obj, cleaned_message, parse_mode='md')
                 )
             except Exception as _send_err:
                 _err_str = str(_send_err).lower()
@@ -4254,7 +4254,7 @@ class TelegramManager:
                         )
                         time.sleep(1)
                         result = client_manager.run_coroutine(
-                            client_manager.client.send_message(entity_obj, cleaned_message)
+                            client_manager.client.send_message(entity_obj, cleaned_message, parse_mode='md')
                         )
                     except Exception as _join_err:
                         raise Exception(f"لا يمكن الإرسال في {entity}: تتطلب الانضمام للمجموعة ({_join_err})")
@@ -4750,7 +4750,7 @@ class TelegramManager:
                     # ✅ تعديل الرسالة إلى النص النهائي (الأصلي)
                     try:
                         client_manager.run_coroutine(
-                            client_manager.client.edit_message(entity_obj, msg.id, final_message)
+                            client_manager.client.edit_message(entity_obj, msg.id, final_message, parse_mode='md')
                         )
                         logger.info(f"[Smart] تم تعديل الرسالة في {entity_label} بنجاح إلى النص الأصلي")
                         success_edit_msg = f"✅ [Smart] تم تعديل الرسالة في {entity_label} بنجاح إلى النص الأصلي بعد استيفاء الشروط"
@@ -4943,7 +4943,8 @@ class TelegramManager:
                                 client_manager.client.send_file(
                                     entity_obj, 
                                     image_paths[0],
-                                    caption=message if message else "📷"
+                                    caption=message if message else "📷",
+                                    parse_mode='md'
                                 )
                             )
                             results.append(media_result.id)
@@ -4954,7 +4955,8 @@ class TelegramManager:
                                     client_manager.client.send_file(
                                         entity_obj,
                                         image_paths,
-                                        caption=message if message and message.strip() else None
+                                        caption=message if message and message.strip() else None,
+                                        parse_mode='md'
                                     )
                                 )
                                 if hasattr(media_result, '__iter__'):
@@ -4972,7 +4974,8 @@ class TelegramManager:
                                             client_manager.client.send_file(
                                                 entity_obj,
                                                 img_path,
-                                                caption=cap
+                                                caption=cap,
+                                                parse_mode='md'
                                             )
                                         )
                                         results.append(media_result.id)
