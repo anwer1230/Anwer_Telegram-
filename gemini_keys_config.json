@@ -2,8 +2,9 @@
   "keys": [
     {
       "id": "key_1",
-      "name": "Generative Language API Key",
-      "hint": "...3emA",
+      "name": "Gemini Flash Key 1",
+      "hint": "...ojVg",
+      "encoded_key": "QVEuQWI4Uk42TGV6MW9TVk03dFRPM1UydHc3b2I0UUNGV2pPU2VzdmNydmJsbjV0Zm9qVmc=",
       "key": "",
       "project_id": "gen-lang-client-0197022210",
       "tier": "Free tier",
@@ -12,8 +13,9 @@
     },
     {
       "id": "key_2",
-      "name": "G Key",
-      "hint": "...kV6A",
+      "name": "Gemini Flash Key 2",
+      "hint": "...Us0A",
+      "encoded_key": "QVEuQWI4Uk42Szh5OEtvek1pdEw1YjhIdmpLSjJJRHF0WnBjdXFhT2xFLXFaTXhUZVVzMEE=",
       "key": "",
       "project_id": "gen-lang-client-0197022210",
       "tier": "Free tier",
@@ -22,8 +24,9 @@
     },
     {
       "id": "key_3",
-      "name": "Gemini API Key",
+      "name": "Gemini Backup Key 3",
       "hint": "...Erkk",
+      "encoded_key": "",
       "key": "",
       "project_id": "gen-lang-client-0197022210",
       "tier": "Free tier",
@@ -32,8 +35,9 @@
     },
     {
       "id": "key_4",
-      "name": "Gemini API Key",
+      "name": "Gemini Backup Key 4",
       "hint": "...zJ8E",
+      "encoded_key": "",
       "key": "",
       "project_id": "gen-lang-client-0197022210",
       "tier": "Free tier",
@@ -42,8 +46,9 @@
     },
     {
       "id": "key_5",
-      "name": "Default Gemini API Key",
+      "name": "Gemini Backup Key 5",
       "hint": "...DYu0",
+      "encoded_key": "",
       "key": "",
       "project_id": "gen-lang-client-0197022210",
       "tier": "Free tier",
@@ -54,5 +59,6 @@
   "rotation_mode": "sequential_round_robin",
   "auto_failover": true,
   "rate_limit_cooldown_seconds": 60,
-  "default_model": "gemini-3.8-flash"
+  "default_model": "gemini-flash-latest",
+  "updated_at": "2026-09-27 09:57:56"
 }
