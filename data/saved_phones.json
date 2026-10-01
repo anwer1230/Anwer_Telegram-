@@ -1,0 +1,52 @@
+[
+  {
+    "phone_number": "+201120945094",
+    "account_name": "Lamis",
+    "is_default": true,
+    "label": "Lamis",
+    "updated_at": "2026-10-01T12:08:53.200Z",
+    "added_at": "2026-09-24T22:03:29.933Z"
+  },
+  {
+    "added_at": "2026-09-24T22:03:16.595Z",
+    "account_name": "الحساب السابع",
+    "phone_number": "+966539709737",
+    "label": "الحساب السابع",
+    "is_default": true
+  },
+  {
+    "is_default": true,
+    "label": "الحساب السادس",
+    "account_name": "الحساب السادس",
+    "phone_number": "+201274386864",
+    "added_at": "2026-09-24T19:10:41.773Z"
+  },
+  {
+    "is_default": true,
+    "added_at": "2026-09-24T19:10:41.675Z",
+    "label": "الحساب الخامس",
+    "phone_number": "+213797500921",
+    "account_name": "الحساب الخامس"
+  },
+  {
+    "added_at": "2026-09-24T19:10:41.566Z",
+    "phone_number": "+201148863243",
+    "account_name": "الحساب الرابع",
+    "label": "الحساب الرابع",
+    "is_default": true
+  },
+  {
+    "label": "الحساب الثالث",
+    "added_at": "2026-09-24T19:10:41.544Z",
+    "is_default": true,
+    "phone_number": "+201221349790",
+    "account_name": "الحساب الثالث"
+  },
+  {
+    "is_default": true,
+    "account_name": "الحساب الثاني",
+    "phone_number": "+573244867204",
+    "label": "الحساب الثاني",
+    "added_at": "2026-09-24T19:10:41.032Z"
+  }
+]
