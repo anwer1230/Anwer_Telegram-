@@ -6840,6 +6840,30 @@ def api_update_phone_account_name():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route("/api/voice_command", methods=["POST"])
+def api_voice_command():
+    try:
+        data = request.json or {}
+        text = data.get("text", "").strip()
+        user_id = resolve_request_user_id(data)
+        if not text:
+            return jsonify({
+                "success": False, 
+                "message": "نص الأمر الصوتي مطلوب",
+                "spoken_feedback": "لم أسمع أي أمر، يرجى إعادة المحاولة."
+            }), 400
+        
+        import voice_controller
+        result = voice_controller.parse_voice_command(text, user_id=user_id)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in api_voice_command: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "spoken_feedback": "حدث خطأ أثناء معالجة الأمر الصوتي."
+        }), 500
+
 @app.route("/api/verify_code", methods=["POST"])
 def api_verify_code():
     data = request.json or {}
@@ -19507,7 +19531,16 @@ except Exception as _e_ai_doc:
     logger.error(f"❌ خطأ في تسجيل مسارات المحلل الذكي للمستندات: {_e_ai_doc}")
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 3000))
+    if os.environ.get('RENDER'):
+        port = int(os.environ.get("PORT", 10000))
+    elif os.environ.get('DEFAULT_APP_PORT'):
+        port = int(os.environ.get('DEFAULT_APP_PORT', 3000))
+    elif os.environ.get('AI_STUDIO_AGENT'):
+        port = 3000
+    else:
+        raw_port = int(os.environ.get("PORT", 3000))
+        port = 3000 if raw_port == 8080 else raw_port
+
     print(f"🌐 تشغيل الخادم على المنفذ {port}...")
     print(f"🔗 رابط التطبيق: http://0.0.0.0:{port}")
     print("🛡️ نظام الاستمرارية الدائم مُفعل — يعمل حتى الإيقاف اليدوي")

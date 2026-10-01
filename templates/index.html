@@ -13376,5 +13376,568 @@ document.addEventListener('DOMContentLoaded', function() {
     }).catch(() => {});
 });
 </script>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- 🎙️ شريط وزر التحكم الصوتي العائم الشامل (Voice Autonomous Controller) -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<style>
+@keyframes voicePulseRing {
+    0% { transform: scale(0.95); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.5; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+@keyframes voiceWaveAnim {
+    0%, 100% { height: 6px; }
+    50% { height: 26px; }
+}
+.voice-wave-bar {
+    width: 4px;
+    height: 8px;
+    background: #38bdf8;
+    border-radius: 4px;
+    animation: voiceWaveAnim 1s ease-in-out infinite;
+}
+.voice-pill-cmd {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #e2e8f0;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.voice-pill-cmd:hover {
+    background: #0088cc;
+    color: #fff;
+    border-color: #38bdf8;
+    transform: translateY(-2px);
+}
+</style>
+
+<div id="voiceAssistantFloatBar" style="position:fixed;bottom:24px;right:24px;z-index:10001;display:flex;align-items:center;gap:10px;direction:rtl;">
+    <!-- فقاعة العرض الحي للأمر المنطوق -->
+    <div id="voiceTranscriptBubble" style="display:none;background:rgba(15,23,42,0.95);backdrop-filter:blur(10px);border:1px solid rgba(56,189,248,0.4);border-radius:24px;padding:7px 15px;box-shadow:0 8px 24px rgba(0,0,0,0.35);color:#fff;font-size:0.84rem;max-width:300px;align-items:center;gap:8px;">
+        <span id="voiceStatusDot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#10b981;flex-shrink:0;"></span>
+        <span id="voiceTranscriptText" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">جاري الاستماع...</span>
+    </div>
+
+    <!-- زر الميكروفون العائم الرئيسي -->
+    <button type="button" id="voiceMainBtn" onclick="toggleVoiceListening()" class="btn shadow-lg"
+            title="التحكم الصوتي الشامل (انقر للتحدث بالأمر)"
+            style="width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg, #0088cc 0%, #00b4d8 100%);color:#fff;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;position:relative;transition:all 0.25s ease;cursor:pointer;padding:0;">
+        <i class="fas fa-microphone fa-lg" id="voiceMicIcon"></i>
+        <span id="voicePulseRing" style="display:none;position:absolute;inset:-6px;border:2.5px solid #38bdf8;border-radius:50%;animation:voicePulseRing 1.5s infinite;"></span>
+    </button>
+
+    <!-- زر فتح لوحة التحكم الصوتي المتقدمة -->
+    <button type="button" class="btn shadow" onclick="openVoiceModal()"
+            title="لوحة خيارات ودليل الأوامر الصوتية"
+            style="width:38px;height:38px;border-radius:50%;background:#1e293b;border:1px solid rgba(255,255,255,0.25);color:#94a3b8;display:flex;align-items:center;justify-content:center;padding:0;">
+        <i class="fas fa-sliders-h fa-sm"></i>
+    </button>
+</div>
+
+<!-- نافذة لوحة التحكم الصوتي الشاملة (Voice Autonomous HUD) -->
+<div class="modal fade" id="voiceControlModal" tabindex="-1" aria-labelledby="voiceControlModalLabel" aria-hidden="true" style="direction:rtl;">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background:#0f172a;color:#f8fafc;border:1px solid rgba(56,189,248,0.3);border-radius:18px;box-shadow:0 20px 50px rgba(0,0,0,0.6);">
+            <div class="modal-header border-0 pb-0 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#0088cc,#38bdf8);display:flex;align-items:center;justify-content:center;color:#fff;">
+                        <i class="fas fa-microphone-alt fa-lg"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="voiceControlModalLabel">نظام التحكم الصوتي المستقل</h5>
+                        <small class="text-muted">قيادة وتشغيل التطبيق بالكامل عبر الأوامر الصوتية العربية</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body pt-3">
+                <!-- شاشة الميكروفون التفاعلية والأمواج الصوتية -->
+                <div class="text-center p-4 rounded-3 mb-3" style="background:rgba(30,41,59,0.7);border:1px solid rgba(255,255,255,0.08);">
+                    <div class="d-flex justify-content-center align-items-center gap-2 mb-3" id="voiceModalWaveBox" style="height:32px;">
+                        <div class="voice-wave-bar" style="animation-delay:0s;"></div>
+                        <div class="voice-wave-bar" style="animation-delay:0.2s;"></div>
+                        <div class="voice-wave-bar" style="animation-delay:0.4s;"></div>
+                        <div class="voice-wave-bar" style="animation-delay:0.1s;"></div>
+                        <div class="voice-wave-bar" style="animation-delay:0.3s;"></div>
+                    </div>
+
+                    <button type="button" id="modalVoiceMicBtn" onclick="toggleVoiceListening()"
+                            class="btn btn-primary btn-lg rounded-circle shadow-lg mb-2"
+                            style="width:84px;height:84px;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0088cc,#00b4d8);border:3px solid #fff;">
+                        <i class="fas fa-microphone fa-2x"></i>
+                    </button>
+                    <div class="fw-bold mt-2 text-info" id="voiceModalStatusLabel">اضغط على الميكروفون وتحدث بأي أمر</div>
+                    <div class="p-2 mt-2 rounded bg-black bg-opacity-40 text-warning" style="min-height:42px;font-size:0.95rem;font-weight:600;" id="voiceModalLiveText">
+                        "في انتظار صوتك..."
+                    </div>
+                </div>
+
+                <!-- إعدادات الصوت المتقدمة -->
+                <div class="row g-2 mb-3">
+                    <div class="col-md-4">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                            <span class="small fw-bold"><i class="fas fa-volume-up text-primary me-1"></i>الردود الصوتية الناطقة</span>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="voiceFeedbackToggle" checked onchange="window.VoiceEngine.voiceFeedback = this.checked">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                            <span class="small fw-bold"><i class="fas fa-infinity text-success me-1"></i>الاستماع المستمر</span>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="voiceContinuousToggle" checked onchange="window.VoiceEngine.continuous = this.checked">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                            <span class="small fw-bold"><i class="fas fa-language text-warning me-1"></i>اللهجة</span>
+                            <select class="form-select form-select-sm bg-dark text-white border-0 py-0" id="voiceLangSelect" style="width:110px;" onchange="window.VoiceEngine.setLanguage(this.value)">
+                                <option value="ar-SA" selected>السعودية</option>
+                                <option value="ar-EG">مصر</option>
+                                <option value="ar-AE">الإمارات</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- دليل الأوامر الصوتية القابلة للتجربة الفورية بالضغط -->
+                <div class="mb-3">
+                    <h6 class="fw-bold text-light mb-2"><i class="fas fa-lightbulb text-warning me-1"></i>أمثلة حية يمكنك قولها أو تجربتها مباشرة:</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="voice-pill-cmd" onclick="testVoiceCommand('سجل الدخول بحساب Lamis')"><i class="fas fa-user-check text-primary"></i>سجل الدخول بحساب Lamis</span>
+                        <span class="voice-pill-cmd" onclick="testVoiceCommand('سجل برقم +201120945094')"><i class="fas fa-phone text-info"></i>سجل برقم +201120945094</span>
+                        <span class="voice-pill-cmd" onclick="testVoiceCommand('الكود هو 48219')"><i class="fas fa-key text-warning"></i>الكود هو 48219</span>
+                        <span class="voice-pill-cmd" onclick="testVoiceCommand('كلمة المرور هي 123456')"><i class="fas fa-lock text-danger"></i>كلمة المرور هي ...</span>
+                        <span class="voice-pill-cmd" onclick="testVoiceCommand('إرسال الآن')"><i class="fas fa-paper-plane text-success"></i>إرسال الآن</span>
+                        <span class="voice-pill-cmd" onclick="testVoiceCommand('أوقف الإرسال')"><i class="fas fa-stop text-danger"></i>أوقف الإرسال</span>
+                        <span class="voice-pill-cmd" onclick="testVoiceCommand('احفظ الإعدادات')"><i class="fas fa-save text-primary"></i>احفظ الإعدادات</span>
+                        <span class="voice-pill-cmd" onclick="testVoiceCommand('نوع الإرسال مجدول')"><i class="fas fa-clock text-info"></i>نوع الإرسال مجدول</span>
+                        <span class="voice-pill-cmd" onclick="testVoiceCommand('وضع السلام')"><i class="fas fa-shield-alt text-success"></i>وضع السلام</span>
+                        <span class="voice-pill-cmd" onclick="testVoiceCommand('اجعل الفاصل الزمني 15 دقيقة')"><i class="fas fa-hourglass-half text-warning"></i>اجعل الفاصل 15 دقيقة</span>
+                        <span class="voice-pill-cmd" onclick="testVoiceCommand('شغل المراقبة')"><i class="fas fa-play text-success"></i>شغل المراقبة</span>
+                        <span class="voice-pill-cmd" onclick="testVoiceCommand('ما هي حالة الحساب')"><i class="fas fa-info-circle text-info"></i>ما هي حالة الحساب؟</span>
+                        <span class="voice-pill-cmd" onclick="testVoiceCommand('افتح رادار الروابط')"><i class="fas fa-radar text-primary"></i>افتح رادار الروابط</span>
+                    </div>
+                </div>
+
+                <!-- سجل تنفيذ الأوامر اللحظي -->
+                <div>
+                    <h6 class="fw-bold text-light mb-1"><i class="fas fa-history text-info me-1"></i>سجل التنفيذ اللحظي:</h6>
+                    <div id="voiceExecutionLog" style="max-height:130px;overflow-y:auto;background:rgba(0,0,0,0.5);border-radius:10px;padding:8px;border:1px solid rgba(255,255,255,0.06);">
+                        <div class="text-muted small">جاهز لاستقبال الأوامر الصوتية...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ==========================================================
+   🎙️ محرك التحكم الصوتي الذكي والشامل (Voice Autonomous Controller)
+   ========================================================== */
+window.VoiceEngine = {
+    recognition: null,
+    isListening: false,
+    continuous: true,
+    voiceFeedback: true,
+    lang: 'ar-SA',
+    synth: window.speechSynthesis,
+    _shouldKeepListening: false,
+
+    init() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            console.warn('SpeechRecognition API غير مدعوم في هذا المتصفح');
+            return false;
+        }
+        this.recognition = new SpeechRecognition();
+        this.recognition.continuous = this.continuous;
+        this.recognition.interimResults = true;
+        this.recognition.lang = this.lang;
+
+        this.recognition.onstart = () => {
+            this.isListening = true;
+            this.updateUI(true);
+            this.showBubble('جاري الاستماع...', 'listening');
+            const statusLabel = document.getElementById('voiceModalStatusLabel');
+            if (statusLabel) statusLabel.textContent = 'مستمع لك الآن... تفضل بالأمر';
+        };
+
+        this.recognition.onresult = (event) => {
+            let interimTranscript = '';
+            let finalTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+            const currentText = finalTranscript || interimTranscript;
+            if (currentText) {
+                this.showBubble(currentText, 'processing');
+                this.updateModalTranscript(currentText);
+            }
+            if (finalTranscript) {
+                this.executeCommand(finalTranscript.trim());
+            }
+        };
+
+        this.recognition.onerror = (event) => {
+            console.warn('Voice recognition error:', event.error);
+            if (event.error === 'not-allowed') {
+                this.showBubble('يرجى السماح بصلاحية الميكروفون', 'error');
+            } else if (event.error !== 'no-speech') {
+                this.showBubble('تنبيه: ' + event.error, 'error');
+            }
+            this.updateUI(false);
+        };
+
+        this.recognition.onend = () => {
+            this.isListening = false;
+            this.updateUI(false);
+            if (this.continuous && this._shouldKeepListening) {
+                try { this.recognition.start(); } catch(e){}
+            }
+        };
+        return true;
+    },
+
+    toggle() {
+        if (!this.recognition && !this.init()) {
+            this.showBubble('المتصفح لا يدعم التعرف على الصوت', 'error');
+            alert('متصفحك لا يدعم التعرف على الصوت المباشر (Web Speech API). يرجى فتح التطبيق في متصفح Chrome أو Safari أو Edge.');
+            return;
+        }
+        if (this.isListening) {
+            this._shouldKeepListening = false;
+            try { this.recognition.stop(); } catch(e){}
+            this.showBubble('تم إيقاف الاستماع', 'idle');
+            setTimeout(() => this.hideBubble(), 2500);
+        } else {
+            this._shouldKeepListening = this.continuous;
+            this.recognition.lang = this.lang;
+            try {
+                this.recognition.start();
+            } catch(e) {
+                console.error(e);
+            }
+        }
+    },
+
+    setLanguage(newLang) {
+        this.lang = newLang;
+        if (this.recognition) {
+            this.recognition.lang = newLang;
+        }
+    },
+
+    async executeCommand(rawText) {
+        if (!rawText) return;
+        this.logToModal(`الأمر المنطوق: "${rawText}"`, 'command');
+
+        // 1. استدعاء السيرفر لتحليل الأمر بالمنطق الموحد و Gemini Fallback
+        let resData = null;
+        try {
+            const resp = await fetch('/api/voice_command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: rawText })
+            });
+            resData = await resp.json();
+        } catch (e) {
+            console.warn('Server voice command failed, fallback to local:', e);
+        }
+
+        if (resData && resData.success && resData.action) {
+            await this.performAction(resData.action, resData.params || {}, resData.spoken_feedback);
+            return;
+        }
+
+        // إذا لم يتعرف السيرفر على الأمر
+        const fallbackMsg = (resData && resData.spoken_feedback) || `لم أتعرف على الأمر "${rawText}"`;
+        this.showBubble(fallbackMsg, 'error');
+        if (this.voiceFeedback) {
+            this.speak(fallbackMsg);
+        }
+    },
+
+    async performAction(action, params, spokenFeedback) {
+        let msg = spokenFeedback || 'تم تنفيذ الأمر بنجاح';
+        this.logToModal(`تنفيذ: ${action} | المعاملات: ${JSON.stringify(params)}`, 'action');
+
+        switch (action) {
+            case 'LOGIN':
+                const phone = params.phone;
+                const name = params.account_name;
+                const dropdown = document.getElementById('savedPhonesDropdown');
+                const phoneInput = document.getElementById('phone');
+                let foundOption = false;
+
+                if (dropdown && (name || phone)) {
+                    for (let opt of dropdown.options) {
+                        const optText = opt.textContent || '';
+                        if (name && optText.toLowerCase().includes(name.toLowerCase())) {
+                            dropdown.value = opt.value;
+                            foundOption = true;
+                            break;
+                        }
+                        if (phone && (opt.value === phone || optText.includes(phone))) {
+                            dropdown.value = opt.value;
+                            foundOption = true;
+                            break;
+                        }
+                    }
+                    if (foundOption) {
+                        dropdown.dispatchEvent(new Event('change'));
+                    }
+                }
+                if (!foundOption && phoneInput && phone) {
+                    phoneInput.value = phone;
+                }
+                // الضغط التلقائي على زر تسجيل الدخول
+                const loginForm = document.getElementById('loginForm');
+                if (loginForm) {
+                    loginForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                }
+                break;
+
+            case 'SUBMIT_CODE':
+                const code = params.code;
+                const codeInput = document.getElementById('code');
+                if (codeInput && code) {
+                    codeInput.value = code;
+                    const verifyForm = document.getElementById('verifyForm');
+                    if (verifyForm) {
+                        verifyForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                    }
+                }
+                break;
+
+            case 'SUBMIT_2FA':
+                const pwd = params.password;
+                const pwdInput = document.getElementById('password');
+                if (pwdInput && pwd) {
+                    pwdInput.value = pwd;
+                    const pwdForm = document.getElementById('passwordForm');
+                    if (pwdForm) {
+                        pwdForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                    }
+                }
+                break;
+
+            case 'SEND_NOW':
+                const sendBtn = document.getElementById('sendNowBtn');
+                if (sendBtn) sendBtn.click();
+                break;
+
+            case 'STOP_SEND':
+                const stopSendBtn = document.getElementById('stopSendNowBtn');
+                if (stopSendBtn) stopSendBtn.click();
+                break;
+
+            case 'START_MONITORING':
+                const startMonBtn = document.getElementById('startMonitoringBtn');
+                if (startMonBtn) startMonBtn.click();
+                break;
+
+            case 'STOP_MONITORING':
+                const stopMonBtn = document.getElementById('stopMonitoringBtn');
+                if (stopMonBtn) stopMonBtn.click();
+                break;
+
+            case 'SAVE_SETTINGS':
+                const saveBtn = document.getElementById('btnSaveSettings');
+                if (saveBtn) saveBtn.click();
+                break;
+
+            case 'SET_INTERVAL':
+                const mins = params.minutes;
+                const intervalInput = document.getElementById('intervalSeconds');
+                if (intervalInput && mins) {
+                    intervalInput.value = mins;
+                    const sumIntervalText = document.getElementById('sumIntervalText');
+                    if (sumIntervalText) sumIntervalText.textContent = mins;
+                }
+                break;
+
+            case 'SET_SCHEDULE':
+                const dur = params.duration_hours;
+                const pause = params.pause_hours;
+                const durInput = document.getElementById('scheduleDuration');
+                const pauseInput = document.getElementById('schedulePause');
+                if (durInput && dur !== undefined) durInput.value = dur;
+                if (pauseInput && pause !== undefined) pauseInput.value = pause;
+                const sumDur = document.getElementById('sumDurationText');
+                const sumPause = document.getElementById('sumPauseText');
+                if (sumDur && dur !== undefined) sumDur.textContent = dur;
+                if (sumPause && pause !== undefined) sumPause.textContent = pause;
+                break;
+
+            case 'SET_SEND_TYPE':
+                const sendType = document.getElementById('sendType');
+                if (sendType && params.send_type) {
+                    sendType.value = params.send_type;
+                    sendType.dispatchEvent(new Event('change'));
+                }
+                break;
+
+            case 'SET_SANITIZE_MODE':
+                const sanitizeMode = document.getElementById('sanitizeMode');
+                if (sanitizeMode && params.mode) {
+                    sanitizeMode.value = params.mode;
+                    sanitizeMode.dispatchEvent(new Event('change'));
+                }
+                break;
+
+            case 'CHECK_STATUS':
+                try {
+                    const statusRes = await fetch('/api/get_login_status');
+                    const statusData = await statusRes.json();
+                    if (statusData.logged_in) {
+                        msg = `الحساب متصل بنجاح باسم ${statusData.account_name || 'المعتمد'}.`;
+                    } else if (statusData.awaiting_code) {
+                        msg = 'النظام بانتظار كود التحقق. يمكنك نطق أرقام الكود الآن.';
+                    } else if (statusData.awaiting_password) {
+                        msg = 'الحساب يتطلب كلمة مرور التحقق بخطوتين. يمكنك نطق كلمة المرور الآن.';
+                    } else {
+                        msg = 'لا يوجد حساب متصل حالياً، يمكنك قول: سجل الدخول بحساب Lamis.';
+                    }
+                } catch(e) {
+                    msg = 'تعذر استرجاع حالة الحساب حالياً.';
+                }
+                break;
+
+            case 'NAVIGATE':
+                if (params.url) {
+                    setTimeout(() => { window.location.href = params.url; }, 1000);
+                }
+                break;
+
+            default:
+                break;
+        }
+
+        this.showBubble(msg, 'success');
+        if (this.voiceFeedback) {
+            this.speak(msg);
+        }
+    },
+
+    speak(text) {
+        if (!this.synth || !this.voiceFeedback) return;
+        try {
+            this.synth.cancel();
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.lang = this.lang;
+            utter.rate = 1.0;
+            utter.pitch = 1.0;
+            this.synth.speak(utter);
+        } catch(e) {
+            console.warn('Speech synthesis error:', e);
+        }
+    },
+
+    updateUI(listening) {
+        const btn = document.getElementById('voiceMainBtn');
+        const icon = document.getElementById('voiceMicIcon');
+        const ring = document.getElementById('voicePulseRing');
+        const modalBtn = document.getElementById('modalVoiceMicBtn');
+        const waveBox = document.getElementById('voiceModalWaveBox');
+        const statusLabel = document.getElementById('voiceModalStatusLabel');
+
+        if (listening) {
+            if (btn) btn.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+            if (icon) icon.className = 'fas fa-microphone-slash fa-lg';
+            if (ring) ring.style.display = 'block';
+            if (waveBox) waveBox.style.opacity = '1';
+            if (statusLabel) statusLabel.textContent = 'مستمع لك الآن... تفضل بالأمر';
+            if (modalBtn) {
+                modalBtn.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                modalBtn.innerHTML = '<i class="fas fa-stop fa-2x"></i>';
+            }
+        } else {
+            if (btn) btn.style.background = 'linear-gradient(135deg, #0088cc 0%, #00b4d8 100%)';
+            if (icon) icon.className = 'fas fa-microphone fa-lg';
+            if (ring) ring.style.display = 'none';
+            if (waveBox) waveBox.style.opacity = '0.3';
+            if (statusLabel) statusLabel.textContent = 'اضغط على الميكروفون وتحدث بأي أمر';
+            if (modalBtn) {
+                modalBtn.style.background = 'linear-gradient(135deg, #0088cc 0%, #00b4d8 100%)';
+                modalBtn.innerHTML = '<i class="fas fa-microphone fa-2x"></i>';
+            }
+        }
+    },
+
+    showBubble(text, type = 'listening') {
+        const bubble = document.getElementById('voiceTranscriptBubble');
+        const textEl = document.getElementById('voiceTranscriptText');
+        const dot = document.getElementById('voiceStatusDot');
+        if (!bubble || !textEl) return;
+
+        textEl.textContent = text;
+        bubble.style.display = 'inline-flex';
+        if (dot) {
+            dot.style.background = type === 'error' ? '#ef4444' : (type === 'success' ? '#10b981' : '#38bdf8');
+        }
+    },
+
+    hideBubble() {
+        const bubble = document.getElementById('voiceTranscriptBubble');
+        if (bubble) bubble.style.display = 'none';
+    },
+
+    updateModalTranscript(text) {
+        const el = document.getElementById('voiceModalLiveText');
+        if (el) el.textContent = `"${text}"`;
+    },
+
+    logToModal(text, type = 'info') {
+        const logBox = document.getElementById('voiceExecutionLog');
+        if (!logBox) return;
+        const div = document.createElement('div');
+        div.className = 'p-2 rounded mb-1 ' + (type === 'action' ? 'bg-success text-white' : (type === 'command' ? 'bg-primary text-white' : 'bg-dark text-light'));
+        div.style.fontSize = '0.78rem';
+        div.textContent = `[${new Date().toLocaleTimeString('ar-SA')}] ${text}`;
+        logBox.prepend(div);
+    }
+};
+
+window.toggleVoiceListening = function() {
+    window.VoiceEngine.toggle();
+};
+
+window.openVoiceModal = function() {
+    const modalEl = document.getElementById('voiceControlModal');
+    if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+};
+
+window.testVoiceCommand = function(cmd) {
+    if (window.VoiceEngine) {
+        window.VoiceEngine.executeCommand(cmd);
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // تهيئة محرك الصوت في الخلفية
+    try {
+        window.VoiceEngine.init();
+    } catch(e) {}
+});
+</script>
 </body>
 </html>
