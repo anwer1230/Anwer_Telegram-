@@ -1,0 +1,97 @@
+{
+  "keys": [
+    {
+      "id": "key_1",
+      "name": "Gemini Flash Key 1",
+      "hint": "...TYLQ",
+      "encoded_key": "QVEuQWI4Uk42TFNDZ0lKNEkyaUN2YWduN25KZU0tdXhnNDJxV3l4TU9BOVdzQV92dFRZTFE=",
+      "key": "",
+      "project_id": "gen-lang-client-0197022210",
+      "tier": "Free tier",
+      "active": true,
+      "priority": 1
+    },
+    {
+      "id": "key_2",
+      "name": "Gemini Flash Key 2",
+      "hint": "...bEXA",
+      "encoded_key": "QVEuQWI4Uk42THNnbWtDTUVxRHR2blV2MlhoNGJvNFNhbjVfbmdmeUpNTVpvS0RjZWJFWEE=",
+      "key": "",
+      "project_id": "gen-lang-client-0197022210",
+      "tier": "Free tier",
+      "active": true,
+      "priority": 2
+    },
+    {
+      "id": "key_3",
+      "name": "Gemini Flash Key 3",
+      "hint": "...Us0A",
+      "encoded_key": "QVEuQWI4Uk42Szh5OEtvek1pdEw1YjhIdmpLSjJJRHF0WnBjdXFhT2xFLXFaTXhUZVVzMEE=",
+      "key": "",
+      "project_id": "gen-lang-client-0197022210",
+      "tier": "Free tier",
+      "active": true,
+      "priority": 3
+    },
+    {
+      "id": "key_4",
+      "name": "Gemini Flash Key 4",
+      "hint": "...ebvA",
+      "encoded_key": "QVEuQWI4Uk42S2dSakRWXzhsVUpLMHNBYUFGVVhNeFQ5b2JiSzRMV19xVWhPd0czY2VidkE=",
+      "key": "",
+      "project_id": "gen-lang-client-0197022210",
+      "tier": "Free tier",
+      "active": true,
+      "priority": 4
+    },
+    {
+      "id": "key_5",
+      "name": "Gemini Flash Key 5",
+      "hint": "...0z2A",
+      "encoded_key": "QVEuQWI4Uk42SnR4Y1lRZ3ExblZRd0FaNnlqZkFMU3hQcFpxRUE5TGtXVUlqWlA1UDB6MkE=",
+      "key": "",
+      "project_id": "gen-lang-client-0197022210",
+      "tier": "Free tier",
+      "active": true,
+      "priority": 5
+    },
+    {
+      "id": "key_6",
+      "name": "Gemini Flash Key 6",
+      "hint": "...4Yw",
+      "encoded_key": "QVEuQWI4Uk42S3JDWUVLMlRQbWRFOWFrUFlndFVDUG01bklJa1gzZXhCWVhUZjdsalU0WXc=",
+      "key": "",
+      "project_id": "gen-lang-client-0197022210",
+      "tier": "Free tier",
+      "active": true,
+      "priority": 6
+    },
+    {
+      "id": "key_7",
+      "name": "Gemini Flash Key 7",
+      "hint": "...AiEQ",
+      "encoded_key": "QVEuQWI4Uk42TDIxcWJIX25CeDdBeEFCaklrdjY3bG81Wjh5TEtNNWZRTVZJX1RMSEFpRVE=",
+      "key": "",
+      "project_id": "gen-lang-client-0197022210",
+      "tier": "Free tier",
+      "active": true,
+      "priority": 7
+    },
+    {
+      "id": "key_8",
+      "name": "Gemini Flash Key 8",
+      "hint": "...ojVg",
+      "encoded_key": "QVEuQWI4Uk42TGV6MW9TVk03dFRPM1UydHc3b2I0UUNGV2pPU2VzdmNydmJsbjV0Zm9qVmc=",
+      "key": "",
+      "project_id": "gen-lang-client-0197022210",
+      "tier": "Free tier",
+      "active": true,
+      "priority": 8
+    }
+  ],
+  "rotation_mode": "sequential_round_robin",
+  "auto_failover": true,
+  "rate_limit_cooldown_seconds": 60,
+  "default_model": "gemini-flash-latest",
+  "updated_at": "2026-09-30 11:46:00"
+}
