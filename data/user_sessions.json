@@ -1,6 +1,52 @@
 {
   "installations": [
     {
+      "install_id": "ac10a5b4-10f4-41a1-baf6-74ad2fecc33d",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-10-01T12:51:37.925749",
+      "last_seen": "2026-10-01T12:51:37.925749",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "Lamis",
+          "phone": "+967771234567",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "5f42d8a8-74e0-4cc8-85f8-084b675df21c",
+      "user_id": "user_1",
+      "ip": "9.246.39.18",
+      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
+      "cookies": "{\"__SECURE-aistudio_auth_token\": \"FcEJFjgYp27_4B6wC_j_R-Sa5uzOExA82K7fkwBjgzM=\"}",
+      "timestamp": "2026-10-01T12:44:36.759826",
+      "last_seen": "2026-10-01T12:44:36.759826",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "الحساب الأول",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
       "install_id": "0660323d-b2fa-4d86-843b-8dc30c6a7254",
       "user_id": "user_1",
       "ip": "9.246.39.18",

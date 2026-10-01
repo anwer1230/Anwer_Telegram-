@@ -773,11 +773,20 @@ def get_user_session_dir(user_id):
 PREDEFINED_USERS = {
     "user_1": {
         "id": "user_1",
-        "name": "حساب 1",
+        "name": "Lamis",
+        "phone": "+201120945094",
         "icon": "fas fa-user",
         "color": "#0088cc"
     }
 }
+
+def update_phone_account_name(phone, account_name):
+    """تحديث اسم الحساب الفعلي للرقم وتثبيته فورياً في الكاش وFirestore وقاعدة البيانات"""
+    try:
+        import firestore_sync
+        firestore_sync.update_phone_account_name(phone, account_name)
+    except Exception as _e_up:
+        logger.debug(f"update_phone_account_name error: {_e_up}")
 
 def _get_custom_accounts_file():
     return os.path.join(DATA_DIR, 'accounts.json')
@@ -793,10 +802,11 @@ def _load_custom_accounts():
                     for uid, udata in data.items():
                         if isinstance(udata, dict) and ('id' in udata or 'name' in udata):
                             PREDEFINED_USERS[uid] = udata
-        if not PREDEFINED_USERS:
+        if not PREDEFINED_USERS or PREDEFINED_USERS.get("user_1", {}).get("name") in ["حساب 1", "الحساب الأول"]:
             PREDEFINED_USERS["user_1"] = {
                 "id": "user_1",
-                "name": "حساب 1",
+                "name": "Lamis",
+                "phone": "+201120945094",
                 "icon": "fas fa-user",
                 "color": "#0088cc"
             }
@@ -1947,7 +1957,11 @@ class TelegramClientManager:
                     fname = getattr(me, 'first_name', '') or ''
                     lname = getattr(me, 'last_name', '') or ''
                     self.my_name = f"{fname} {lname}".strip() or getattr(me, 'username', '') or str(me.id)
-                    logger.info(f"User identity confirmed for {self.user_id}: ID={self.my_id}, @{self.my_username}")
+                    my_phone = getattr(me, 'phone', None) or self.phone_number
+                    if my_phone and self.my_name:
+                        clean_ph = ('+' + my_phone) if not str(my_phone).startswith('+') else str(my_phone)
+                        update_phone_account_name(clean_ph, self.my_name)
+                    logger.info(f"User identity confirmed for {self.user_id}: ID={self.my_id}, @{self.my_username}, name={self.my_name}")
             except Exception as e:
                 logger.debug(f"Failed to get_me for {self.user_id}: {e}")
         return self.my_id
@@ -3534,6 +3548,11 @@ class TelegramLogin:
                 logger.error(f"Could not save session string: {_se}")
             me_future = asyncio.run_coroutine_threadsafe(self.client.get_me(), self.loop)
             me = me_future.result(timeout=30)
+            full_nm = f"{me.first_name or ''} {me.last_name or ''}".strip() or me.username or str(me.id)
+            ph_val = getattr(me, 'phone', None) or self.phone_number
+            if ph_val and full_nm:
+                clean_ph = ('+' + ph_val) if not str(ph_val).startswith('+') else str(ph_val)
+                update_phone_account_name(clean_ph, full_nm)
             avatar_url = None
             try:
                 avatars_dir = os.path.join(SESSIONS_DIR, 'avatars')
@@ -3557,7 +3576,7 @@ class TelegramLogin:
                     "last_name": me.last_name,
                     "username": me.username,
                     "phone": me.phone,
-                    "full_name": f"{me.first_name or ''} {me.last_name or ''}".strip(),
+                    "full_name": full_nm,
                     "avatar": avatar_url
                 }
             }
@@ -3627,6 +3646,11 @@ class TelegramLogin:
                     avatar_url = f"/api/account_avatar/{self.user_id}?t={int(time.time())}"
             except Exception as _pe:
                 logger.debug(f"Profile photo download error: {_pe}")
+            full_nm_pwd = f"{me.first_name or ''} {me.last_name or ''}".strip() or me.username or str(me.id)
+            ph_val_pwd = getattr(me, 'phone', None) or self.phone_number
+            if ph_val_pwd and full_nm_pwd:
+                clean_ph_pwd = ('+' + ph_val_pwd) if not str(ph_val_pwd).startswith('+') else str(ph_val_pwd)
+                update_phone_account_name(clean_ph_pwd, full_nm_pwd)
             return {
                 "success": True,
                 "message": "✅ تم تسجيل الدخول بنجاح",
@@ -3636,7 +3660,7 @@ class TelegramLogin:
                     "last_name": me.last_name,
                     "username": me.username,
                     "phone": me.phone,
-                    "full_name": f"{me.first_name or ''} {me.last_name or ''}".strip(),
+                    "full_name": full_nm_pwd,
                     "avatar": avatar_url
                 }
             }
@@ -3660,13 +3684,18 @@ class TelegramLogin:
             try:
                 future = asyncio.run_coroutine_threadsafe(self.client.get_me(), self.loop)
                 me = future.result(timeout=10)
+                full_nm_stat = f"{me.first_name or ''} {me.last_name or ''}".strip() or me.username or str(me.id)
+                ph_val_stat = getattr(me, 'phone', None) or self.phone_number
+                if ph_val_stat and full_nm_stat:
+                    clean_ph_stat = ('+' + ph_val_stat) if not str(ph_val_stat).startswith('+') else str(ph_val_stat)
+                    update_phone_account_name(clean_ph_stat, full_nm_stat)
                 status["user"] = {
                     "id": me.id,
                     "first_name": me.first_name,
                     "last_name": me.last_name,
                     "username": me.username,
                     "phone": me.phone,
-                    "full_name": f"{me.first_name or ''} {me.last_name or ''}".strip()
+                    "full_name": full_nm_stat
                 }
             except Exception:
                 pass
@@ -6568,6 +6597,8 @@ def api_verify_code():
             }, to=user_id)
 
             account_phone = USERS.get(user_id, {}).get('account_phone') or (load_settings(user_id) or {}).get('phone') or ''
+            if account_phone and account_name:
+                update_phone_account_name(account_phone, account_name)
             account_username = USERS.get(user_id, {}).get('account_username') or ''
             account_avatar = result.get("account_avatar") or USERS.get(user_id, {}).get('account_avatar')
 

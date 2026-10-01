@@ -1074,13 +1074,13 @@
                                 </label>
                                 <select class="form-select shadow-sm" id="savedPhonesDropdown" onchange="handlePhoneDropdownSelect(this.value)" style="border-radius: 10px; font-weight: 600; border-color: #0088cc;">
                                     <option value="">-- اضغط لاختيار رقم أو تسجيل برقم آخر --</option>
-                                    <option value="+573244867204">+573244867204 (⭐ أساسي)</option>
-                                    <option value="+201221349790">+201221349790 (⭐ أساسي)</option>
-                                    <option value="+201148863243">+201148863243 (⭐ أساسي)</option>
-                                    <option value="+213797500921">+213797500921 (⭐ أساسي)</option>
-                                    <option value="+201274386864">+201274386864 (⭐ أساسي)</option>
-                                    <option value="+201120945094">+201120945094 (⭐ أساسي)</option>
-                                    <option value="+966539709737">+966539709737 (⭐ أساسي)</option>
+                                    <option value="+201120945094">+201120945094 (⭐ Lamis)</option>
+                                    <option value="+573244867204">+573244867204 (⭐ الحساب الأول)</option>
+                                    <option value="+201221349790">+201221349790 (⭐ الحساب الثاني)</option>
+                                    <option value="+201148863243">+201148863243 (⭐ الحساب الثالث)</option>
+                                    <option value="+213797500921">+213797500921 (⭐ الحساب الرابع)</option>
+                                    <option value="+201274386864">+201274386864 (⭐ الحساب الخامس)</option>
+                                    <option value="+966539709737">+966539709737 (⭐ خدمة العملاء)</option>
                                     <option value="__custom__">➕ تسجيل برقم آخر...</option>
                                 </select>
                             </div>
@@ -6517,7 +6517,8 @@
                 phones.forEach(item => {
                     const opt = document.createElement('option');
                     opt.value = item.phone_number;
-                    const badge = item.is_default ? '⭐ أساسي' : '📱 محفوظ';
+                    const acctName = item.account_name || (item.label && !item.label.includes('أساسي') ? item.label : '') || (item.phone_number === '+201120945094' ? 'Lamis' : 'حساب معتمد');
+                    const badge = `⭐ ${acctName}`;
                     opt.textContent = `${item.phone_number} (${badge})`;
                     select.appendChild(opt);
                 });

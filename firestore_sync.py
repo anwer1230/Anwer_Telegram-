@@ -70,14 +70,61 @@ def _save_json_file(file_path, data):
 # 📱 أرقام الهواتف (Phone Numbers)
 # ==========================================
 DEFAULT_PHONE_NUMBERS = [
-    {"phone_number": "+573244867204", "is_default": True, "label": "رقم أساسي"},
-    {"phone_number": "+201221349790", "is_default": True, "label": "رقم أساسي"},
-    {"phone_number": "+201148863243", "is_default": True, "label": "رقم أساسي"},
-    {"phone_number": "+213797500921", "is_default": True, "label": "رقم أساسي"},
-    {"phone_number": "+201274386864", "is_default": True, "label": "رقم أساسي"},
-    {"phone_number": "+201120945094", "is_default": True, "label": "رقم أساسي"},
-    {"phone_number": "+966539709737", "is_default": True, "label": "رقم أساسي"}
+    {"phone_number": "+201120945094", "account_name": "Lamis", "is_default": True, "label": "Lamis"},
+    {"phone_number": "+573244867204", "account_name": "الحساب الأول", "is_default": True, "label": "الحساب الأول"},
+    {"phone_number": "+201221349790", "account_name": "الحساب الثاني", "is_default": True, "label": "الحساب الثاني"},
+    {"phone_number": "+201148863243", "account_name": "الحساب الثالث", "is_default": True, "label": "الحساب الثالث"},
+    {"phone_number": "+213797500921", "account_name": "الحساب الرابع", "is_default": True, "label": "الحساب الرابع"},
+    {"phone_number": "+201274386864", "account_name": "الحساب الخامس", "is_default": True, "label": "الحساب الخامس"},
+    {"phone_number": "+966539709737", "account_name": "خدمة العملاء", "is_default": True, "label": "خدمة العملاء"}
 ]
+
+
+def update_phone_account_name(phone, account_name):
+    """
+    تحديث وحفظ اسم الحساب الفعلي للرقم فورياً ودائماً
+    في الكاش المحلي data/saved_phones.json وخلفياً في Firestore
+    """
+    if not phone or not account_name:
+        return None
+    clean_phone = str(phone).strip()
+    if not clean_phone.startswith('+') and not clean_phone.startswith('00'):
+        clean_phone = '+' + clean_phone
+    clean_name = str(account_name).strip()
+    if not clean_name:
+        return None
+
+    with _PHONES_CACHE_LOCK:
+        phones = _load_json_file(LOCAL_PHONES_CACHE_FILE, list(DEFAULT_PHONE_NUMBERS))
+        found = False
+        for p in phones:
+            if p.get('phone_number') == clean_phone:
+                p['account_name'] = clean_name
+                p['label'] = clean_name
+                found = True
+                break
+        if not found:
+            phones.append({
+                "phone_number": clean_phone,
+                "account_name": clean_name,
+                "label": clean_name,
+                "is_default": False,
+                "added_at": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+            })
+        _save_json_file(LOCAL_PHONES_CACHE_FILE, phones)
+
+    # مزامنة خلفية مع Firestore
+    def _bg_sync_name():
+        try:
+            subprocess.run(
+                ['node', BRIDGE_SCRIPT, 'update_phone_name', clean_phone, clean_name],
+                capture_output=True, text=True, timeout=10, cwd=BASE_DIR
+            )
+        except Exception as e:
+            logger.debug(f"Firestore name sync: {e}")
+
+    _SYNC_EXECUTOR.submit(_bg_sync_name)
+    return clean_name
 
 
 def get_saved_phone_numbers():
@@ -95,16 +142,31 @@ def get_saved_phone_numbers():
             if res.get('success'):
                 phones = res.get('phones', [])
                 if phones:
+                    # تنقية أسماء الحسابات والتأكد من عدم وجود كلمة أساسي
+                    for p in phones:
+                        if p.get('phone_number') == '+201120945094':
+                            p['account_name'] = 'Lamis'
+                            p['label'] = 'Lamis'
+                        elif p.get('label') and 'أساسي' in p.get('label'):
+                            p['label'] = p.get('account_name') or 'حساب معتمد'
                     with _PHONES_CACHE_LOCK:
                         _save_json_file(LOCAL_PHONES_CACHE_FILE, phones)
                     return phones
     except Exception as e:
         logger.warning(f"تعذر جلب الأرقام من Firestore مباشرة ({e})، استخدام الكاش المحلي")
 
-    return cached if cached else list(DEFAULT_PHONE_NUMBERS)
+    # تنقية الكاش والتأكد من اسم Lamis لـ +201120945094
+    result = cached if cached else list(DEFAULT_PHONE_NUMBERS)
+    for p in result:
+        if p.get('phone_number') == '+201120945094':
+            p['account_name'] = 'Lamis'
+            p['label'] = 'Lamis'
+        elif p.get('label') and 'أساسي' in p.get('label'):
+            p['label'] = p.get('account_name') or 'حساب معتمد'
+    return result
 
 
-def save_phone_number(phone, label='رقم محفوظ'):
+def save_phone_number(phone, label='حساب محفوظ'):
     """حفظ رقم هاتف جديد في الكاش المحلي وخلفياً في Firestore"""
     if not phone:
         return None
