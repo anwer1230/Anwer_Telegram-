@@ -1653,6 +1653,10 @@ def save_settings(user_id, settings, force=False):
             settings.setdefault('keyword_auto_reply_in_dm', True)
             settings.setdefault('alert_target_user', 'me')
             settings.setdefault('user_auto_replies', [])
+            settings.setdefault('schedule_duration_hours', 2.0)
+            settings.setdefault('schedule_duration', 7200)
+            settings.setdefault('schedule_pause_hours', 2.0)
+            settings.setdefault('schedule_pause_duration', 7200)
 
         if not force:
             existing = load_settings(user_id)
@@ -1693,6 +1697,10 @@ def load_settings(user_id):
                 database_settings.setdefault('keyword_auto_reply_in_dm', True)
                 database_settings.setdefault('alert_target_user', 'me')
                 database_settings.setdefault('user_auto_replies', [])
+                database_settings.setdefault('schedule_duration_hours', 2.0)
+                database_settings.setdefault('schedule_duration', 7200)
+                database_settings.setdefault('schedule_pause_hours', 2.0)
+                database_settings.setdefault('schedule_pause_duration', 7200)
                 return database_settings
         except Exception as _db_load_error:
             logger.warning("PostgreSQL settings read failed for %s: %s", user_id, _db_load_error)
@@ -1717,6 +1725,10 @@ def load_settings(user_id):
             data.setdefault('keyword_auto_reply_in_dm', True)
             data.setdefault('alert_target_user', 'me')
             data.setdefault('user_auto_replies', [])
+            data.setdefault('schedule_duration_hours', 2.0)
+            data.setdefault('schedule_duration', 7200)
+            data.setdefault('schedule_pause_hours', 2.0)
+            data.setdefault('schedule_pause_duration', 7200)
             if _DB_READY:
                 _app_db.save_settings(user_id, data)
             return data
@@ -1739,6 +1751,10 @@ def load_settings(user_id):
             data.setdefault('keyword_auto_reply_in_dm', True)
             data.setdefault('alert_target_user', 'me')
             data.setdefault('user_auto_replies', [])
+            data.setdefault('schedule_duration_hours', 2.0)
+            data.setdefault('schedule_duration', 7200)
+            data.setdefault('schedule_pause_hours', 2.0)
+            data.setdefault('schedule_pause_duration', 7200)
             # نقل البيانات للمجلد الجديد والقاعدة عند توفرها
             save_settings(user_id, data, force=True)
             return data
@@ -1756,7 +1772,11 @@ def load_settings(user_id):
             'keyword_auto_reply_in_group': True,
             'keyword_auto_reply_in_dm': True,
             'alert_target_user': 'me',
-            'user_auto_replies': []
+            'user_auto_replies': [],
+            'schedule_duration_hours': 2.0,
+            'schedule_duration': 7200,
+            'schedule_pause_hours': 2.0,
+            'schedule_pause_duration': 7200
         }
     except Exception as e:
         logger.error(f"Error loading settings for {user_id}: {str(e)}")
@@ -1774,7 +1794,11 @@ def load_settings(user_id):
             'keyword_auto_reply_in_group': True,
             'keyword_auto_reply_in_dm': True,
             'alert_target_user': 'me',
-            'user_auto_replies': []
+            'user_auto_replies': [],
+            'schedule_duration_hours': 2.0,
+            'schedule_duration': 7200,
+            'schedule_pause_hours': 2.0,
+            'schedule_pause_duration': 7200
         }
 
 # ترحيل كسول وآمن: لا يستبدل أي إعداد موجود في PostgreSQL
@@ -2704,8 +2728,16 @@ class TelegramClientManager:
                 if not sender_id and sender:
                     sender_id = getattr(sender, 'id', None)
 
-                # استخراج اليوزرنيم
+                # استخراج المعرفات والاسم ورقم الهاتف
+                if not sender_id and getattr(event, 'is_private', False):
+                    sender_id = getattr(event, 'chat_id', None)
+
                 sender_username = (getattr(sender, 'username', '') or '').strip().lstrip('@').lower()
+                sender_first = getattr(sender, 'first_name', '') or ''
+                sender_last = getattr(sender, 'last_name', '') or ''
+                sender_name = f"{sender_first} {sender_last}".strip().lower()
+                sender_phone = str(getattr(sender, 'phone', '') or '').strip().lstrip('+')
+
                 if not sender_username and sender_id:
                     try:
                         sender_ent = await self.client.get_entity(sender_id)
@@ -2713,15 +2745,24 @@ class TelegramClientManager:
                             if not sender:
                                 sender = sender_ent
                             sender_username = (getattr(sender_ent, 'username', '') or '').strip().lstrip('@').lower()
+                            if not sender_first:
+                                sender_first = getattr(sender_ent, 'first_name', '') or ''
+                                sender_last = getattr(sender_ent, 'last_name', '') or ''
+                                sender_name = f"{sender_first} {sender_last}".strip().lower()
+                            if not sender_phone:
+                                sender_phone = str(getattr(sender_ent, 'phone', '') or '').strip().lstrip('+')
                     except Exception:
                         pass
 
                 sender_id_str = str(sender_id) if sender_id is not None else ''
 
                 # عدم الرد على الحساب الشخصي نفسه
-                await self._ensure_my_info()
-                if sender_id and self.my_id and sender_id == self.my_id:
-                    return
+                try:
+                    await self._ensure_my_info()
+                    if sender_id and self.my_id and sender_id == self.my_id:
+                        return
+                except Exception:
+                    pass
 
                 for u_rule in user_rules:
                     if not isinstance(u_rule, dict):
@@ -2760,13 +2801,17 @@ class TelegramClientManager:
                         except Exception as _res_e:
                             logger.debug(f"Target user resolve debug ({target_clean}): {_res_e}")
 
-                    # فحص التطابق الشامل: بالـ ID أو بالـ Username
+                    # فحص التطابق الشامل: بالـ ID أو بالـ Username أو بالهاتف أو بالاسم
                     is_match = False
                     if target_uid and sender_id and (int(target_uid) == int(sender_id)):
                         is_match = True
                     elif sender_username and (target_clean == sender_username):
                         is_match = True
                     elif sender_id_str and (target_clean == sender_id_str):
+                        is_match = True
+                    elif sender_phone and (target_clean == sender_phone):
+                        is_match = True
+                    elif sender_name and (target_clean == sender_name or (len(target_clean) >= 3 and target_clean in sender_name)):
                         is_match = True
 
                     if is_match:
@@ -3132,7 +3177,7 @@ class TelegramClientManager:
             logger.error(f"❌ Error triggering keyword alert: {str(e)}", exc_info=True)
 
     async def _handle_keyword_auto_reply(self, event, message, matched_keywords, group_identifier):
-        """الرد التلقائي على الكلمات المراقبة (في الخاص مع توجيه الرسالة والرد عليها + وفي المجموعة مباشرة)"""
+        """الرد التلقائي الفعلي على الكلمات المراقبة (في الخاص مع توجيه الرسالة والرد عليها + وفي المجموعة مباشرة عبر event.reply)"""
         try:
             settings = load_settings(self.user_id) or {}
             # التحقق من تفعيل الميزة
@@ -3153,51 +3198,74 @@ class TelegramClientManager:
             sender_id = getattr(event, 'sender_id', None)
             if not sender_id and sender:
                 sender_id = getattr(sender, 'id', None)
+            if not sender_id and hasattr(event, 'message') and event.message:
+                from_id = getattr(event.message, 'from_id', None)
+                if from_id:
+                    sender_id = getattr(from_id, 'user_id', None) or getattr(from_id, 'channel_id', None) or getattr(from_id, 'chat_id', None)
+            if not sender_id and getattr(event, 'is_private', False):
+                sender_id = getattr(event, 'chat_id', None)
 
             # عدم الرد على الحساب الشخصي نفسه
-            await self._ensure_my_info()
-            if sender_id and self.my_id and sender_id == self.my_id:
-                return
+            try:
+                await self._ensure_my_info()
+                if sender_id and self.my_id and sender_id == self.my_id:
+                    return
+            except Exception:
+                pass
 
-            if not sender_id and not sender:
-                logger.debug(f"Could not identify sender for keyword auto-reply in {group_identifier}")
-                return
-
-            # تفادي تكرار الرد لنفس الشخص في غضون 60 ثانية
+            # تفادي تكرار الرد لنفس الشخص خلال فترة قصيرة (15 ثانية)
             now = time.time()
             if not hasattr(self, '_last_keyword_reply_times'):
                 self._last_keyword_reply_times = {}
-            if sender_id and (now - self._last_keyword_reply_times.get(sender_id, 0) < 60):
-                logger.info(f"⏳ تم تخطي الرد التلقائي لـ {sender_id} منعاً للتكرار (فترة انتظار 60 ثانية)")
+            if sender_id and (now - self._last_keyword_reply_times.get(sender_id, 0) < 15):
+                logger.info(f"⏳ تم تخطي الرد التلقائي لـ {sender_id} منعاً للتكرار (انتظار 15 ثانية)")
                 return
 
             sent_reply = False
 
             # ──────────────────────────────────────────────────────────
-            # 1) الرد التلقائي المباشر في المجموعة على رسالة العميل
+            # 1) الرد التلقائي المباشر في المجموعة على رسالة العميل (عبر event.reply الموثوق)
             # ──────────────────────────────────────────────────────────
-            if reply_in_group and not event.is_private:
+            if reply_in_group and not getattr(event, 'is_private', False):
                 try:
-                    await self.client.send_message(
-                        entity=event.chat_id,
-                        message=reply_text,
-                        reply_to=message.id
-                    )
+                    await event.reply(reply_text)
                     sent_reply = True
-                    logger.info(f"✅ تم الرد التلقائي في المجموعة '{group_identifier}' على رسالة {message.id}")
+                    logger.info(f"✅ تم الرد التلقائي المباشر في المجموعة '{group_identifier}' على رسالة {message.id}")
                 except Exception as grp_err:
-                    logger.warning(f"تعذر الرد التلقائي داخل المجموعة {group_identifier}: {grp_err}")
+                    logger.warning(f"محاولة بديلة بـ send_message في المجموعة {group_identifier}: {grp_err}")
+                    try:
+                        chat_ent = await event.get_chat()
+                        await self.client.send_message(
+                            entity=chat_ent or event.chat_id,
+                            message=reply_text,
+                            reply_to=message.id
+                        )
+                        sent_reply = True
+                        logger.info(f"✅ تم الرد التلقائي البديل بنجاح في {group_identifier}")
+                    except Exception as fb_err:
+                        logger.warning(f"تعذر الرد التلقائي داخل المجموعة {group_identifier}: {fb_err}")
 
             # ──────────────────────────────────────────────────────────
-            # 2) الرد التلقائي بالخاص على مرسل الكلمة المراقبة
+            # 2) الرد التلقائي بالخاص على مرسل الكلمة المراقبة (مع حل الـ InputPeer)
             # ──────────────────────────────────────────────────────────
-            if reply_in_dm:
-                target_entity = sender
-                if not target_entity and sender_id:
+            if reply_in_dm and (sender or sender_id):
+                input_sender = None
+                try:
+                    input_sender = await event.get_input_sender()
+                except Exception:
+                    pass
+                if not input_sender and sender:
                     try:
-                        target_entity = await self.client.get_entity(sender_id)
+                        input_sender = await self.client.get_input_entity(sender)
                     except Exception:
-                        target_entity = sender_id
+                        pass
+                if not input_sender and sender_id:
+                    try:
+                        input_sender = await self.client.get_input_entity(sender_id)
+                    except Exception:
+                        pass
+
+                target_entity = input_sender or sender or sender_id
 
                 fwd_msg_id = None
                 if forward_original:
@@ -3213,12 +3281,11 @@ class TelegramClientManager:
                             fwd_msg_id = fwd_res.id
                         logger.info(f"✅ تم تحويل الرسالة الأصلية لخاص {sender_id} (fwd_id={fwd_msg_id})")
                     except Exception as fwd_err:
-                        logger.warning(f"تعذر التوجيه المباشر ({fwd_err})، سيتم إرسال اقتباس")
+                        logger.warning(f"تعذر التوجيه المباشر بالخاص ({fwd_err})، سيتم إرسال الرد كاقتباس")
 
-                    # مهلة بسيطة لضمان معالجة خادم تيليجرام للرسالة المحولة
-                    await asyncio.sleep(0.6)
+                    await asyncio.sleep(0.4)
 
-                # إرسال نص الرد كـ رد حقيقي مرتبط بالرسالة المحولة (reply_to)
+                # إرسال نص الرد كـ رد حقيقي مرتبط بالرسالة المحولة أو اقتباس مباشر
                 try:
                     if fwd_msg_id:
                         try:
@@ -3228,29 +3295,30 @@ class TelegramClientManager:
                                 reply_to=fwd_msg_id
                             )
                             sent_reply = True
-                            logger.info(f"✅ تم إرسال الرد '{reply_text}' كرد مرتبط على الرسالة المحولة بالخاص لـ {sender_id}")
+                            logger.info(f"✅ تم إرسال الرد بالخاص لـ {sender_id} مرتبطاً بالرسالة المحولة")
                         except Exception as dm_reply_err:
-                            logger.warning(f"فشل ربط reply_to، الإرسال كنص مباشر بالخاص: {dm_reply_err}")
+                            logger.warning(f"فشل ربط reply_to بالخاص، الإرسال كنص مباشر: {dm_reply_err}")
                             await self.client.send_message(
                                 entity=target_entity,
                                 message=reply_text
                             )
                             sent_reply = True
                     elif forward_original:
-                        # في حال تعذر التوجيه المباشر، أرسل اقتباساً واضحاً مع الرد
                         orig_snippet = (message.text or '')[:300]
-                        quote_text = f"📨 بخصوص رسالتك:\n«{orig_snippet}»\n\n{reply_text}"
+                        quote_text = f"📨 بخصوص رسالتك:\n«{orig_snippet}»\n\n{reply_text}" if orig_snippet else reply_text
                         await self.client.send_message(
                             entity=target_entity,
                             message=quote_text
                         )
                         sent_reply = True
+                        logger.info(f"✅ تم إرسال الرد مقتبساً بالخاص لـ {sender_id}")
                     else:
                         await self.client.send_message(
                             entity=target_entity,
                             message=reply_text
                         )
                         sent_reply = True
+                        logger.info(f"✅ تم إرسال الرد بالخاص لـ {sender_id}")
                 except Exception as dm_err:
                     logger.warning(f"تعذر إرسال الرد بالخاص لـ {sender_id}: {dm_err}")
 
@@ -3261,7 +3329,7 @@ class TelegramClientManager:
                         self._last_keyword_reply_times.clear()
 
                 kw_str = ' | '.join(matched_keywords[:2])
-                sname = getattr(sender, 'first_name', '') or str(sender_id)
+                sname = getattr(sender, 'first_name', '') or str(sender_id or 'عميل')
                 _emit_log_update('INFO', f"⚡ رد تلقائي على '{kw_str}': «{reply_text}» لـ ({sname})", self.user_id)
                 socketio.emit('auto_reply_triggered', {
                     "keyword": kw_str,
@@ -3270,7 +3338,6 @@ class TelegramClientManager:
                     "timestamp": time.strftime('%H:%M:%S')
                 }, to=self.user_id)
         except Exception as e:
-            # حماية مطلقة: أي خطأ هنا معزول تماماً ولا يؤثر إطلاقاً على عمل مراقب الكلمات
             logger.warning(f"Keyword auto-reply non-blocking exception: {e}")
 
     def update_monitoring_settings(self, keywords, groups):
@@ -5368,13 +5435,24 @@ def monitoring_worker(user_id):
                 USERS[user_id]['last_scheduled_send'] = _saved_last_send
 
         # ── دورة التشغيل/التوقف التلقائية للإرسال المجدول (الدورة الدائرية المستمرة) ───
-        _sched_dur = max(0, int(settings.get('schedule_duration', 0) or 0))
-        _pause_dur = max(0, int(settings.get('schedule_pause_duration', 0) or 0))
+        # الافتراضي الثابت والفعال دائماً: ساعتان تشغيل (7200 ثانية) + ساعتان توقف (7200 ثانية)
+        _sched_dur = int(settings.get('schedule_duration', 0) or 0)
+        if _sched_dur == 0:
+            try:
+                _sched_dur = max(0, int(float(settings.get('schedule_duration_hours', 2.0) or 2.0) * 3600))
+            except (TypeError, ValueError):
+                _sched_dur = 7200
+        if _sched_dur == 0 and settings.get('send_type') == 'scheduled':
+            _sched_dur = 7200
+
+        _pause_dur = int(settings.get('schedule_pause_duration', 0) or 0)
         if _pause_dur == 0:
             try:
-                _pause_dur = max(0, int(float(settings.get('schedule_pause_hours', 0) or 0) * 3600))
+                _pause_dur = max(0, int(float(settings.get('schedule_pause_hours', 2.0) or 2.0) * 3600))
             except (TypeError, ValueError):
-                _pause_dur = 0
+                _pause_dur = 7200
+        if _pause_dur == 0 and settings.get('send_type') == 'scheduled':
+            _pause_dur = 7200
         _sched_start = time.time()
         _pause_start = None
         _cycle_phase = 'running'
@@ -6727,13 +6805,21 @@ def api_save_settings():
             }, to=user_id)
 
     try:
-        _sched_dur_h = max(0.0, float(data.get('schedule_duration_hours', 0) or 0))
+        raw_dur = data.get('schedule_duration_hours')
+        _sched_dur_h = float(raw_dur) if raw_dur is not None and str(raw_dur).strip() != '' else 2.0
     except (TypeError, ValueError):
-        _sched_dur_h = 0.0
+        _sched_dur_h = 2.0
     try:
-        _pause_dur_h = max(0.0, float(data.get('schedule_pause_hours', 0) or 0))
+        raw_pause = data.get('schedule_pause_hours')
+        _pause_dur_h = float(raw_pause) if raw_pause is not None and str(raw_pause).strip() != '' else 2.0
     except (TypeError, ValueError):
-        _pause_dur_h = 0.0
+        _pause_dur_h = 2.0
+
+    if data.get('send_type') == 'scheduled':
+        if _sched_dur_h <= 0:
+            _sched_dur_h = 2.0
+        if _pause_dur_h <= 0:
+            _pause_dur_h = 2.0
     try:
         _interval_seconds = max(60, int(data.get('interval_seconds', 3600) or 3600))
     except (TypeError, ValueError):

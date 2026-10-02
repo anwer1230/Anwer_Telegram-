@@ -1583,13 +1583,13 @@
                                         </label>
                                         <div class="input-group input-group-sm">
                                             <input type="number" class="form-control text-center fw-bold" id="scheduleDuration"
-                                                   min="0" step="0.5"
-                                                   value="{{ settings.schedule_duration_hours or 0 }}"
-                                                   placeholder="3">
+                                                   min="0.1" step="0.5"
+                                                   value="{{ settings.schedule_duration_hours if settings.schedule_duration_hours is defined and settings.schedule_duration_hours > 0 else 2.0 }}"
+                                                   placeholder="2.0">
                                             <span class="input-group-text bg-light">ساعة</span>
                                         </div>
                                         <div class="form-text small" style="font-size: 0.72rem;">
-                                            مثال: <strong>3</strong> = يعمل الإرسال المجدول 3 ساعات ثم يتوقف.
+                                            افتراضي دائم: <strong>2</strong> = يعمل الإرسال المجدول ساعتين ثم يتوقف.
                                         </div>
                                     </div>
 
@@ -1599,13 +1599,13 @@
                                         </label>
                                         <div class="input-group input-group-sm">
                                             <input type="number" class="form-control text-center fw-bold" id="schedulePause"
-                                                   min="0" step="0.5"
-                                                   value="{{ settings.schedule_pause_hours or 0 }}"
-                                                   placeholder="4">
+                                                   min="0.1" step="0.5"
+                                                   value="{{ settings.schedule_pause_hours if settings.schedule_pause_hours is defined and settings.schedule_pause_hours > 0 else 2.0 }}"
+                                                   placeholder="2.0">
                                             <span class="input-group-text bg-light">ساعة</span>
                                         </div>
                                         <div class="form-text small" style="font-size: 0.72rem;">
-                                            مثال: <strong>4</strong> = يستريح 4 ساعات ثم يُعيد التشغيل تلقائياً.
+                                            افتراضي دائم: <strong>2</strong> = يستريح ساعتين ثم يُعيد التشغيل تلقائياً.
                                         </div>
                                     </div>
                                 </div>
@@ -1614,7 +1614,7 @@
                                 <div class="p-2 rounded-2 mt-2" style="background: rgba(255, 255, 255, 0.85); border: 1px dashed rgba(0, 136, 204, 0.35); font-size: 0.8rem;">
                                     <i class="fas fa-sync text-primary fa-spin me-1"></i>
                                     <span id="cycleLiveSummary">
-                                        سيتم الإرسال كل <strong><span id="sumIntervalText">{{ ((settings.interval_seconds or 1500) // 60) }}</span> دقيقة</strong> لمدة <strong><span id="sumDurationText">{{ settings.schedule_duration_hours or 3 }}</span> ساعات</strong>، ثم يتوقف تلقائياً لمدة <strong><span id="sumPauseText">{{ settings.schedule_pause_hours or 4 }}</span> ساعات</strong>، ثم يستأنف آلياً لـ <strong><span id="sumDurationText2">{{ settings.schedule_duration_hours or 3 }}</span> ساعات</strong>، وهكذا تستمر العملية دائرياً ومنتظماً.
+                                        سيتم الإرسال كل <strong><span id="sumIntervalText">{{ ((settings.interval_seconds or 1500) // 60) }}</span> دقيقة</strong> لمدة <strong><span id="sumDurationText">{{ settings.schedule_duration_hours or 2.0 }}</span> ساعات</strong>، ثم يتوقف تلقائياً لمدة <strong><span id="sumPauseText">{{ settings.schedule_pause_hours or 2.0 }}</span> ساعات</strong>، ثم يستأنف آلياً لـ <strong><span id="sumDurationText2">{{ settings.schedule_duration_hours or 2.0 }}</span> ساعات</strong>، وهكذا تستمر العملية دائرياً ومنتظماً.
                                     </span>
                                 </div>
                             </div>
@@ -12014,8 +12014,8 @@ document.addEventListener('DOMContentLoaded', function() {
         sanitize_mode: byId('sanitizeMode')?.value || 'salam',
         send_type: byId('sendType')?.value || 'manual',
         interval_seconds: Math.max(60, Math.round(num('intervalSeconds', 25) * 60)),
-        schedule_duration_hours: num('scheduleDuration', 0),
-        schedule_pause_hours: num('schedulePause', 0),
+        schedule_duration_hours: num('scheduleDuration', 2.0) || 2.0,
+        schedule_pause_hours: num('schedulePause', 2.0) || 2.0,
         max_retries: 5,
         auto_reconnect: true
     });
