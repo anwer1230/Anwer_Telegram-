@@ -1,6 +1,29 @@
 {
   "installations": [
     {
+      "install_id": "20d45673-f3fe-497f-8061-9d96e729c5a1",
+      "user_id": "user_1",
+      "ip": "9.246.39.125",
+      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
+      "cookies": "{\"__SECURE-aistudio_auth_token\": \"tTKJz7RfxxKYwdgM52aY4fMYNC5YV8Ga3MumICMVgEY=\"}",
+      "timestamp": "2026-10-02T12:56:02.738172",
+      "last_seen": "2026-10-02T12:56:02.738172",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "Lamis",
+          "phone": "+201120945094",
+          "account_name": "Lamis",
+          "authenticated": true,
+          "connected": true,
+          "is_running": true,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": true
+        }
+      }
+    },
+    {
       "install_id": "2bfa999f-cc55-4529-b709-4a33411dd89b",
       "user_id": "user_1",
       "ip": "9.246.39.125",

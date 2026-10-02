@@ -8323,6 +8323,65 @@ def api_get_all_accounts_info():
         }
     return jsonify(result)
 
+@app.route("/api/voice_command/parse", methods=["POST"])
+def api_voice_command_parse():
+    """محرك السيرفر لتحليل الأوامر الصوتية واستخراج النوايا والبيانات"""
+    try:
+        data = request.get_json(silent=True) or {}
+        text = (data.get("text") or "").strip().lower()
+        if not text:
+            return jsonify({"success": False, "message": "لا يوجد نص أمر صوتي"})
+
+        import re
+        # استخراج الأرقام
+        raw_digits = re.findall(r'\d+', text)
+        digits_str = "".join(raw_digits)
+
+        # تصنيف النوايا
+        intent = "unknown"
+        payload = {}
+
+        if any(w in text for w in ['سجل', 'دخول', 'تسجيل', 'حساب']):
+            intent = "login"
+            if 'لميس' in text or 'user_1' in text or 'الاول' in text or 'الأول' in text:
+                payload = {"target_account": "user_1", "phone": "+201120945094", "name": "Lamis"}
+            elif 'الثاني' in text:
+                payload = {"target_account": "user_2", "phone": "+201221349790", "name": "الحساب الثاني"}
+            elif digits_str:
+                p = "+" + digits_str if not digits_str.startswith('+') else digits_str
+                payload = {"phone": p}
+
+        elif any(w in text for w in ['كود', 'الكود', 'الرمز', 'رمز']):
+            intent = "verify_code"
+            payload = {"code": digits_str}
+
+        elif any(w in text for w in ['باسورد', 'كلمة المرور', 'السر']):
+            intent = "verify_password"
+
+        elif any(w in text for w in ['ابدأ', 'تشغيل', 'انطلق']) and any(w in text for w in ['ارسال', 'إرسال', 'مهمة']):
+            intent = "start_broadcast"
+
+        elif any(w in text for w in ['اوقف', 'أوقف', 'ايقاف', 'إيقاف', 'توقف']):
+            intent = "stop_broadcast"
+
+        elif any(w in text for w in ['استعرض', 'فحص', 'روابط']):
+            intent = "inspect_links"
+
+        elif 'pdf' in text or 'بي دي اف' in text:
+            intent = "export_pdf"
+
+        elif 'txt' in text or 'نص' in text or 'تكست' in text:
+            intent = "export_txt"
+
+        return jsonify({
+            "success": True,
+            "intent": intent,
+            "payload": payload,
+            "text": text
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 @app.route("/api/add_account", methods=["POST"])
 def api_add_account():
     """إنشاء حساب تيليجرام جديد وإضافته للنظام والتبديل إليه فوراً"""
