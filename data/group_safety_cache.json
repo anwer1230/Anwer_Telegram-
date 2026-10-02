@@ -6068,5 +6068,74 @@
     "recommended_action": "send",
     "can_send_media": true,
     "analyzed_at": "2026-10-02 12:54:54"
+  },
+  "https://t.me/f_8_t2": {
+    "group_key": "https://t.me/F_8_T2",
+    "group_id": "1469514050",
+    "group_title": "تخصص إدارة مكتبية",
+    "username": "F_8_T2",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:55:03"
+  },
+  "f_8_t2": {
+    "group_key": "https://t.me/F_8_T2",
+    "group_id": "1469514050",
+    "group_title": "تخصص إدارة مكتبية",
+    "username": "F_8_T2",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:55:03"
+  },
+  "1469514050": {
+    "group_key": "https://t.me/F_8_T2",
+    "group_id": "1469514050",
+    "group_title": "تخصص إدارة مكتبية",
+    "username": "F_8_T2",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:55:03"
   }
 }
