@@ -4769,5 +4769,1304 @@
     "recommended_action": "salam",
     "can_send_media": true,
     "analyzed_at": "2026-09-30 13:37:14"
+  },
+  "https://t.me/amdd757hh": {
+    "group_key": "https://t.me/amdd757hh",
+    "group_id": "2226699434",
+    "group_title": "📘تجمع معلمات ومعلمين المملكة العربية السعودية 📙",
+    "username": "amdd757hh",
+    "is_protected": true,
+    "blocks_ads": true,
+    "requires_smart_send": true,
+    "protection_bots": [],
+    "risk_assessment": "high",
+    "punished_count": 4,
+    "causes": [
+      "نشر أرقام هواتف أو واتساب"
+    ],
+    "mistakes_by_others": [
+      "نشر أرقام التواصل تسبب في تدخل البوت"
+    ],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "📱 تمويه تنسيق رقم الهاتف لمنع اصطياده من بوتات منع الأرقام",
+      "⏳ تمديد فاصل الانتظار لتفادي الرصد السريع وتجاوز حد الإرسال"
+    ],
+    "summary_ar": "تم رصد 4 حالة عقوبة أو تنبيه في آخر 50 رسالة.",
+    "recommended_action": "salam",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:50:15"
+  },
+  "amdd757hh": {
+    "group_key": "https://t.me/amdd757hh",
+    "group_id": "2226699434",
+    "group_title": "📘تجمع معلمات ومعلمين المملكة العربية السعودية 📙",
+    "username": "amdd757hh",
+    "is_protected": true,
+    "blocks_ads": true,
+    "requires_smart_send": true,
+    "protection_bots": [],
+    "risk_assessment": "high",
+    "punished_count": 4,
+    "causes": [
+      "نشر أرقام هواتف أو واتساب"
+    ],
+    "mistakes_by_others": [
+      "نشر أرقام التواصل تسبب في تدخل البوت"
+    ],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "📱 تمويه تنسيق رقم الهاتف لمنع اصطياده من بوتات منع الأرقام",
+      "⏳ تمديد فاصل الانتظار لتفادي الرصد السريع وتجاوز حد الإرسال"
+    ],
+    "summary_ar": "تم رصد 4 حالة عقوبة أو تنبيه في آخر 50 رسالة.",
+    "recommended_action": "salam",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:50:15"
+  },
+  "2226699434": {
+    "group_key": "https://t.me/amdd757hh",
+    "group_id": "2226699434",
+    "group_title": "📘تجمع معلمات ومعلمين المملكة العربية السعودية 📙",
+    "username": "amdd757hh",
+    "is_protected": true,
+    "blocks_ads": true,
+    "requires_smart_send": true,
+    "protection_bots": [],
+    "risk_assessment": "high",
+    "punished_count": 4,
+    "causes": [
+      "نشر أرقام هواتف أو واتساب"
+    ],
+    "mistakes_by_others": [
+      "نشر أرقام التواصل تسبب في تدخل البوت"
+    ],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "📱 تمويه تنسيق رقم الهاتف لمنع اصطياده من بوتات منع الأرقام",
+      "⏳ تمديد فاصل الانتظار لتفادي الرصد السريع وتجاوز حد الإرسال"
+    ],
+    "summary_ar": "تم رصد 4 حالة عقوبة أو تنبيه في آخر 50 رسالة.",
+    "recommended_action": "salam",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:50:15"
+  },
+  "https://t.me/m805029": {
+    "group_key": "https://t.me/M805029",
+    "group_id": "2695244828",
+    "group_title": "جامعة المجمعة",
+    "username": "",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:50:24"
+  },
+  "m805029": {
+    "group_key": "https://t.me/M805029",
+    "group_id": "2695244828",
+    "group_title": "جامعة المجمعة",
+    "username": "",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:50:24"
+  },
+  "2695244828": {
+    "group_key": "https://t.me/M805029",
+    "group_id": "2695244828",
+    "group_title": "جامعة المجمعة",
+    "username": "",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:50:24"
+  },
+  "https://t.me/hhhhhhjfj": {
+    "group_key": "https://t.me/hhhhhhjfj",
+    "group_id": "1597974726",
+    "group_title": "وضائف المملكة تم 🇸🇦",
+    "username": "hhhhhhjfj",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:50:34"
+  },
+  "hhhhhhjfj": {
+    "group_key": "https://t.me/hhhhhhjfj",
+    "group_id": "1597974726",
+    "group_title": "وضائف المملكة تم 🇸🇦",
+    "username": "hhhhhhjfj",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:50:34"
+  },
+  "1597974726": {
+    "group_key": "https://t.me/hhhhhhjfj",
+    "group_id": "1597974726",
+    "group_title": "وضائف المملكة تم 🇸🇦",
+    "username": "hhhhhhjfj",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:50:34"
+  },
+  "https://t.me/ospgdp": {
+    "group_key": "https://t.me/OspGDP",
+    "group_id": "2684263649",
+    "group_title": "برنامج قمة | OSP GDP",
+    "username": "",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:50:50"
+  },
+  "ospgdp": {
+    "group_key": "https://t.me/OspGDP",
+    "group_id": "2684263649",
+    "group_title": "برنامج قمة | OSP GDP",
+    "username": "",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:50:50"
+  },
+  "2684263649": {
+    "group_key": "https://t.me/OspGDP",
+    "group_id": "2684263649",
+    "group_title": "برنامج قمة | OSP GDP",
+    "username": "",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:50:50"
+  },
+  "https://t.me/ksumrk7": {
+    "group_key": "https://t.me/KSUMRK7",
+    "group_id": "4418803763",
+    "group_title": "قروب التسويق عن بعد",
+    "username": "KSUMRK7",
+    "is_protected": true,
+    "blocks_ads": true,
+    "requires_smart_send": true,
+    "protection_bots": [],
+    "risk_assessment": "high",
+    "punished_count": 4,
+    "causes": [
+      "المجموعة معطل بها ميزة تضمين الروابط",
+      "نشر روابط خارجية أو دعوات"
+    ],
+    "mistakes_by_others": [
+      "نشر روابط أدى لكتم أو طرد صاحبها فوراً"
+    ],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "🔗 تحويل رابط واتساب إلى نص مباشر بدون رابط تشعبي",
+      "⏳ تمديد فاصل الانتظار لتفادي الرصد السريع وتجاوز حد الإرسال"
+    ],
+    "summary_ar": "تم رصد 4 حالة عقوبة أو تنبيه في آخر 50 رسالة.",
+    "recommended_action": "salam",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:51:07"
+  },
+  "ksumrk7": {
+    "group_key": "https://t.me/KSUMRK7",
+    "group_id": "4418803763",
+    "group_title": "قروب التسويق عن بعد",
+    "username": "KSUMRK7",
+    "is_protected": true,
+    "blocks_ads": true,
+    "requires_smart_send": true,
+    "protection_bots": [],
+    "risk_assessment": "high",
+    "punished_count": 4,
+    "causes": [
+      "المجموعة معطل بها ميزة تضمين الروابط",
+      "نشر روابط خارجية أو دعوات"
+    ],
+    "mistakes_by_others": [
+      "نشر روابط أدى لكتم أو طرد صاحبها فوراً"
+    ],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "🔗 تحويل رابط واتساب إلى نص مباشر بدون رابط تشعبي",
+      "⏳ تمديد فاصل الانتظار لتفادي الرصد السريع وتجاوز حد الإرسال"
+    ],
+    "summary_ar": "تم رصد 4 حالة عقوبة أو تنبيه في آخر 50 رسالة.",
+    "recommended_action": "salam",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:51:07"
+  },
+  "4418803763": {
+    "group_key": "https://t.me/KSUMRK7",
+    "group_id": "4418803763",
+    "group_title": "قروب التسويق عن بعد",
+    "username": "KSUMRK7",
+    "is_protected": true,
+    "blocks_ads": true,
+    "requires_smart_send": true,
+    "protection_bots": [],
+    "risk_assessment": "high",
+    "punished_count": 4,
+    "causes": [
+      "المجموعة معطل بها ميزة تضمين الروابط",
+      "نشر روابط خارجية أو دعوات"
+    ],
+    "mistakes_by_others": [
+      "نشر روابط أدى لكتم أو طرد صاحبها فوراً"
+    ],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "🔗 تحويل رابط واتساب إلى نص مباشر بدون رابط تشعبي",
+      "⏳ تمديد فاصل الانتظار لتفادي الرصد السريع وتجاوز حد الإرسال"
+    ],
+    "summary_ar": "تم رصد 4 حالة عقوبة أو تنبيه في آخر 50 رسالة.",
+    "recommended_action": "salam",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:51:07"
+  },
+  "https://t.me/grouplaw": {
+    "group_key": "https://t.me/grouplaw",
+    "group_id": "1593835214",
+    "group_title": "🛑 القروب مقفل نهائيا 🛑",
+    "username": "grouplaw",
+    "is_protected": true,
+    "blocks_ads": true,
+    "requires_smart_send": true,
+    "protection_bots": [],
+    "risk_assessment": "critical",
+    "punished_count": 0,
+    "causes": [
+      "المجموعة مقفلة تماماً وتمنع إرسال الرسائل للأعضاء"
+    ],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "🛡️ تخطي المجموعة تلقائياً لحماية الحساب من الحظر الدائم"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "salam",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:51:17"
+  },
+  "grouplaw": {
+    "group_key": "https://t.me/grouplaw",
+    "group_id": "1593835214",
+    "group_title": "🛑 القروب مقفل نهائيا 🛑",
+    "username": "grouplaw",
+    "is_protected": true,
+    "blocks_ads": true,
+    "requires_smart_send": true,
+    "protection_bots": [],
+    "risk_assessment": "critical",
+    "punished_count": 0,
+    "causes": [
+      "المجموعة مقفلة تماماً وتمنع إرسال الرسائل للأعضاء"
+    ],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "🛡️ تخطي المجموعة تلقائياً لحماية الحساب من الحظر الدائم"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "salam",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:51:17"
+  },
+  "1593835214": {
+    "group_key": "https://t.me/grouplaw",
+    "group_id": "1593835214",
+    "group_title": "🛑 القروب مقفل نهائيا 🛑",
+    "username": "grouplaw",
+    "is_protected": true,
+    "blocks_ads": true,
+    "requires_smart_send": true,
+    "protection_bots": [],
+    "risk_assessment": "critical",
+    "punished_count": 0,
+    "causes": [
+      "المجموعة مقفلة تماماً وتمنع إرسال الرسائل للأعضاء"
+    ],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "🛡️ تخطي المجموعة تلقائياً لحماية الحساب من الحظر الدائم"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "salam",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:51:17"
+  },
+  "https://t.me/makkah_24h": {
+    "group_key": "https://t.me/makkah_24h",
+    "group_id": "1927763287",
+    "group_title": "تجمع مكة المكرمة🕋",
+    "username": "makkah_24h",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [
+      "المجموعة معطل بها ميزة تضمين الروابط"
+    ],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "🔗 تحويل رابط واتساب إلى نص مباشر بدون رابط تشعبي"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:51:25"
+  },
+  "makkah_24h": {
+    "group_key": "https://t.me/makkah_24h",
+    "group_id": "1927763287",
+    "group_title": "تجمع مكة المكرمة🕋",
+    "username": "makkah_24h",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [
+      "المجموعة معطل بها ميزة تضمين الروابط"
+    ],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "🔗 تحويل رابط واتساب إلى نص مباشر بدون رابط تشعبي"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:51:25"
+  },
+  "1927763287": {
+    "group_key": "https://t.me/makkah_24h",
+    "group_id": "1927763287",
+    "group_title": "تجمع مكة المكرمة🕋",
+    "username": "makkah_24h",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [
+      "المجموعة معطل بها ميزة تضمين الروابط"
+    ],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "🔗 تحويل رابط واتساب إلى نص مباشر بدون رابط تشعبي"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:51:25"
+  },
+  "https://t.me/smallbusinessclub1": {
+    "group_key": "https://t.me/smallbusinessclub1",
+    "group_id": "2144307256",
+    "group_title": "مشاريع صغيرة - small business",
+    "username": "smallbusinessclub1",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:51:43"
+  },
+  "smallbusinessclub1": {
+    "group_key": "https://t.me/smallbusinessclub1",
+    "group_id": "2144307256",
+    "group_title": "مشاريع صغيرة - small business",
+    "username": "smallbusinessclub1",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:51:43"
+  },
+  "2144307256": {
+    "group_key": "https://t.me/smallbusinessclub1",
+    "group_id": "2144307256",
+    "group_title": "مشاريع صغيرة - small business",
+    "username": "smallbusinessclub1",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:51:43"
+  },
+  "https://t.me/gdp_nhc": {
+    "group_key": "https://t.me/GDP_NHC",
+    "group_id": "1728650870",
+    "group_title": "برنامج واعد 3 | الشركة الوطنية للإسكان NHC",
+    "username": "GDP_NHC",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:52:00"
+  },
+  "gdp_nhc": {
+    "group_key": "https://t.me/GDP_NHC",
+    "group_id": "1728650870",
+    "group_title": "برنامج واعد 3 | الشركة الوطنية للإسكان NHC",
+    "username": "GDP_NHC",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:52:00"
+  },
+  "1728650870": {
+    "group_key": "https://t.me/GDP_NHC",
+    "group_id": "1728650870",
+    "group_title": "برنامج واعد 3 | الشركة الوطنية للإسكان NHC",
+    "username": "GDP_NHC",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:52:00"
+  },
+  "https://t.me/gardenview14": {
+    "group_key": "https://t.me/GardenView14",
+    "group_id": "1598928150",
+    "group_title": "مجتمع جاردن فيو خيالا 🏡🏠",
+    "username": "GardenView14",
+    "is_protected": true,
+    "blocks_ads": true,
+    "requires_smart_send": true,
+    "protection_bots": [],
+    "risk_assessment": "high",
+    "punished_count": 2,
+    "causes": [
+      "المجموعة مقفلة تماماً وتمنع إرسال الرسائل للأعضاء"
+    ],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "🛡️ تخطي المجموعة تلقائياً لحماية الحساب من الحظر الدائم"
+    ],
+    "summary_ar": "تم رصد 2 حالة عقوبة أو تنبيه في آخر 50 رسالة.",
+    "recommended_action": "salam",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:52:08"
+  },
+  "gardenview14": {
+    "group_key": "https://t.me/GardenView14",
+    "group_id": "1598928150",
+    "group_title": "مجتمع جاردن فيو خيالا 🏡🏠",
+    "username": "GardenView14",
+    "is_protected": true,
+    "blocks_ads": true,
+    "requires_smart_send": true,
+    "protection_bots": [],
+    "risk_assessment": "high",
+    "punished_count": 2,
+    "causes": [
+      "المجموعة مقفلة تماماً وتمنع إرسال الرسائل للأعضاء"
+    ],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "🛡️ تخطي المجموعة تلقائياً لحماية الحساب من الحظر الدائم"
+    ],
+    "summary_ar": "تم رصد 2 حالة عقوبة أو تنبيه في آخر 50 رسالة.",
+    "recommended_action": "salam",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:52:08"
+  },
+  "1598928150": {
+    "group_key": "https://t.me/GardenView14",
+    "group_id": "1598928150",
+    "group_title": "مجتمع جاردن فيو خيالا 🏡🏠",
+    "username": "GardenView14",
+    "is_protected": true,
+    "blocks_ads": true,
+    "requires_smart_send": true,
+    "protection_bots": [],
+    "risk_assessment": "high",
+    "punished_count": 2,
+    "causes": [
+      "المجموعة مقفلة تماماً وتمنع إرسال الرسائل للأعضاء"
+    ],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "🛡️ تخطي المجموعة تلقائياً لحماية الحساب من الحظر الدائم"
+    ],
+    "summary_ar": "تم رصد 2 حالة عقوبة أو تنبيه في آخر 50 رسالة.",
+    "recommended_action": "salam",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:52:08"
+  },
+  "https://t.me/maaden0": {
+    "group_key": "https://t.me/maaden0",
+    "group_id": "1824484548",
+    "group_title": "موظفين معادن | Maaden employees",
+    "username": "maaden0",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:52:18"
+  },
+  "maaden0": {
+    "group_key": "https://t.me/maaden0",
+    "group_id": "1824484548",
+    "group_title": "موظفين معادن | Maaden employees",
+    "username": "maaden0",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:52:18"
+  },
+  "1824484548": {
+    "group_key": "https://t.me/maaden0",
+    "group_id": "1824484548",
+    "group_title": "موظفين معادن | Maaden employees",
+    "username": "maaden0",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:52:18"
+  },
+  "https://t.me/httpsljsiib3s3niwmzvk": {
+    "group_key": "https://t.me/httpsLjsIIb3S3nIwMzVk",
+    "group_id": "2055392283",
+    "group_title": "قروب تجمع طلاب وطالبات",
+    "username": "httpsLjsIIb3S3nIwMzVk",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [
+      "المجموعة معطل بها ميزة تضمين الروابط"
+    ],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "🔗 تحويل رابط واتساب إلى نص مباشر بدون رابط تشعبي"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:52:37"
+  },
+  "httpsljsiib3s3niwmzvk": {
+    "group_key": "https://t.me/httpsLjsIIb3S3nIwMzVk",
+    "group_id": "2055392283",
+    "group_title": "قروب تجمع طلاب وطالبات",
+    "username": "httpsLjsIIb3S3nIwMzVk",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [
+      "المجموعة معطل بها ميزة تضمين الروابط"
+    ],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "🔗 تحويل رابط واتساب إلى نص مباشر بدون رابط تشعبي"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:52:37"
+  },
+  "2055392283": {
+    "group_key": "https://t.me/httpsLjsIIb3S3nIwMzVk",
+    "group_id": "2055392283",
+    "group_title": "قروب تجمع طلاب وطالبات",
+    "username": "httpsLjsIIb3S3nIwMzVk",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [
+      "المجموعة معطل بها ميزة تضمين الروابط"
+    ],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "🔗 تحويل رابط واتساب إلى نص مباشر بدون رابط تشعبي"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:52:37"
+  },
+  "https://t.me/twwwjww": {
+    "group_key": "https://t.me/TWwWjww",
+    "group_id": "3291979709",
+    "group_title": "يا محب النبي صلي عليه",
+    "username": "TWwWjww",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:52:46"
+  },
+  "twwwjww": {
+    "group_key": "https://t.me/TWwWjww",
+    "group_id": "3291979709",
+    "group_title": "يا محب النبي صلي عليه",
+    "username": "TWwWjww",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:52:46"
+  },
+  "3291979709": {
+    "group_key": "https://t.me/TWwWjww",
+    "group_id": "3291979709",
+    "group_title": "يا محب النبي صلي عليه",
+    "username": "TWwWjww",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:52:46"
+  },
+  "https://t.me/ab12342030": {
+    "group_key": "https://t.me/ab12342030",
+    "group_id": "1349640814",
+    "group_title": "معلمات شركة البلاد (عسير) Chat",
+    "username": "ab12342030",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:53:05"
+  },
+  "ab12342030": {
+    "group_key": "https://t.me/ab12342030",
+    "group_id": "1349640814",
+    "group_title": "معلمات شركة البلاد (عسير) Chat",
+    "username": "ab12342030",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:53:05"
+  },
+  "1349640814": {
+    "group_key": "https://t.me/ab12342030",
+    "group_id": "1349640814",
+    "group_title": "معلمات شركة البلاد (عسير) Chat",
+    "username": "ab12342030",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:53:05"
+  },
+  "https://t.me/almahdia35": {
+    "group_key": "https://t.me/almahdia35",
+    "group_id": "1377422655",
+    "group_title": "حي المهدية",
+    "username": "almahdia35",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:53:20"
+  },
+  "almahdia35": {
+    "group_key": "https://t.me/almahdia35",
+    "group_id": "1377422655",
+    "group_title": "حي المهدية",
+    "username": "almahdia35",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:53:20"
+  },
+  "1377422655": {
+    "group_key": "https://t.me/almahdia35",
+    "group_id": "1377422655",
+    "group_title": "حي المهدية",
+    "username": "almahdia35",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:53:20"
+  },
+  "https://t.me/bdydbeu": {
+    "group_key": "https://t.me/bdydbeu",
+    "group_id": "1433618159",
+    "group_title": "قروب انقلش ١/٥",
+    "username": "bdydbeu",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:53:30"
+  },
+  "bdydbeu": {
+    "group_key": "https://t.me/bdydbeu",
+    "group_id": "1433618159",
+    "group_title": "قروب انقلش ١/٥",
+    "username": "bdydbeu",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:53:30"
+  },
+  "1433618159": {
+    "group_key": "https://t.me/bdydbeu",
+    "group_id": "1433618159",
+    "group_title": "قروب انقلش ١/٥",
+    "username": "bdydbeu",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:53:30"
+  },
+  "https://t.me/biostatisticia": {
+    "group_key": "https://t.me/biostatisticia",
+    "group_id": "2019614139",
+    "group_title": "وظيفة احصائي حيوي مجمع الملك فهد العسكري بالظهران وزارة الدفاع",
+    "username": "biostatisticia",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:53:40"
+  },
+  "biostatisticia": {
+    "group_key": "https://t.me/biostatisticia",
+    "group_id": "2019614139",
+    "group_title": "وظيفة احصائي حيوي مجمع الملك فهد العسكري بالظهران وزارة الدفاع",
+    "username": "biostatisticia",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:53:40"
+  },
+  "2019614139": {
+    "group_key": "https://t.me/biostatisticia",
+    "group_id": "2019614139",
+    "group_title": "وظيفة احصائي حيوي مجمع الملك فهد العسكري بالظهران وزارة الدفاع",
+    "username": "biostatisticia",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:53:40"
+  },
+  "https://t.me/digitalsamaa": {
+    "group_key": "https://t.me/DigitalSAMAA",
+    "group_id": "2096470575",
+    "group_title": "Digital SAMA",
+    "username": "",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:54:54"
+  },
+  "digitalsamaa": {
+    "group_key": "https://t.me/DigitalSAMAA",
+    "group_id": "2096470575",
+    "group_title": "Digital SAMA",
+    "username": "",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:54:54"
+  },
+  "2096470575": {
+    "group_key": "https://t.me/DigitalSAMAA",
+    "group_id": "2096470575",
+    "group_title": "Digital SAMA",
+    "username": "",
+    "is_protected": false,
+    "blocks_ads": false,
+    "requires_smart_send": false,
+    "protection_bots": [],
+    "risk_assessment": "low",
+    "punished_count": 0,
+    "causes": [],
+    "mistakes_by_others": [],
+    "prohibited_actions": [],
+    "keywords_to_avoid": [],
+    "actions_taken": [
+      "✅ المحادثة آمنة — لم يُرصد أي مانع أو خطر يستدعي التعديل"
+    ],
+    "summary_ar": "لم يُرصد نشاط حظر صارم حديث في آخر 50 رسالة.",
+    "recommended_action": "send",
+    "can_send_media": true,
+    "analyzed_at": "2026-10-02 12:54:54"
   }
 }
