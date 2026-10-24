@@ -76,7 +76,10 @@ DEFAULT_PHONE_NUMBERS = [
     {"phone_number": "+201148863243", "account_name": "الحساب الثالث", "is_default": True, "label": "الحساب الثالث"},
     {"phone_number": "+213797500921", "account_name": "الحساب الرابع", "is_default": True, "label": "الحساب الرابع"},
     {"phone_number": "+201274386864", "account_name": "الحساب الخامس", "is_default": True, "label": "الحساب الخامس"},
-    {"phone_number": "+966539709737", "account_name": "خدمة العملاء", "is_default": True, "label": "خدمة العملاء"}
+    {"phone_number": "+966539709737", "account_name": "خدمة العملاء", "is_default": True, "label": "خدمة العملاء"},
+    {"phone_number": "+8801350780283", "account_name": "Amal Al_mutairi", "is_default": True, "label": "Amal Al_mutairi"},
+    {"phone_number": "+966542630213", "account_name": "الحساب الثامن", "is_default": True, "label": "الحساب الثامن"},
+    {"phone_number": "+201202083759", "account_name": "الحساب التاسع", "is_default": True, "label": "الحساب التاسع"}
 ]
 
 

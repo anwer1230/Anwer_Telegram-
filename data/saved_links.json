@@ -1,3 +1,55 @@
 {
-  "links": []
+  "links": [
+    {
+      "id": "report_group_alpha",
+      "report_data": {
+        "doc_id": "group_alpha",
+        "risk_assessment": "low",
+        "updated_at": "2026-09-25T16:45:01.885Z",
+        "group_title": "Alpha Group",
+        "group_key": "group_alpha"
+      },
+      "url": "group_alpha",
+      "date_saved": "2026-09-25T16:45:01.885Z",
+      "title": "Alpha Group",
+      "type": "safety_report",
+      "source": "group_ai_analyzer",
+      "category": "safety_report"
+    },
+    {
+      "id": "report_test_tele_group",
+      "category": "safety_report",
+      "type": "safety_report",
+      "report_data": {
+        "doc_id": "test_tele_group",
+        "group_title": "مجموعة تجريبية",
+        "updated_at": "2026-09-25T16:44:30.094Z",
+        "risk_assessment": "low",
+        "group_key": "test_tele_group",
+        "summary_ar": "مجموعة آمنة",
+        "is_protected": false
+      },
+      "date_saved": "2026-09-25T16:44:30.094Z",
+      "url": "test_tele_group",
+      "source": "group_ai_analyzer",
+      "title": "مجموعة تجريبية"
+    },
+    {
+      "id": "link_muh6xahqrhr6",
+      "source": "يدوي",
+      "notes": "",
+      "category": "عام",
+      "date_saved": "2026-09-25T16:43:56.126Z",
+      "url": "https://t.me/test_perm",
+      "title": "https://t.me/test_perm"
+    },
+    {
+      "id": "report_test_group",
+      "data": {
+        "risk": "low"
+      },
+      "type": "safety_report",
+      "group_key": "test_group"
+    }
+  ]
 }

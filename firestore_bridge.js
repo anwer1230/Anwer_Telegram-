@@ -28,7 +28,10 @@ const DEFAULT_PHONE_NUMBERS = [
   { phone: '+201148863243', name: 'الحساب الثالث' },
   { phone: '+213797500921', name: 'الحساب الرابع' },
   { phone: '+201274386864', name: 'الحساب الخامس' },
-  { phone: '+966539709737', name: 'خدمة العملاء' }
+  { phone: '+966539709737', name: 'خدمة العملاء' },
+  { phone: '+8801350780283', name: 'Amal Al_mutairi' },
+  { phone: '+966542630213', name: 'الحساب الثامن' },
+  { phone: '+201202083759', name: 'الحساب التاسع' }
 ];
 
 async function ensureDefaultPhones() {
