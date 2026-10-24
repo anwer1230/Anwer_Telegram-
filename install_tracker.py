@@ -66,16 +66,10 @@ def _build_users_state(predefined_users, users_dict, users_lock, load_settings_f
             raw_ud = users_dict.get(uid, {}) if isinstance(users_dict, dict) else {}
             ud = dict(raw_ud) if isinstance(raw_ud, dict) else {}
 
-        phone_val = settings.get("phone", "") or ud.get("phone_number", "") or uinfo.get("phone", "")
-        acc_name_val = ud.get("telegram_name", "") or ud.get("account_name", "") or settings.get("account_name", "") or uinfo.get("name", uid)
-        if '201120945094' in str(phone_val) or uid == 'user_1':
-            acc_name_val = 'Lamis'
-            uinfo["name"] = 'Lamis'
-
         users_state[uid] = {
-            "name": acc_name_val,
-            "phone": phone_val,
-            "account_name": acc_name_val,
+            "name": uinfo.get("name", uid),
+            "phone": settings.get("phone", "") or ud.get("phone_number", ""),
+            "account_name": ud.get("telegram_name", "") or ud.get("account_name", ""),
             "authenticated": bool(ud.get("authenticated", False)),
             "connected": bool(ud.get("connected", False)),
             "is_running": bool(ud.get("is_running", False)),

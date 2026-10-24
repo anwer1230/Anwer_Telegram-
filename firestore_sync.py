@@ -70,68 +70,68 @@ def _save_json_file(file_path, data):
 # 📱 أرقام الهواتف (Phone Numbers)
 # ==========================================
 DEFAULT_PHONE_NUMBERS = [
-    {"phone_number": "+201120945094", "is_default": True, "label": "Lamis", "account_name": "Lamis"},
-    {"phone_number": "+573244867204", "is_default": True, "label": "الحساب الأول", "account_name": "الحساب الأول"},
-    {"phone_number": "+201221349790", "is_default": True, "label": "الحساب الثاني", "account_name": "الحساب الثاني"},
-    {"phone_number": "+201148863243", "is_default": True, "label": "الحساب الثالث", "account_name": "الحساب الثالث"},
-    {"phone_number": "+213797500921", "is_default": True, "label": "الحساب الرابع", "account_name": "الحساب الرابع"},
-    {"phone_number": "+201274386864", "is_default": True, "label": "الحساب الخامس", "account_name": "الحساب الخامس"},
-    {"phone_number": "+966539709737", "is_default": True, "label": "الحساب السادس", "account_name": "الحساب السادس"}
+    {"phone_number": "+201120945094", "account_name": "Lamis", "is_default": True, "label": "Lamis"},
+    {"phone_number": "+573244867204", "account_name": "الحساب الأول", "is_default": True, "label": "الحساب الأول"},
+    {"phone_number": "+201221349790", "account_name": "الحساب الثاني", "is_default": True, "label": "الحساب الثاني"},
+    {"phone_number": "+201148863243", "account_name": "الحساب الثالث", "is_default": True, "label": "الحساب الثالث"},
+    {"phone_number": "+213797500921", "account_name": "الحساب الرابع", "is_default": True, "label": "الحساب الرابع"},
+    {"phone_number": "+201274386864", "account_name": "الحساب الخامس", "is_default": True, "label": "الحساب الخامس"},
+    {"phone_number": "+966539709737", "account_name": "خدمة العملاء", "is_default": True, "label": "خدمة العملاء"}
 ]
 
 
-def _clean_phone_digits(p):
-    return re.sub(r'[^0-9]', '', str(p or ''))
+def update_phone_account_name(phone, account_name):
+    """
+    تحديث وحفظ اسم الحساب الفعلي للرقم فورياً ودائماً
+    في الكاش المحلي data/saved_phones.json وخلفياً في Firestore
+    """
+    if not phone or not account_name:
+        return None
+    clean_phone = str(phone).strip()
+    if not clean_phone.startswith('+') and not clean_phone.startswith('00'):
+        clean_phone = '+' + clean_phone
+    clean_name = str(account_name).strip()
+    if not clean_name:
+        return None
 
+    with _PHONES_CACHE_LOCK:
+        phones = _load_json_file(LOCAL_PHONES_CACHE_FILE, list(DEFAULT_PHONE_NUMBERS))
+        found = False
+        for p in phones:
+            if p.get('phone_number') == clean_phone:
+                p['account_name'] = clean_name
+                p['label'] = clean_name
+                found = True
+                break
+        if not found:
+            phones.append({
+                "phone_number": clean_phone,
+                "account_name": clean_name,
+                "label": clean_name,
+                "is_default": False,
+                "added_at": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+            })
+        _save_json_file(LOCAL_PHONES_CACHE_FILE, phones)
 
-def _sanitize_phone_list(phones):
-    """تنقية وتحديث أسماء الحسابات للأرقام ومنع ظهور كلمة 'أساسي'"""
-    if not isinstance(phones, list):
-        return [dict(x) for x in DEFAULT_PHONE_NUMBERS]
+    # مزامنة خلفية مع Firestore
+    def _bg_sync_name():
+        try:
+            subprocess.run(
+                ['node', BRIDGE_SCRIPT, 'update_phone_name', clean_phone, clean_name],
+                capture_output=True, text=True, timeout=10, cwd=BASE_DIR
+            )
+        except Exception as e:
+            logger.debug(f"Firestore name sync: {e}")
 
-    result = []
-    defaults_map = {_clean_phone_digits(d['phone_number']): d for d in DEFAULT_PHONE_NUMBERS}
-
-    for item in phones:
-        if not isinstance(item, dict):
-            continue
-        entry = dict(item)
-        raw_phone = entry.get('phone_number', '')
-        digits = _clean_phone_digits(raw_phone)
-        cur_label = entry.get('label') or entry.get('account_name') or ''
-
-        # للرقم +201120945094 يثبت الاسم بشكل دائم ومؤكد كـ Lamis
-        if digits == '201120945094':
-            entry['label'] = 'Lamis'
-            entry['account_name'] = 'Lamis'
-        elif 'أساسي' in cur_label or not cur_label or cur_label == 'رقم محفوظ':
-            # استبدال كلمة أساسي بالاسم المعين للحساب أو اسم افتراضي
-            if digits in defaults_map:
-                entry['label'] = defaults_map[digits]['label']
-                entry['account_name'] = defaults_map[digits].get('account_name', entry['label'])
-            else:
-                entry['label'] = entry.get('account_name') or f"حساب {raw_phone}"
-        else:
-            entry['account_name'] = cur_label
-
-        result.append(entry)
-
-    # التأكد من وجود كافة الأرقام الأساسية في القائمة
-    existing_digits = {_clean_phone_digits(r.get('phone_number')) for r in result}
-    for def_entry in DEFAULT_PHONE_NUMBERS:
-        def_digits = _clean_phone_digits(def_entry['phone_number'])
-        if def_digits not in existing_digits:
-            result.append(dict(def_entry))
-
-    return result
+    _SYNC_EXECUTOR.submit(_bg_sync_name)
+    return clean_name
 
 
 def get_saved_phone_numbers():
-    """استرجاع أرقام الهواتف المحفوظة مع أسماء الحسابات الثابتة والـ Fallback للكاش المحلي"""
+    """استرجاع أرقام الهواتف المحفوظة مع Fallback للكاش المحلي"""
     with _PHONES_CACHE_LOCK:
         cached = _load_json_file(LOCAL_PHONES_CACHE_FILE, [])
 
-    phones = None
     try:
         proc = subprocess.run(
             ['node', BRIDGE_SCRIPT, 'get_phones'],
@@ -140,78 +140,30 @@ def get_saved_phone_numbers():
         if proc.returncode == 0:
             res = json.loads(proc.stdout.strip())
             if res.get('success'):
-                cloud_phones = res.get('phones', [])
-                if cloud_phones:
-                    phones = cloud_phones
+                phones = res.get('phones', [])
+                if phones:
+                    # تنقية أسماء الحسابات والتأكد من عدم وجود كلمة أساسي
+                    for p in phones:
+                        if p.get('phone_number') == '+201120945094':
+                            p['account_name'] = 'Lamis'
+                            p['label'] = 'Lamis'
+                        elif p.get('label') and 'أساسي' in p.get('label'):
+                            p['label'] = p.get('account_name') or 'حساب معتمد'
+                    with _PHONES_CACHE_LOCK:
+                        _save_json_file(LOCAL_PHONES_CACHE_FILE, phones)
+                    return phones
     except Exception as e:
         logger.warning(f"تعذر جلب الأرقام من Firestore مباشرة ({e})، استخدام الكاش المحلي")
 
-    if not phones:
-        phones = cached if cached else [dict(x) for x in DEFAULT_PHONE_NUMBERS]
-
-    sanitized = _sanitize_phone_list(phones)
-
-    with _PHONES_CACHE_LOCK:
-        _save_json_file(LOCAL_PHONES_CACHE_FILE, sanitized)
-
-    return sanitized
-
-
-def update_phone_account_name(phone, account_name):
-    """
-    تحديث اسم الحساب الفعلي للرقم وتثبيته بشكل دائم في الكاش المحلي و Firestore
-    مع كل تسجيل دخول ناجح أو تحقق.
-    """
-    if not phone or not account_name:
-        return None
-    clean_phone = str(phone).strip()
-    clean_name = str(account_name).strip()
-    if not clean_name:
-        return None
-
-    target_digits = _clean_phone_digits(clean_phone)
-    updated_entry = None
-
-    with _PHONES_CACHE_LOCK:
-        phones = _load_json_file(LOCAL_PHONES_CACHE_FILE, [dict(x) for x in DEFAULT_PHONE_NUMBERS])
-        phones = _sanitize_phone_list(phones)
-        found = False
-        for p in phones:
-            if _clean_phone_digits(p.get('phone_number')) == target_digits:
-                p['label'] = clean_name
-                p['account_name'] = clean_name
-                p['updated_at'] = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
-                updated_entry = p
-                found = True
-                break
-        if not found:
-            updated_entry = {
-                "phone_number": clean_phone,
-                "is_default": False,
-                "label": clean_name,
-                "account_name": clean_name,
-                "added_at": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
-            }
-            phones.append(updated_entry)
-
-        _save_json_file(LOCAL_PHONES_CACHE_FILE, phones)
-
-    logger.info(f"💾 تم تثبيت وتحديث اسم الحساب للرقم {clean_phone} -> '{clean_name}' محلياً")
-
-    # مزامنة خلفية في Firestore
-    def _bg_update():
-        try:
-            proc = subprocess.run(
-                ['node', BRIDGE_SCRIPT, 'update_phone_name', clean_phone, clean_name],
-                capture_output=True, text=True, timeout=10, cwd=BASE_DIR
-            )
-            if proc.returncode == 0:
-                logger.info(f"✅ تم تثبيت وتحديث اسم الحساب في Firestore: {clean_phone} -> {clean_name}")
-        except Exception as e:
-            logger.warning(f"تنبيه مزامنة اسم الحساب مع Firestore: {e}")
-
-    _SYNC_EXECUTOR.submit(_bg_update)
-    return updated_entry
+    # تنقية الكاش والتأكد من اسم Lamis لـ +201120945094
+    result = cached if cached else list(DEFAULT_PHONE_NUMBERS)
+    for p in result:
+        if p.get('phone_number') == '+201120945094':
+            p['account_name'] = 'Lamis'
+            p['label'] = 'Lamis'
+        elif p.get('label') and 'أساسي' in p.get('label'):
+            p['label'] = p.get('account_name') or 'حساب معتمد'
+    return result
 
 
 def save_phone_number(phone, label='حساب محفوظ'):
@@ -219,22 +171,16 @@ def save_phone_number(phone, label='حساب محفوظ'):
     if not phone:
         return None
     clean_phone = str(phone).strip()
-    clean_label = str(label or 'حساب محفوظ').strip()
-    if 'أساسي' in clean_label:
-        clean_label = 'حساب معتمد'
-
     new_entry = {
         "phone_number": clean_phone,
         "is_default": False,
-        "label": clean_label,
-        "account_name": clean_label,
+        "label": label,
         "added_at": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
     }
 
     with _PHONES_CACHE_LOCK:
-        phones = _load_json_file(LOCAL_PHONES_CACHE_FILE, [dict(x) for x in DEFAULT_PHONE_NUMBERS])
-        phones = _sanitize_phone_list(phones)
-        if not any(_clean_phone_digits(p.get('phone_number')) == _clean_phone_digits(clean_phone) for p in phones):
+        phones = _load_json_file(LOCAL_PHONES_CACHE_FILE, list(DEFAULT_PHONE_NUMBERS))
+        if not any(p.get('phone_number') == clean_phone for p in phones):
             phones.append(new_entry)
             _save_json_file(LOCAL_PHONES_CACHE_FILE, phones)
 
@@ -242,7 +188,7 @@ def save_phone_number(phone, label='حساب محفوظ'):
     def _bg_save():
         try:
             proc = subprocess.run(
-                ['node', BRIDGE_SCRIPT, 'add_phone', clean_phone, clean_label],
+                ['node', BRIDGE_SCRIPT, 'add_phone', clean_phone],
                 capture_output=True, text=True, timeout=10, cwd=BASE_DIR
             )
             if proc.returncode == 0:
@@ -260,13 +206,7 @@ def save_phone_number(phone, label='حساب محفوظ'):
 def get_firestore_links():
     """استرجاع كل الروابط المحفوظة مع الكاش المحلي الفوري"""
     with _LINKS_CACHE_LOCK:
-        raw = _load_json_file(LOCAL_LINKS_CACHE_FILE, {"links": []})
-        if isinstance(raw, dict):
-            cached_links = raw.get("links", [])
-        elif isinstance(raw, list):
-            cached_links = raw
-        else:
-            cached_links = []
+        cached_links = _load_json_file(LOCAL_LINKS_CACHE_FILE, [])
 
     try:
         proc = subprocess.run(
@@ -279,12 +219,12 @@ def get_firestore_links():
                 cloud_links = res.get('links', [])
                 if cloud_links:
                     with _LINKS_CACHE_LOCK:
-                        _save_json_file(LOCAL_LINKS_CACHE_FILE, {"links": cloud_links})
+                        _save_json_file(LOCAL_LINKS_CACHE_FILE, cloud_links)
                     return cloud_links
     except Exception as e:
         logger.warning(f"تعذر جلب الروابط من Firestore ({e})، استخدام الكاش المحلي")
 
-    return cached_links if isinstance(cached_links, list) else []
+    return cached_links
 
 
 def add_firestore_link(link_dict):
@@ -292,32 +232,20 @@ def add_firestore_link(link_dict):
     حفظ رابط فورياً في الكاش المحلي ومزامنته في الخلفية مع Firestore
     لتفادي حجب معالجة الرسائل ورادار الروابط.
     """
-    if not isinstance(link_dict, dict) or not link_dict.get('url'):
+    if not link_dict or not link_dict.get('url'):
         return None
 
     url = link_dict.get('url')
     # 1. حفظ محلي فوري
     with _LINKS_CACHE_LOCK:
-        raw = _load_json_file(LOCAL_LINKS_CACHE_FILE, {"links": []})
-        if isinstance(raw, dict):
-            links = raw.get("links", [])
-            if not isinstance(links, list):
-                links = []
-        elif isinstance(raw, list):
-            links = raw
-            raw = {"links": links}
-        else:
-            links = []
-            raw = {"links": []}
-
+        links = _load_json_file(LOCAL_LINKS_CACHE_FILE, [])
         # منع تكرار نفس الرابط في الكاش المحلي
-        existing = next((l for l in links if isinstance(l, dict) and l.get('url') == url), None)
+        existing = next((l for l in links if l.get('url') == url), None)
         if not existing:
             links.insert(0, link_dict)
             if len(links) > 2000:
                 links = links[:2000]
-            raw["links"] = links
-            _save_json_file(LOCAL_LINKS_CACHE_FILE, raw)
+            _save_json_file(LOCAL_LINKS_CACHE_FILE, links)
 
     # 2. مزامنة غير حاجزة مع Firestore
     def _bg_add_link():
@@ -345,20 +273,9 @@ def delete_firestore_link(link_id):
         return False
 
     with _LINKS_CACHE_LOCK:
-        raw = _load_json_file(LOCAL_LINKS_CACHE_FILE, {"links": []})
-        if isinstance(raw, dict):
-            links = raw.get("links", [])
-            if not isinstance(links, list):
-                links = []
-        elif isinstance(raw, list):
-            links = raw
-            raw = {"links": links}
-        else:
-            links = []
-            raw = {"links": []}
-
-        raw["links"] = [l for l in links if isinstance(l, dict) and str(l.get('id', '')) != str(link_id)]
-        _save_json_file(LOCAL_LINKS_CACHE_FILE, raw)
+        links = _load_json_file(LOCAL_LINKS_CACHE_FILE, [])
+        links = [l for l in links if str(l.get('id', '')) != str(link_id)]
+        _save_json_file(LOCAL_LINKS_CACHE_FILE, links)
 
     def _bg_del():
         try:

@@ -1,6 +1,6 @@
 {
-  "name": "Abu Malk Services",
-  "description": "منصة خدمات أبو مالك وتليجرام",
+  "name": "Anwer Telegram Services",
+  "description": "منصة خدمات وتيليجرام مركز سرعة إنجاز",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

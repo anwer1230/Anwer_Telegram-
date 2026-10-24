@@ -133,6 +133,14 @@ from telethon.sessions import StringSession
 from rate_limiter import join_limiter
 import socket
 
+
+def randomize_message(text):
+    """إضافة مسافة عشوائية أو رمز غير مرئي لتنويع الرسالة وتفادي اكتشاف التكرار"""
+    if not text:
+        return text
+    rnd = random.choice(['', ' ', '  ', '\u200B', '\u200C'])
+    return text + rnd
+
 # قاموس لتتبع أحداث الإلغاء الفوري لدفعات الإرسال للمستخدمين
 BATCH_CANCEL_EVENTS = {}
 
@@ -773,11 +781,20 @@ def get_user_session_dir(user_id):
 PREDEFINED_USERS = {
     "user_1": {
         "id": "user_1",
-        "name": "حساب 1",
+        "name": "Lamis",
+        "phone": "+201120945094",
         "icon": "fas fa-user",
         "color": "#0088cc"
     }
 }
+
+def update_phone_account_name(phone, account_name):
+    """تحديث اسم الحساب الفعلي للرقم وتثبيته فورياً في الكاش وFirestore وقاعدة البيانات"""
+    try:
+        import firestore_sync
+        firestore_sync.update_phone_account_name(phone, account_name)
+    except Exception as _e_up:
+        logger.debug(f"update_phone_account_name error: {_e_up}")
 
 def _get_custom_accounts_file():
     return os.path.join(DATA_DIR, 'accounts.json')
@@ -793,10 +810,11 @@ def _load_custom_accounts():
                     for uid, udata in data.items():
                         if isinstance(udata, dict) and ('id' in udata or 'name' in udata):
                             PREDEFINED_USERS[uid] = udata
-        if not PREDEFINED_USERS:
+        if not PREDEFINED_USERS or PREDEFINED_USERS.get("user_1", {}).get("name") in ["حساب 1", "الحساب الأول"]:
             PREDEFINED_USERS["user_1"] = {
                 "id": "user_1",
-                "name": "حساب 1",
+                "name": "Lamis",
+                "phone": "+201120945094",
                 "icon": "fas fa-user",
                 "color": "#0088cc"
             }
@@ -1653,10 +1671,6 @@ def save_settings(user_id, settings, force=False):
             settings.setdefault('keyword_auto_reply_in_dm', True)
             settings.setdefault('alert_target_user', 'me')
             settings.setdefault('user_auto_replies', [])
-            settings.setdefault('schedule_duration_hours', 2.0)
-            settings.setdefault('schedule_duration', 7200)
-            settings.setdefault('schedule_pause_hours', 2.0)
-            settings.setdefault('schedule_pause_duration', 7200)
 
         if not force:
             existing = load_settings(user_id)
@@ -1697,10 +1711,6 @@ def load_settings(user_id):
                 database_settings.setdefault('keyword_auto_reply_in_dm', True)
                 database_settings.setdefault('alert_target_user', 'me')
                 database_settings.setdefault('user_auto_replies', [])
-                database_settings.setdefault('schedule_duration_hours', 2.0)
-                database_settings.setdefault('schedule_duration', 7200)
-                database_settings.setdefault('schedule_pause_hours', 2.0)
-                database_settings.setdefault('schedule_pause_duration', 7200)
                 return database_settings
         except Exception as _db_load_error:
             logger.warning("PostgreSQL settings read failed for %s: %s", user_id, _db_load_error)
@@ -1725,10 +1735,6 @@ def load_settings(user_id):
             data.setdefault('keyword_auto_reply_in_dm', True)
             data.setdefault('alert_target_user', 'me')
             data.setdefault('user_auto_replies', [])
-            data.setdefault('schedule_duration_hours', 2.0)
-            data.setdefault('schedule_duration', 7200)
-            data.setdefault('schedule_pause_hours', 2.0)
-            data.setdefault('schedule_pause_duration', 7200)
             if _DB_READY:
                 _app_db.save_settings(user_id, data)
             return data
@@ -1751,10 +1757,6 @@ def load_settings(user_id):
             data.setdefault('keyword_auto_reply_in_dm', True)
             data.setdefault('alert_target_user', 'me')
             data.setdefault('user_auto_replies', [])
-            data.setdefault('schedule_duration_hours', 2.0)
-            data.setdefault('schedule_duration', 7200)
-            data.setdefault('schedule_pause_hours', 2.0)
-            data.setdefault('schedule_pause_duration', 7200)
             # نقل البيانات للمجلد الجديد والقاعدة عند توفرها
             save_settings(user_id, data, force=True)
             return data
@@ -1772,11 +1774,7 @@ def load_settings(user_id):
             'keyword_auto_reply_in_group': True,
             'keyword_auto_reply_in_dm': True,
             'alert_target_user': 'me',
-            'user_auto_replies': [],
-            'schedule_duration_hours': 2.0,
-            'schedule_duration': 7200,
-            'schedule_pause_hours': 2.0,
-            'schedule_pause_duration': 7200
+            'user_auto_replies': []
         }
     except Exception as e:
         logger.error(f"Error loading settings for {user_id}: {str(e)}")
@@ -1794,11 +1792,7 @@ def load_settings(user_id):
             'keyword_auto_reply_in_group': True,
             'keyword_auto_reply_in_dm': True,
             'alert_target_user': 'me',
-            'user_auto_replies': [],
-            'schedule_duration_hours': 2.0,
-            'schedule_duration': 7200,
-            'schedule_pause_hours': 2.0,
-            'schedule_pause_duration': 7200
+            'user_auto_replies': []
         }
 
 # ترحيل كسول وآمن: لا يستبدل أي إعداد موجود في PostgreSQL
@@ -1913,14 +1907,6 @@ def load_all_sessions():
                     user_id = filename.split('.')[0]
                     settings = load_settings(user_id)
                     if settings and 'phone' in settings:
-                        saved_p = settings.get('phone')
-                        saved_n = settings.get('account_name') or settings.get('name')
-                        if saved_p and saved_n and saved_n != 'رقم أساسي':
-                            try:
-                                import firestore_sync
-                                firestore_sync.update_phone_account_name(saved_p, saved_n)
-                            except Exception:
-                                pass
                         USERS[user_id] = {
                             'client_manager': None,
                             'settings': settings,
@@ -1979,15 +1965,11 @@ class TelegramClientManager:
                     fname = getattr(me, 'first_name', '') or ''
                     lname = getattr(me, 'last_name', '') or ''
                     self.my_name = f"{fname} {lname}".strip() or getattr(me, 'username', '') or str(me.id)
-                    logger.info(f"User identity confirmed for {self.user_id}: ID={self.my_id}, @{self.my_username}, Name={self.my_name}")
-                    # تثبيت وتحديث اسم الحساب للرقم بشكل دائم
-                    try:
-                        p_num = getattr(me, 'phone', '') or (load_settings(self.user_id) or {}).get('phone') or getattr(self, 'phone_number', '')
-                        if p_num and self.my_name and self.my_name != 'رقم أساسي':
-                            import firestore_sync
-                            firestore_sync.update_phone_account_name(p_num, self.my_name)
-                    except Exception as _sync_err:
-                        logger.debug(f"Sync phone account name error: {_sync_err}")
+                    my_phone = getattr(me, 'phone', None) or self.phone_number
+                    if my_phone and self.my_name:
+                        clean_ph = ('+' + my_phone) if not str(my_phone).startswith('+') else str(my_phone)
+                        update_phone_account_name(clean_ph, self.my_name)
+                    logger.info(f"User identity confirmed for {self.user_id}: ID={self.my_id}, @{self.my_username}, name={self.my_name}")
             except Exception as e:
                 logger.debug(f"Failed to get_me for {self.user_id}: {e}")
         return self.my_id
@@ -2637,9 +2619,9 @@ class TelegramClientManager:
     async def _handle_new_message(self, event):
         try:
             message = event.message
-            if not message:
+            if not message or not message.text:
                 return
-            text = message.text or getattr(message, 'message', '') or ''
+            text = message.text or ''
             chat = await event.get_chat()
             chat_username = getattr(chat, 'username', None)
             chat_title    = getattr(chat, 'title',    None)
@@ -2668,9 +2650,6 @@ class TelegramClientManager:
                     await self._handle_auto_reply(event, message, group_identifier)
                 except Exception as ar_err:
                     logger.error(f"Auto-reply error: {ar_err}")
-
-            if not text:
-                return
 
             kw_list = self.monitored_keywords
             if not kw_list:
@@ -2709,35 +2688,21 @@ class TelegramClientManager:
 
             # ──────────────────────────────────────────────────────────
             # 1) الرد التلقائي حسب معرف المستخدم (Target User Auto-Reply)
-            # الرد على رسالته من حيث أرسلها + إرسالها له بالخاص أيضاً 📩
+            # الرد على رسالته من حيث أرسلها + إرسالها له بالخاص أيضاً
             # ──────────────────────────────────────────────────────────
             if user_rules:
-                # استخراج معرف المرسل بكافة الطرق الممكنة في تيليجرام
-                sender_id = getattr(event, 'sender_id', None)
-                if sender_id is None and hasattr(event, 'message') and event.message:
-                    from_id = getattr(event.message, 'from_id', None)
-                    if from_id:
-                        sender_id = getattr(from_id, 'user_id', None) or getattr(from_id, 'channel_id', None) or getattr(from_id, 'chat_id', None)
-
                 sender = None
                 try:
                     sender = await event.get_sender()
                 except Exception:
                     pass
 
+                sender_id = getattr(event, 'sender_id', None)
                 if not sender_id and sender:
                     sender_id = getattr(sender, 'id', None)
 
-                # استخراج المعرفات والاسم ورقم الهاتف
-                if not sender_id and getattr(event, 'is_private', False):
-                    sender_id = getattr(event, 'chat_id', None)
-
+                # إذا لم يكن المعرف النصي متاحاً في كاش الحدث، استخرجه من الكيان الكامل
                 sender_username = (getattr(sender, 'username', '') or '').strip().lstrip('@').lower()
-                sender_first = getattr(sender, 'first_name', '') or ''
-                sender_last = getattr(sender, 'last_name', '') or ''
-                sender_name = f"{sender_first} {sender_last}".strip().lower()
-                sender_phone = str(getattr(sender, 'phone', '') or '').strip().lstrip('+')
-
                 if not sender_username and sender_id:
                     try:
                         sender_ent = await self.client.get_entity(sender_id)
@@ -2745,24 +2710,15 @@ class TelegramClientManager:
                             if not sender:
                                 sender = sender_ent
                             sender_username = (getattr(sender_ent, 'username', '') or '').strip().lstrip('@').lower()
-                            if not sender_first:
-                                sender_first = getattr(sender_ent, 'first_name', '') or ''
-                                sender_last = getattr(sender_ent, 'last_name', '') or ''
-                                sender_name = f"{sender_first} {sender_last}".strip().lower()
-                            if not sender_phone:
-                                sender_phone = str(getattr(sender_ent, 'phone', '') or '').strip().lstrip('+')
                     except Exception:
                         pass
 
-                sender_id_str = str(sender_id) if sender_id is not None else ''
+                sender_id_str = str(sender_id) if sender_id else ''
 
                 # عدم الرد على الحساب الشخصي نفسه
-                try:
-                    await self._ensure_my_info()
-                    if sender_id and self.my_id and sender_id == self.my_id:
-                        return
-                except Exception:
-                    pass
+                await self._ensure_my_info()
+                if sender_id and self.my_id and sender_id == self.my_id:
+                    return
 
                 for u_rule in user_rules:
                     if not isinstance(u_rule, dict):
@@ -2777,41 +2733,27 @@ class TelegramClientManager:
                     if not target_clean or not reply_text:
                         continue
 
-                    # استخراج وتثبيت المعرف الرقمي للمستخدم المستهدف
                     target_uid = u_rule.get('target_user_id')
-                    clean_digits = target_clean.lstrip('-')
-                    if not target_uid and clean_digits.isdigit():
+                    if not target_uid and target_clean and not target_clean.isdigit():
                         try:
-                            target_uid = int(target_clean)
-                            u_rule['target_user_id'] = target_uid
-                        except Exception:
-                            pass
-                    elif not target_uid and target_clean:
-                        # محاولة حل اسم المستخدم إلى ID لضمان المطابقة 100% حتى في المجموعات
-                        try:
-                            t_ent = await self.client.get_entity(f"@{target_clean}")
+                            t_ent = await self.client.get_entity(target_clean)
                             if t_ent and hasattr(t_ent, 'id'):
                                 target_uid = t_ent.id
                                 u_rule['target_user_id'] = target_uid
-                                if getattr(t_ent, 'username', None):
-                                    u_rule['username'] = t_ent.username
                                 settings['user_auto_replies'] = user_rules
                                 save_settings(self.user_id, settings)
-                                logger.info(f"✅ تم ربط وحفظ ID ({target_uid}) لـ @{target_clean} بنجاح")
-                        except Exception as _res_e:
-                            logger.debug(f"Target user resolve debug ({target_clean}): {_res_e}")
+                        except Exception:
+                            pass
+                    elif not target_uid and target_clean.isdigit():
+                        target_uid = int(target_clean)
 
-                    # فحص التطابق الشامل: بالـ ID أو بالـ Username أو بالهاتف أو بالاسم
+                    # فحص المطابقة: بالمعرف @username أو برقم الـ ID
                     is_match = False
-                    if target_uid and sender_id and (int(target_uid) == int(sender_id)):
-                        is_match = True
-                    elif sender_username and (target_clean == sender_username):
+                    if sender_username and (target_clean == sender_username):
                         is_match = True
                     elif sender_id_str and (target_clean == sender_id_str):
                         is_match = True
-                    elif sender_phone and (target_clean == sender_phone):
-                        is_match = True
-                    elif sender_name and (target_clean == sender_name or (len(target_clean) >= 3 and target_clean in sender_name)):
+                    elif target_uid and sender_id and (target_uid == sender_id):
                         is_match = True
 
                     if is_match:
@@ -2821,106 +2763,79 @@ class TelegramClientManager:
                         self._processed_msg_ids.add(msg_uid)
 
                         sent_any = False
-                        logger.info(f"🎯 تطابق تام لرد المستخدم: @{target_clean} (ID={sender_id}) في {group_identifier}")
+                        logger.info(f"🎯 تطابق رد المستخدم: @{target_clean} (ID={sender_id}) في {group_identifier}")
 
-                        # 1) الرد على رسالته مباشرة من حيث أرسلها (المجموعة أو القناة أو المحادثة)
+                        # 1) الرد على رسالته من حيث أرسلها (المجموعة أو القناة أو المحادثة)
                         try:
-                            await event.reply(reply_text)
+                            await self.client.send_message(
+                                entity=event.chat_id,
+                                message=reply_text,
+                                reply_to=message.id
+                            )
                             sent_any = True
-                            logger.info(f"✅ تم الرد على رسالة @{target_clean} في {group_identifier} بنجاح (عبر event.reply)")
+                            logger.info(f"✅ User auto-reply sent to @{target_clean} in chat {group_identifier}")
                         except FloodWaitError as fwe:
                             wait_s = int(getattr(fwe, 'seconds', 10) or 10)
                             logger.warning(f"⚠️ FloodWait ({wait_s}s) عند الرد على @{target_clean} في {group_identifier}")
-                            async def _delayed_chat_reply(ev, rep_t, w_secs, u_name):
+                            async def _delayed_chat_reply(chat_e, rep_t, rep_id, w_secs, u_name):
                                 await asyncio.sleep(w_secs + 2)
                                 try:
-                                    await ev.reply(rep_t)
+                                    await self.client.send_message(chat_e, rep_t, reply_to=rep_id)
                                     logger.info(f"✅ تم إرسال الرد المؤجل بنجاح لـ @{u_name} في المحادثة")
                                 except Exception as err:
                                     logger.warning(f"تعذر الرد المؤجل في المحادثة لـ @{u_name}: {err}")
-                            asyncio.create_task(_delayed_chat_reply(event, reply_text, wait_s, target_clean))
+                            asyncio.create_task(_delayed_chat_reply(event.chat_id, reply_text, message.id, wait_s, target_clean))
                             sent_any = True
                         except Exception as reply_err:
-                            logger.warning(f"محاولة الرد المباشر بـ send_message كبديل لـ @{target_clean}: {reply_err}")
-                            try:
-                                await self.client.send_message(
-                                    entity=event.chat_id,
-                                    message=reply_text,
-                                    reply_to=message.id
-                                )
-                                sent_any = True
-                                logger.info(f"✅ تم الرد البديل بنجاح في {group_identifier}")
-                            except Exception as fb_err:
-                                logger.warning(f"⚠️ تعذر الرد في المحادثة لـ @{target_clean}: {fb_err}")
+                            logger.warning(f"تعذر الرد في المحادثة لـ @{target_clean}: {reply_err}")
 
-                        # 2) إرسالها له بالخاص أيضاً 📩 (إذا لم تكن المحادثة خاصة بالفعل)
+                        # 2) وبالخاص أيضاً (إذا لم تكن المحادثة خاصة بالفعل)
                         send_dm = u_rule.get('send_dm', True)
                         if send_dm and not event.is_private:
-                            dm_sent = False
+                            dm_target = sender
+                            if not dm_target and sender_id:
+                                try:
+                                    dm_target = await self.client.get_entity(sender_id)
+                                except Exception:
+                                    dm_target = sender_id
+                            if not dm_target:
+                                try:
+                                    dm_target = await self.client.get_entity(target_clean)
+                                except Exception:
+                                    dm_target = target_clean
 
-                            # أولوية 1: استخدام input_sender من الحدث (يحتوي على access_hash حقيقي وموثق)
                             try:
-                                input_sender = await event.get_input_sender()
-                                if input_sender:
-                                    await self.client.send_message(input_sender, reply_text)
-                                    dm_sent = True
-                                    logger.info(f"✅ تم إرسال الرسالة بالخاص لـ @{target_clean} عبر input_sender")
+                                await self.client.send_message(
+                                    entity=dm_target,
+                                    message=reply_text
+                                )
+                                sent_any = True
+                                logger.info(f"✅ User auto-reply DM sent to @{target_clean}")
                             except FloodWaitError as dm_fwe:
                                 dm_wait = int(getattr(dm_fwe, 'seconds', 10) or 10)
-                                async def _delayed_dm_input(inp_s, rep_t, w_secs, u_name):
+                                logger.warning(f"⚠️ FloodWait ({dm_wait}s) عند إرسال DM لـ @{target_clean}")
+                                async def _delayed_dm_reply(tgt, rep_t, w_secs, u_name):
                                     await asyncio.sleep(w_secs + 2)
                                     try:
-                                        await self.client.send_message(inp_s, rep_t)
+                                        await self.client.send_message(tgt, rep_t)
                                         logger.info(f"✅ تم إرسال DM المؤجل لـ @{u_name}")
                                     except Exception as err:
-                                        logger.warning(f"تعذر DM المؤجل: {err}")
-                                asyncio.create_task(_delayed_dm_input(input_sender, reply_text, dm_wait, target_clean))
-                                dm_sent = True
-                            except Exception as e_inp:
-                                logger.debug(f"Input sender DM debug: {e_inp}")
-
-                            # أولوية 2: استخدام كائن sender إن وجد
-                            if not dm_sent and sender:
-                                try:
-                                    await self.client.send_message(sender, reply_text)
-                                    dm_sent = True
-                                    logger.info(f"✅ تم إرسال الرسالة بالخاص لـ @{target_clean} عبر sender")
-                                except Exception as e_snd:
-                                    logger.debug(f"Sender entity DM debug: {e_snd}")
-
-                            # أولوية 3: استخدام اسم المستخدم النصي @username
-                            if not dm_sent and target_clean and not clean_digits.isdigit():
-                                try:
-                                    await self.client.send_message(f"@{target_clean}", reply_text)
-                                    dm_sent = True
-                                    logger.info(f"✅ تم إرسال الرسالة بالخاص لـ @{target_clean} عبر username")
-                                except Exception as e_usr:
-                                    logger.debug(f"Username DM debug: {e_usr}")
-
-                            # أولوية 4: استخدام ID إن وجد عبر get_entity
-                            if not dm_sent and target_uid:
-                                try:
-                                    u_target = await self.client.get_entity(int(target_uid))
-                                    if u_target:
-                                        await self.client.send_message(u_target, reply_text)
-                                        dm_sent = True
-                                        logger.info(f"✅ تم إرسال الرسالة بالخاص لـ @{target_clean} عبر target_uid entity")
-                                except Exception as e_uid:
-                                    logger.warning(f"⚠️ تعذر إرسال DM بالخاص لـ @{target_clean} (ID={target_uid}): {e_uid}")
-
-                            if dm_sent:
+                                        logger.warning(f"تعذر إرسال DM المؤجل لـ @{u_name}: {err}")
+                                asyncio.create_task(_delayed_dm_reply(dm_target, reply_text, dm_wait, target_clean))
                                 sent_any = True
+                            except Exception as dm_err:
+                                logger.warning(f"⚠️ Could not send DM to @{target_clean}: {dm_err}")
 
                         if sent_any:
                             # إشعار لواجهة المستخدم وتسجيل الإحصائيات
                             try:
                                 _emit_log_update('INFO',
-                                    f"👤 رد تلقائي للمستخدم @{target_clean} في {group_identifier} وبالخاص: «{reply_text[:60]}...»",
+                                    f"👤 رد تلقائي للمستخدم @{target_clean} في {group_identifier} وبالخاص: «{reply_text}»",
                                     self.user_id)
                                 socketio.emit('auto_reply_triggered', {
                                     "keyword": f"المستخدم: @{target_clean}",
                                     "reply": reply_text,
-                                    "chat": f"{group_identifier} + خاص 📩",
+                                    "chat": f"{group_identifier} + خاص",
                                     "timestamp": time.strftime('%H:%M:%S')
                                 }, to=self.user_id)
                             except Exception:
@@ -3177,7 +3092,7 @@ class TelegramClientManager:
             logger.error(f"❌ Error triggering keyword alert: {str(e)}", exc_info=True)
 
     async def _handle_keyword_auto_reply(self, event, message, matched_keywords, group_identifier):
-        """الرد التلقائي الفعلي على الكلمات المراقبة (في الخاص مع توجيه الرسالة والرد عليها + وفي المجموعة مباشرة عبر event.reply)"""
+        """الرد التلقائي على الكلمات المراقبة (في الخاص مع توجيه الرسالة والرد عليها + وفي المجموعة مباشرة)"""
         try:
             settings = load_settings(self.user_id) or {}
             # التحقق من تفعيل الميزة
@@ -3198,74 +3113,51 @@ class TelegramClientManager:
             sender_id = getattr(event, 'sender_id', None)
             if not sender_id and sender:
                 sender_id = getattr(sender, 'id', None)
-            if not sender_id and hasattr(event, 'message') and event.message:
-                from_id = getattr(event.message, 'from_id', None)
-                if from_id:
-                    sender_id = getattr(from_id, 'user_id', None) or getattr(from_id, 'channel_id', None) or getattr(from_id, 'chat_id', None)
-            if not sender_id and getattr(event, 'is_private', False):
-                sender_id = getattr(event, 'chat_id', None)
 
             # عدم الرد على الحساب الشخصي نفسه
-            try:
-                await self._ensure_my_info()
-                if sender_id and self.my_id and sender_id == self.my_id:
-                    return
-            except Exception:
-                pass
+            await self._ensure_my_info()
+            if sender_id and self.my_id and sender_id == self.my_id:
+                return
 
-            # تفادي تكرار الرد لنفس الشخص خلال فترة قصيرة (15 ثانية)
+            if not sender_id and not sender:
+                logger.debug(f"Could not identify sender for keyword auto-reply in {group_identifier}")
+                return
+
+            # تفادي تكرار الرد لنفس الشخص في غضون 60 ثانية
             now = time.time()
             if not hasattr(self, '_last_keyword_reply_times'):
                 self._last_keyword_reply_times = {}
-            if sender_id and (now - self._last_keyword_reply_times.get(sender_id, 0) < 15):
-                logger.info(f"⏳ تم تخطي الرد التلقائي لـ {sender_id} منعاً للتكرار (انتظار 15 ثانية)")
+            if sender_id and (now - self._last_keyword_reply_times.get(sender_id, 0) < 60):
+                logger.info(f"⏳ تم تخطي الرد التلقائي لـ {sender_id} منعاً للتكرار (فترة انتظار 60 ثانية)")
                 return
 
             sent_reply = False
 
             # ──────────────────────────────────────────────────────────
-            # 1) الرد التلقائي المباشر في المجموعة على رسالة العميل (عبر event.reply الموثوق)
+            # 1) الرد التلقائي المباشر في المجموعة على رسالة العميل
             # ──────────────────────────────────────────────────────────
-            if reply_in_group and not getattr(event, 'is_private', False):
+            if reply_in_group and not event.is_private:
                 try:
-                    await event.reply(reply_text)
+                    await self.client.send_message(
+                        entity=event.chat_id,
+                        message=reply_text,
+                        reply_to=message.id
+                    )
                     sent_reply = True
-                    logger.info(f"✅ تم الرد التلقائي المباشر في المجموعة '{group_identifier}' على رسالة {message.id}")
+                    logger.info(f"✅ تم الرد التلقائي في المجموعة '{group_identifier}' على رسالة {message.id}")
                 except Exception as grp_err:
-                    logger.warning(f"محاولة بديلة بـ send_message في المجموعة {group_identifier}: {grp_err}")
-                    try:
-                        chat_ent = await event.get_chat()
-                        await self.client.send_message(
-                            entity=chat_ent or event.chat_id,
-                            message=reply_text,
-                            reply_to=message.id
-                        )
-                        sent_reply = True
-                        logger.info(f"✅ تم الرد التلقائي البديل بنجاح في {group_identifier}")
-                    except Exception as fb_err:
-                        logger.warning(f"تعذر الرد التلقائي داخل المجموعة {group_identifier}: {fb_err}")
+                    logger.warning(f"تعذر الرد التلقائي داخل المجموعة {group_identifier}: {grp_err}")
 
             # ──────────────────────────────────────────────────────────
-            # 2) الرد التلقائي بالخاص على مرسل الكلمة المراقبة (مع حل الـ InputPeer)
+            # 2) الرد التلقائي بالخاص على مرسل الكلمة المراقبة
             # ──────────────────────────────────────────────────────────
-            if reply_in_dm and (sender or sender_id):
-                input_sender = None
-                try:
-                    input_sender = await event.get_input_sender()
-                except Exception:
-                    pass
-                if not input_sender and sender:
+            if reply_in_dm:
+                target_entity = sender
+                if not target_entity and sender_id:
                     try:
-                        input_sender = await self.client.get_input_entity(sender)
+                        target_entity = await self.client.get_entity(sender_id)
                     except Exception:
-                        pass
-                if not input_sender and sender_id:
-                    try:
-                        input_sender = await self.client.get_input_entity(sender_id)
-                    except Exception:
-                        pass
-
-                target_entity = input_sender or sender or sender_id
+                        target_entity = sender_id
 
                 fwd_msg_id = None
                 if forward_original:
@@ -3281,11 +3173,12 @@ class TelegramClientManager:
                             fwd_msg_id = fwd_res.id
                         logger.info(f"✅ تم تحويل الرسالة الأصلية لخاص {sender_id} (fwd_id={fwd_msg_id})")
                     except Exception as fwd_err:
-                        logger.warning(f"تعذر التوجيه المباشر بالخاص ({fwd_err})، سيتم إرسال الرد كاقتباس")
+                        logger.warning(f"تعذر التوجيه المباشر ({fwd_err})، سيتم إرسال اقتباس")
 
-                    await asyncio.sleep(0.4)
+                    # مهلة بسيطة لضمان معالجة خادم تيليجرام للرسالة المحولة
+                    await asyncio.sleep(0.6)
 
-                # إرسال نص الرد كـ رد حقيقي مرتبط بالرسالة المحولة أو اقتباس مباشر
+                # إرسال نص الرد كـ رد حقيقي مرتبط بالرسالة المحولة (reply_to)
                 try:
                     if fwd_msg_id:
                         try:
@@ -3295,30 +3188,29 @@ class TelegramClientManager:
                                 reply_to=fwd_msg_id
                             )
                             sent_reply = True
-                            logger.info(f"✅ تم إرسال الرد بالخاص لـ {sender_id} مرتبطاً بالرسالة المحولة")
+                            logger.info(f"✅ تم إرسال الرد '{reply_text}' كرد مرتبط على الرسالة المحولة بالخاص لـ {sender_id}")
                         except Exception as dm_reply_err:
-                            logger.warning(f"فشل ربط reply_to بالخاص، الإرسال كنص مباشر: {dm_reply_err}")
+                            logger.warning(f"فشل ربط reply_to، الإرسال كنص مباشر بالخاص: {dm_reply_err}")
                             await self.client.send_message(
                                 entity=target_entity,
                                 message=reply_text
                             )
                             sent_reply = True
                     elif forward_original:
+                        # في حال تعذر التوجيه المباشر، أرسل اقتباساً واضحاً مع الرد
                         orig_snippet = (message.text or '')[:300]
-                        quote_text = f"📨 بخصوص رسالتك:\n«{orig_snippet}»\n\n{reply_text}" if orig_snippet else reply_text
+                        quote_text = f"📨 بخصوص رسالتك:\n«{orig_snippet}»\n\n{reply_text}"
                         await self.client.send_message(
                             entity=target_entity,
                             message=quote_text
                         )
                         sent_reply = True
-                        logger.info(f"✅ تم إرسال الرد مقتبساً بالخاص لـ {sender_id}")
                     else:
                         await self.client.send_message(
                             entity=target_entity,
                             message=reply_text
                         )
                         sent_reply = True
-                        logger.info(f"✅ تم إرسال الرد بالخاص لـ {sender_id}")
                 except Exception as dm_err:
                     logger.warning(f"تعذر إرسال الرد بالخاص لـ {sender_id}: {dm_err}")
 
@@ -3329,7 +3221,7 @@ class TelegramClientManager:
                         self._last_keyword_reply_times.clear()
 
                 kw_str = ' | '.join(matched_keywords[:2])
-                sname = getattr(sender, 'first_name', '') or str(sender_id or 'عميل')
+                sname = getattr(sender, 'first_name', '') or str(sender_id)
                 _emit_log_update('INFO', f"⚡ رد تلقائي على '{kw_str}': «{reply_text}» لـ ({sname})", self.user_id)
                 socketio.emit('auto_reply_triggered', {
                     "keyword": kw_str,
@@ -3338,6 +3230,7 @@ class TelegramClientManager:
                     "timestamp": time.strftime('%H:%M:%S')
                 }, to=self.user_id)
         except Exception as e:
+            # حماية مطلقة: أي خطأ هنا معزول تماماً ولا يؤثر إطلاقاً على عمل مراقب الكلمات
             logger.warning(f"Keyword auto-reply non-blocking exception: {e}")
 
     def update_monitoring_settings(self, keywords, groups):
@@ -3663,6 +3556,11 @@ class TelegramLogin:
                 logger.error(f"Could not save session string: {_se}")
             me_future = asyncio.run_coroutine_threadsafe(self.client.get_me(), self.loop)
             me = me_future.result(timeout=30)
+            full_nm = f"{me.first_name or ''} {me.last_name or ''}".strip() or me.username or str(me.id)
+            ph_val = getattr(me, 'phone', None) or self.phone_number
+            if ph_val and full_nm:
+                clean_ph = ('+' + ph_val) if not str(ph_val).startswith('+') else str(ph_val)
+                update_phone_account_name(clean_ph, full_nm)
             avatar_url = None
             try:
                 avatars_dir = os.path.join(SESSIONS_DIR, 'avatars')
@@ -3677,16 +3575,6 @@ class TelegramLogin:
                     avatar_url = f"/api/account_avatar/{self.user_id}?t={int(time.time())}"
             except Exception as _pe:
                 logger.debug(f"Profile photo download error: {_pe}")
-
-            account_full_name = f"{me.first_name or ''} {me.last_name or ''}".strip() or getattr(me, 'username', '') or str(me.id)
-            phone_num = getattr(me, 'phone', '') or getattr(self, 'phone_number', '') or (load_settings(self.user_id) or {}).get('phone')
-            if phone_num and account_full_name and account_full_name != 'رقم أساسي':
-                try:
-                    import firestore_sync
-                    firestore_sync.update_phone_account_name(phone_num, account_full_name)
-                except Exception:
-                    pass
-
             return {
                 "success": True,
                 "message": "✅ تم تسجيل الدخول بنجاح",
@@ -3696,7 +3584,7 @@ class TelegramLogin:
                     "last_name": me.last_name,
                     "username": me.username,
                     "phone": me.phone,
-                    "full_name": f"{me.first_name or ''} {me.last_name or ''}".strip(),
+                    "full_name": full_nm,
                     "avatar": avatar_url
                 }
             }
@@ -3766,16 +3654,11 @@ class TelegramLogin:
                     avatar_url = f"/api/account_avatar/{self.user_id}?t={int(time.time())}"
             except Exception as _pe:
                 logger.debug(f"Profile photo download error: {_pe}")
-
-            account_full_name = f"{me.first_name or ''} {me.last_name or ''}".strip() or getattr(me, 'username', '') or str(me.id)
-            phone_num = getattr(me, 'phone', '') or getattr(self, 'phone_number', '') or (load_settings(self.user_id) or {}).get('phone')
-            if phone_num and account_full_name and account_full_name != 'رقم أساسي':
-                try:
-                    import firestore_sync
-                    firestore_sync.update_phone_account_name(phone_num, account_full_name)
-                except Exception:
-                    pass
-
+            full_nm_pwd = f"{me.first_name or ''} {me.last_name or ''}".strip() or me.username or str(me.id)
+            ph_val_pwd = getattr(me, 'phone', None) or self.phone_number
+            if ph_val_pwd and full_nm_pwd:
+                clean_ph_pwd = ('+' + ph_val_pwd) if not str(ph_val_pwd).startswith('+') else str(ph_val_pwd)
+                update_phone_account_name(clean_ph_pwd, full_nm_pwd)
             return {
                 "success": True,
                 "message": "✅ تم تسجيل الدخول بنجاح",
@@ -3785,7 +3668,7 @@ class TelegramLogin:
                     "last_name": me.last_name,
                     "username": me.username,
                     "phone": me.phone,
-                    "full_name": f"{me.first_name or ''} {me.last_name or ''}".strip(),
+                    "full_name": full_nm_pwd,
                     "avatar": avatar_url
                 }
             }
@@ -3809,13 +3692,18 @@ class TelegramLogin:
             try:
                 future = asyncio.run_coroutine_threadsafe(self.client.get_me(), self.loop)
                 me = future.result(timeout=10)
+                full_nm_stat = f"{me.first_name or ''} {me.last_name or ''}".strip() or me.username or str(me.id)
+                ph_val_stat = getattr(me, 'phone', None) or self.phone_number
+                if ph_val_stat and full_nm_stat:
+                    clean_ph_stat = ('+' + ph_val_stat) if not str(ph_val_stat).startswith('+') else str(ph_val_stat)
+                    update_phone_account_name(clean_ph_stat, full_nm_stat)
                 status["user"] = {
                     "id": me.id,
                     "first_name": me.first_name,
                     "last_name": me.last_name,
                     "username": me.username,
                     "phone": me.phone,
-                    "full_name": f"{me.first_name or ''} {me.last_name or ''}".strip()
+                    "full_name": full_nm_stat
                 }
             except Exception:
                 pass
@@ -5435,24 +5323,13 @@ def monitoring_worker(user_id):
                 USERS[user_id]['last_scheduled_send'] = _saved_last_send
 
         # ── دورة التشغيل/التوقف التلقائية للإرسال المجدول (الدورة الدائرية المستمرة) ───
-        # الافتراضي الثابت والفعال دائماً: ساعتان تشغيل (7200 ثانية) + ساعتان توقف (7200 ثانية)
-        _sched_dur = int(settings.get('schedule_duration', 0) or 0)
-        if _sched_dur == 0:
-            try:
-                _sched_dur = max(0, int(float(settings.get('schedule_duration_hours', 2.0) or 2.0) * 3600))
-            except (TypeError, ValueError):
-                _sched_dur = 7200
-        if _sched_dur == 0 and settings.get('send_type') == 'scheduled':
-            _sched_dur = 7200
-
-        _pause_dur = int(settings.get('schedule_pause_duration', 0) or 0)
+        _sched_dur = max(0, int(settings.get('schedule_duration', 0) or 0))
+        _pause_dur = max(0, int(settings.get('schedule_pause_duration', 0) or 0))
         if _pause_dur == 0:
             try:
-                _pause_dur = max(0, int(float(settings.get('schedule_pause_hours', 2.0) or 2.0) * 3600))
+                _pause_dur = max(0, int(float(settings.get('schedule_pause_hours', 0) or 0) * 3600))
             except (TypeError, ValueError):
-                _pause_dur = 7200
-        if _pause_dur == 0 and settings.get('send_type') == 'scheduled':
-            _pause_dur = 7200
+                _pause_dur = 0
         _sched_start = time.time()
         _pause_start = None
         _cycle_phase = 'running'
@@ -5855,7 +5732,7 @@ def execute_scheduled_messages(user_id, settings):
 
         for i, group in enumerate(groups, 1):
             try:
-                curr_message = message
+                curr_message = randomize_message(message)
                 try:
                     with USERS_LOCK:
                         cm = USERS.get(user_id, {}).get('client_manager')
@@ -6190,16 +6067,10 @@ def index():
         with USERS_LOCK:
             u_mem = USERS.get(uid, {})
             auth = u_mem.get('authenticated', False) or os.path.exists(os.path.join(SESSIONS_DIR, f"{uid}_session.session"))
-            aname = u_mem.get('account_name') or st.get('account_name') or st.get('name') or udata.get('name')
+            aname = u_mem.get('account_name') or st.get('account_name')
             auser = u_mem.get('account_username') or st.get('account_username')
-            aphone = u_mem.get('account_phone') or st.get('account_phone') or st.get('phone') or udata.get('phone')
+            aphone = u_mem.get('account_phone') or st.get('account_phone')
             aavatar = u_mem.get('account_avatar')
-
-        if (aphone and '201120945094' in str(aphone)) or uid == 'user_1':
-            aname = 'Lamis'
-            if not aphone:
-                aphone = '+201120945094'
-
         if not aavatar:
             av_file = os.path.join(SESSIONS_DIR, 'avatars', f"{uid}.jpg")
             if os.path.exists(av_file) and os.path.getsize(av_file) > 0:
@@ -6734,6 +6605,8 @@ def api_verify_code():
             }, to=user_id)
 
             account_phone = USERS.get(user_id, {}).get('account_phone') or (load_settings(user_id) or {}).get('phone') or ''
+            if account_phone and account_name:
+                update_phone_account_name(account_phone, account_name)
             account_username = USERS.get(user_id, {}).get('account_username') or ''
             account_avatar = result.get("account_avatar") or USERS.get(user_id, {}).get('account_avatar')
 
@@ -6805,21 +6678,13 @@ def api_save_settings():
             }, to=user_id)
 
     try:
-        raw_dur = data.get('schedule_duration_hours')
-        _sched_dur_h = float(raw_dur) if raw_dur is not None and str(raw_dur).strip() != '' else 2.0
+        _sched_dur_h = max(0.0, float(data.get('schedule_duration_hours', 0) or 0))
     except (TypeError, ValueError):
-        _sched_dur_h = 2.0
+        _sched_dur_h = 0.0
     try:
-        raw_pause = data.get('schedule_pause_hours')
-        _pause_dur_h = float(raw_pause) if raw_pause is not None and str(raw_pause).strip() != '' else 2.0
+        _pause_dur_h = max(0.0, float(data.get('schedule_pause_hours', 0) or 0))
     except (TypeError, ValueError):
-        _pause_dur_h = 2.0
-
-    if data.get('send_type') == 'scheduled':
-        if _sched_dur_h <= 0:
-            _sched_dur_h = 2.0
-        if _pause_dur_h <= 0:
-            _pause_dur_h = 2.0
+        _pause_dur_h = 0.0
     try:
         _interval_seconds = max(60, int(data.get('interval_seconds', 3600) or 3600))
     except (TypeError, ValueError):
@@ -8309,26 +8174,13 @@ def api_get_login_status():
 
             account_name = user_data.get('account_name')
             account_username = user_data.get('account_username')
-            account_phone = user_data.get('account_phone') or user_data.get('phone_number')
+            account_phone = user_data.get('account_phone')
             account_avatar = user_data.get('account_avatar')
 
-            if 'settings' in user_data and user_data['settings']:
-                if not account_name:
-                    account_name = user_data['settings'].get('account_name') or user_data['settings'].get('name')
-                if not account_username:
-                    account_username = user_data['settings'].get('account_username')
-                if not account_phone:
-                    account_phone = user_data['settings'].get('account_phone') or user_data['settings'].get('phone')
-
-            if not account_name:
-                account_name = PREDEFINED_USERS.get(user_id, {}).get('name')
-            if not account_phone:
-                account_phone = PREDEFINED_USERS.get(user_id, {}).get('phone')
-
-            if user_id == 'user_1' or (account_phone and '201120945094' in str(account_phone)):
-                account_name = 'Lamis'
-                if not account_phone:
-                    account_phone = '+201120945094'
+            if not account_name and 'settings' in user_data:
+                account_name = user_data['settings'].get('account_name')
+                account_username = user_data['settings'].get('account_username')
+                account_phone = user_data['settings'].get('account_phone')
 
             if not account_avatar:
                 avatar_file = os.path.join(SESSIONS_DIR, 'avatars', f"{user_id}.jpg")
@@ -8350,14 +8202,6 @@ def api_get_login_status():
                 "account_avatar": account_avatar
             })
 
-    cur_settings = load_settings(user_id) or {}
-    cur_phone = cur_settings.get('phone') or cur_settings.get('account_phone') or PREDEFINED_USERS.get(user_id, {}).get('phone')
-    cur_name = cur_settings.get('account_name') or cur_settings.get('name') or PREDEFINED_USERS.get(user_id, {}).get('name')
-    if (cur_phone and '201120945094' in str(cur_phone)) or user_id == 'user_1':
-        cur_name = 'Lamis'
-        if not cur_phone:
-            cur_phone = '+201120945094'
-
     return jsonify({
         "logged_in": False, 
         "connected": False, 
@@ -8367,10 +8211,9 @@ def api_get_login_status():
         "login_error": None,
         "is_running": False,
         "user_id": user_id,
-        "account_name": cur_name,
-        "name": cur_name,
-        "account_username": cur_settings.get('account_username'),
-        "account_phone": cur_phone,
+        "account_name": None,
+        "account_username": None,
+        "account_phone": None,
         "account_avatar": None
     })
 
@@ -8382,23 +8225,17 @@ def api_get_all_accounts_info():
         with USERS_LOCK:
             u_mem = USERS.get(uid, {})
             auth = u_mem.get('authenticated', False) or os.path.exists(os.path.join(SESSIONS_DIR, f"{uid}_session.session"))
-            aname = u_mem.get('account_name') or st.get('account_name') or st.get('name') or udata.get('name')
+            aname = u_mem.get('account_name') or st.get('account_name')
             auser = u_mem.get('account_username') or st.get('account_username')
-            aphone = u_mem.get('account_phone') or st.get('account_phone') or st.get('phone') or udata.get('phone')
+            aphone = u_mem.get('account_phone') or st.get('account_phone')
             aavatar = u_mem.get('account_avatar')
-
-        if (aphone and '201120945094' in str(aphone)) or uid == 'user_1':
-            aname = 'Lamis'
-            if not aphone:
-                aphone = '+201120945094'
-
         if not aavatar:
             av_file = os.path.join(SESSIONS_DIR, 'avatars', f"{uid}.jpg")
             if os.path.exists(av_file) and os.path.getsize(av_file) > 0:
                 aavatar = f"/api/account_avatar/{uid}?t={int(os.path.getmtime(av_file))}"
         result[uid] = {
             "id": uid,
-            "name": aname or udata.get("name", uid),
+            "name": udata.get("name", uid),
             "icon": udata.get("icon", "fas fa-user"),
             "color": udata.get("color", "#0088cc"),
             "logged_in": auth,
@@ -8408,65 +8245,6 @@ def api_get_all_accounts_info():
             "account_avatar": aavatar
         }
     return jsonify(result)
-
-@app.route("/api/voice_command/parse", methods=["POST"])
-def api_voice_command_parse():
-    """محرك السيرفر لتحليل الأوامر الصوتية واستخراج النوايا والبيانات"""
-    try:
-        data = request.get_json(silent=True) or {}
-        text = (data.get("text") or "").strip().lower()
-        if not text:
-            return jsonify({"success": False, "message": "لا يوجد نص أمر صوتي"})
-
-        import re
-        # استخراج الأرقام
-        raw_digits = re.findall(r'\d+', text)
-        digits_str = "".join(raw_digits)
-
-        # تصنيف النوايا
-        intent = "unknown"
-        payload = {}
-
-        if any(w in text for w in ['سجل', 'دخول', 'تسجيل', 'حساب']):
-            intent = "login"
-            if 'لميس' in text or 'user_1' in text or 'الاول' in text or 'الأول' in text:
-                payload = {"target_account": "user_1", "phone": "+201120945094", "name": "Lamis"}
-            elif 'الثاني' in text:
-                payload = {"target_account": "user_2", "phone": "+201221349790", "name": "الحساب الثاني"}
-            elif digits_str:
-                p = "+" + digits_str if not digits_str.startswith('+') else digits_str
-                payload = {"phone": p}
-
-        elif any(w in text for w in ['كود', 'الكود', 'الرمز', 'رمز']):
-            intent = "verify_code"
-            payload = {"code": digits_str}
-
-        elif any(w in text for w in ['باسورد', 'كلمة المرور', 'السر']):
-            intent = "verify_password"
-
-        elif any(w in text for w in ['ابدأ', 'تشغيل', 'انطلق']) and any(w in text for w in ['ارسال', 'إرسال', 'مهمة']):
-            intent = "start_broadcast"
-
-        elif any(w in text for w in ['اوقف', 'أوقف', 'ايقاف', 'إيقاف', 'توقف']):
-            intent = "stop_broadcast"
-
-        elif any(w in text for w in ['استعرض', 'فحص', 'روابط']):
-            intent = "inspect_links"
-
-        elif 'pdf' in text or 'بي دي اف' in text:
-            intent = "export_pdf"
-
-        elif 'txt' in text or 'نص' in text or 'تكست' in text:
-            intent = "export_txt"
-
-        return jsonify({
-            "success": True,
-            "intent": intent,
-            "payload": payload,
-            "text": text
-        })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
 
 @app.route("/api/add_account", methods=["POST"])
 def api_add_account():
@@ -9176,7 +8954,7 @@ class RotatingSendManager:
 
         while not stop_event.is_set():
             try:
-                current_msg = messages[index % len(messages)]
+                current_msg = randomize_message(messages[index % len(messages)])
                 for group in groups:
                     if stop_event.is_set():
                         break
@@ -10481,18 +10259,15 @@ def _normalize_user_auto_reply(rule):
     if not username_raw or not reply:
         return None
     username_clean = username_raw.replace('https://t.me/', '').replace('http://t.me/', '').replace('t.me/', '').strip().lstrip('@')
-    clean_digits = username_clean.lstrip('-')
     target_uid = None
-    if clean_digits.isdigit():
+    if username_clean.isdigit():
         target_uid = int(username_clean)
-    elif str(rule.get('target_user_id', '')).lstrip('-').isdigit():
+    elif str(rule.get('target_user_id', '')).isdigit():
         target_uid = int(rule.get('target_user_id'))
-
-    display_username = username_clean if clean_digits.isdigit() else f"@{username_clean}"
 
     return {
         'username': username_clean,
-        'display_username': display_username,
+        'display_username': f"@{username_clean}" if not username_clean.isdigit() else username_clean,
         'target_user_id': target_uid,
         'reply': reply,
         'send_dm': bool(rule.get('send_dm', True)),
@@ -10515,12 +10290,10 @@ def api_add_user_auto_reply():
             with USERS_LOCK:
                 cm = USERS.get(user_id, {}).get('client_manager')
             if cm and cm.client and cm.client.is_connected():
-                clean_d = rule['username'].lstrip('-')
-                query = int(rule['username']) if clean_d.isdigit() else f"@{rule['username']}"
-                u_ent = cm.run_coroutine(cm.client.get_entity(query))
+                u_ent = cm.run_coroutine(cm.client.get_entity(rule['username']))
                 if u_ent and hasattr(u_ent, 'id'):
                     rule['target_user_id'] = u_ent.id
-                    if getattr(u_ent, 'username', None):
+                    if hasattr(u_ent, 'username') and u_ent.username:
                         rule['username'] = u_ent.username
                         rule['display_username'] = f"@{u_ent.username}"
                     logger.info(f"✅ تم ربط معرف تيليجرام الرقمي ({u_ent.id}) بقاعدة الرد للمستخدم {rule['display_username']}")
@@ -10529,26 +10302,12 @@ def api_add_user_auto_reply():
 
     settings = load_settings(user_id)
     rules = settings.get('user_auto_replies', []) or []
-
-    # تحديث القاعدة إن كانت موجودة مسبقاً لنفس المستخدم لمنع التكرار
-    updated = False
-    for i, existing in enumerate(rules):
-        same_uname = existing.get('username', '').lower() == rule['username'].lower()
-        same_id = rule.get('target_user_id') and existing.get('target_user_id') == rule['target_user_id']
-        if same_uname or same_id:
-            rule['used_count'] = existing.get('used_count', 0)
-            rule['last_used'] = existing.get('last_used', '')
-            rules[i] = rule
-            updated = True
-            break
-    if not updated:
-        rules.append(rule)
-
+    rules.append(rule)
     settings['user_auto_replies'] = rules
     if save_settings(user_id, settings):
         return jsonify({
             "success": True,
-            "message": f"✅ تم تفعيل الرد التلقائي للمستخدم {rule['display_username']} (رد بالمحادثة + بالخاص 📩)",
+            "message": f"✅ تم إضافة رد تلقائي للمستخدم {rule['display_username']}",
             "user_auto_replies": rules
         })
     return jsonify({"success": False, "message": "❌ فشل حفظ القاعدة"})
@@ -12408,7 +12167,6 @@ def html_to_word_studio():
     """استوديو تحويل HTML إلى Word الاحترافي بالذكاء الاصطناعي"""
     resp = make_response(render_template('html_to_word.html'))
     resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
-    resp.headers['X-Frame-Options'] = 'SAMEORIGIN'
     return resp
 
 
@@ -15655,21 +15413,11 @@ SAVED_LINKS_FILE = os.path.join(DATA_DIR, 'saved_links.json')
 
 def load_saved_links():
     """تحميل الروابط المحفوظة من Firestore أولاً ثم الملف المحلي أو GitHub"""
-    def _sanitize(d):
-        if not isinstance(d, dict):
-            return {"links": []}
-        val = d.get("links", [])
-        while isinstance(val, dict):
-            val = val.get("links", [])
-        if not isinstance(val, list):
-            val = []
-        return {"links": [l for l in val if isinstance(l, dict) and "url" in l]}
-
     try:
         import firestore_sync
         fs_links = firestore_sync.get_firestore_links()
         if fs_links:
-            data = _sanitize({"links": fs_links})
+            data = {"links": fs_links}
             try:
                 with open(SAVED_LINKS_FILE, 'w', encoding='utf-8') as f:
                     json.dump(data, f, ensure_ascii=False, indent=2)
@@ -15682,13 +15430,13 @@ def load_saved_links():
     try:
         if os.path.exists(SAVED_LINKS_FILE):
             with open(SAVED_LINKS_FILE, 'r', encoding='utf-8') as f:
-                return _sanitize(json.load(f))
+                return json.load(f)
     except Exception:
         pass
     try:
         content = download_from_github("data/saved_links.json")
         if content:
-            data = _sanitize(json.loads(content.decode("utf-8")))
+            data = json.loads(content.decode("utf-8"))
             with open(SAVED_LINKS_FILE, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             return data
@@ -15882,9 +15630,9 @@ def api_update_saved_link():
         return jsonify({"success": True, "link": link})
     return jsonify({"success": False, "message": "الرابط غير موجود"})
 
-@app.route("/api/saved_links/export", methods=["GET", "POST"])
+@app.route("/api/saved_links/export", methods=["POST"])
 def api_export_saved_links():
-    data = (request.get_json(silent=True) if request.is_json else None) or {}
+    data = request.json or {}
     link_ids = data.get('ids', [])
     data_links = load_saved_links()
     if link_ids:
@@ -15892,175 +15640,12 @@ def api_export_saved_links():
     else:
         links = data_links["links"]
     if not links:
-        return jsonify({"success": False, "message": "لا توجد روابط للتصدير"}), 400
+        return jsonify({"success": False, "message": "لا توجد روابط للتصدير"})
     content = "\n".join(l["url"] for l in links)
     response = make_response(content)
     response.headers["Content-Type"] = "text/plain; charset=utf-8"
-    response.headers["Content-Disposition"] = f"attachment; filename=saved_links_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    response.headers["Content-Disposition"] = f"attachment; filename=saved_links_{datetime.now().strftime('%Y%m%d_%H%M')}.txt"
     return response
-
-
-@app.route("/api/saved_links/export_pdf", methods=["GET", "POST"])
-def api_export_saved_links_pdf():
-    """تصدير قائمة الروابط المحفوظة كملف PDF منظم وعالي الجودة للتحميل لذاكرة الجهاز"""
-    try:
-        import io
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib import colors
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-
-        data = (request.get_json(silent=True) if request.is_json else None) or {}
-        link_ids = data.get('ids', [])
-        data_links = load_saved_links()
-        if link_ids:
-            links = [l for l in data_links["links"] if l["id"] in link_ids]
-        else:
-            links = data_links["links"]
-
-        if not links:
-            return jsonify({"success": False, "message": "لا توجد روابط لتصديرها"}), 400
-
-        buf = io.BytesIO()
-        doc = SimpleDocTemplate(
-            buf,
-            pagesize=A4,
-            rightMargin=25,
-            leftMargin=25,
-            topMargin=25,
-            bottomMargin=25
-        )
-        elements = []
-        styles = getSampleStyleSheet()
-
-        title_style = ParagraphStyle(
-            'TitleStyle',
-            parent=styles['Heading1'],
-            fontSize=15,
-            leading=20,
-            alignment=1,
-            textColor=colors.HexColor('#1e3a8a')
-        )
-        meta_style = ParagraphStyle(
-            'MetaStyle',
-            parent=styles['Normal'],
-            fontSize=8,
-            leading=12,
-            alignment=1,
-            textColor=colors.HexColor('#64748b')
-        )
-        cell_style = ParagraphStyle(
-            'CellStyle',
-            parent=styles['Normal'],
-            fontSize=8,
-            leading=10,
-            wordWrap='CJK'
-        )
-        url_style = ParagraphStyle(
-            'UrlStyle',
-            parent=styles['Normal'],
-            fontSize=7.5,
-            leading=9.5,
-            textColor=colors.HexColor('#2563eb'),
-            wordWrap='CJK'
-        )
-
-        elements.append(Paragraph("تقرير الروابط المحفوظة - مركز سرعة إنجاز", title_style))
-        elements.append(Spacer(1, 4))
-        elements.append(Paragraph(f"تاريخ التصدير: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | إجمالي الروابط: {len(links)} رابط محفوظ داخل قاعدة البيانات", meta_style))
-        elements.append(Spacer(1, 10))
-
-        table_data = [
-            [Paragraph("<b>#</b>", cell_style),
-             Paragraph("<b>الرابط / URL</b>", cell_style),
-             Paragraph("<b>العنوان / التفاصيل</b>", cell_style),
-             Paragraph("<b>التصنيف</b>", cell_style),
-             Paragraph("<b>تاريخ الحفظ</b>", cell_style)]
-        ]
-
-        for idx, l in enumerate(links, 1):
-            url_str = str(l.get('url', '') or '')
-            title_str = str(l.get('title', '') or url_str)
-            cat_str = str(l.get('category', 'عام') or 'عام')
-            date_str = str(l.get('date_saved', '') or '')[:16].replace('T', ' ')
-
-            table_data.append([
-                Paragraph(str(idx), cell_style),
-                Paragraph(url_str, url_style),
-                Paragraph(title_str, cell_style),
-                Paragraph(cat_str, cell_style),
-                Paragraph(date_str, cell_style)
-            ])
-
-        t = Table(table_data, colWidths=[20, 220, 160, 65, 80])
-        t.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f1f5f9')),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.HexColor('#0f172a')),
-            ('ALIGN', (0,0), (-1,-1), 'LEFT'),
-            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#cbd5e1')),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
-            ('TOPPADDING', (0,0), (-1,-1), 4),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-        ]))
-
-        elements.append(t)
-        doc.build(elements)
-        pdf_bytes = buf.getvalue()
-        buf.close()
-
-        resp = make_response(pdf_bytes)
-        resp.headers['Content-Type'] = 'application/pdf'
-        filename = f"saved_links_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        resp.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return resp
-    except Exception as e:
-        logger.error(f"Error generating PDF export for saved links: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route("/api/saved_links/inspect_status", methods=["GET"])
-def api_inspect_saved_links_status():
-    """فحص واستعراض الحالة الفعلية الحقيقية لقاعدة البيانات الخارجية وروابطها"""
-    try:
-        data_links = load_saved_links()
-        links = data_links.get("links", [])
-        cats = sorted(list(set(l.get("category", "عام") for l in links if l.get("category"))))
-
-        firestore_live = False
-        try:
-            import firestore_sync
-            fs_links = firestore_sync.get_firestore_links()
-            if fs_links is not None:
-                firestore_live = True
-        except Exception:
-            firestore_live = False
-
-        status_text = "نشطة وممتلئة" if len(links) > 0 else "متصلة ولكن فارغة"
-        if len(links) > 0:
-            msg = f"🟢 قاعدة البيانات الخارجية نشطة ومتصلة بنجاح! تحتوي على {len(links)} رابط محفوظ موزعة على {len(cats)} تصنيف."
-        else:
-            msg = "🟡 قاعدة البيانات الخارجية متصلة وجاهزة، ولكن لا يوجد أي رابط محفوظ حالياً."
-
-        return jsonify({
-            "success": True,
-            "connected": True,
-            "firestore_live": firestore_live,
-            "total_links": len(links),
-            "categories": cats,
-            "categories_count": len(cats),
-            "status": "has_links" if len(links) > 0 else "empty",
-            "status_text": status_text,
-            "message": msg,
-            "last_updated": datetime.now().isoformat()
-        })
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "connected": False,
-            "error": str(e),
-            "message": f"حدث خطأ أثناء فحص قاعدة البيانات: {str(e)}"
-        }), 500
 
 @app.route("/api/saved_links/copy", methods=["POST"])
 def api_copy_saved_links():
@@ -19390,20 +18975,16 @@ try:
 except Exception as _e_ai_doc:
     logger.error(f"❌ خطأ في تسجيل مسارات المحلل الذكي للمستندات: {_e_ai_doc}")
 
-# ── تسجيل مسارات مساعد مركز سرعة إنجاز الذكي الشامل (Speed Enjaz Assistant) ──
+# ── تسجيل مسارات المساعد الصوتي الشامل والذكي ──
 try:
-    from speed_enjaz_assistant import speed_assistant_bp
-    app.register_blueprint(speed_assistant_bp)
-    logger.info("✅ تم تسجيل مسارات مساعد مركز سرعة إنجاز الذكي الشامل (Speed Enjaz Assistant) بنجاح")
-except Exception as _e_speed:
-    logger.error(f"❌ خطأ في تسجيل مسارات مساعد سرعة إنجاز: {_e_speed}")
+    from voice_assistant import register_voice_assistant_routes
+    register_voice_assistant_routes(app, telegram_manager, USERS, PREDEFINED_USERS, load_settings, save_settings)
+    logger.info("✅ تم تسجيل مسارات المساعد الصوتي الشامل (Voice Assistant) بنجاح")
+except Exception as _e_voice:
+    logger.error(f"❌ خطأ في تسجيل مسارات المساعد الصوتي: {_e_voice}")
 
 if __name__ == '__main__':
-    env_port = os.environ.get("PORT")
-    if env_port and env_port != "8080":
-        port = int(env_port)
-    else:
-        port = int(os.environ.get("DEFAULT_APP_PORT", 3000))
+    port = int(os.environ.get("PORT", 3000))
     print(f"🌐 تشغيل الخادم على المنفذ {port}...")
     print(f"🔗 رابط التطبيق: http://0.0.0.0:{port}")
     print("🛡️ نظام الاستمرارية الدائم مُفعل — يعمل حتى الإيقاف اليدوي")

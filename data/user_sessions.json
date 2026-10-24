@@ -1,136 +1,112 @@
 {
   "installations": [
     {
-      "install_id": "8fcd3ded-7e68-4a8f-967b-028f95112740",
+      "install_id": "faff7b5e-26e7-4d60-a995-92173a40e5d4",
       "user_id": "user_1",
-      "ip": "9.246.39.125",
-      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
-      "cookies": "{\"__SECURE-aistudio_auth_token\": \"tTKJz7RfxxKYwdgM52aY4fMYNC5YV8Ga3MumICMVgEY=\"}",
-      "timestamp": "2026-10-02T13:17:16.094300",
-      "last_seen": "2026-10-02T13:17:16.094300",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-10-24T11:51:05.779972",
+      "last_seen": "2026-10-24T11:51:05.779972",
       "is_active": true,
       "users_state": {
         "user_1": {
+          "name": "Lamis",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "01cb9e7b-ba18-4fc8-810e-fc3d181b0383",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-10-24T11:47:24.389677",
+      "last_seen": "2026-10-24T11:47:24.389677",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "Lamis",
+          "phone": "+201120945094",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "9ac40670-7111-4914-b310-543db31541eb",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-10-01T12:57:42.793770",
+      "last_seen": "2026-10-01T12:57:42.793770",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "Lamis",
+          "phone": "+967771234567",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
           "name": "Lamis",
           "phone": "+201120945094",
           "account_name": "Lamis",
           "authenticated": true,
           "connected": true,
-          "is_running": true,
+          "is_running": false,
           "blocked": false,
           "last_seen": "",
-          "monitoring_active": true
+          "monitoring_active": false
         }
       }
     },
     {
-      "install_id": "11ca7e0e-1236-4a2c-b870-bf6f0fe077d6",
+      "install_id": "ef0dfbab-961a-4265-b7b4-cd795e927f02",
       "user_id": "user_1",
-      "ip": "9.246.39.125",
+      "ip": "9.246.39.18",
       "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
-      "cookies": "{\"__SECURE-aistudio_auth_token\": \"tTKJz7RfxxKYwdgM52aY4fMYNC5YV8Ga3MumICMVgEY=\"}",
-      "timestamp": "2026-10-02T13:12:22.997288",
-      "last_seen": "2026-10-02T13:12:22.997288",
+      "cookies": "{\"__SECURE-aistudio_auth_token\": \"FcEJFjgYp27_4B6wC_j_R-Sa5uzOExA82K7fkwBjgzM=\"}",
+      "timestamp": "2026-10-01T12:57:15.817637",
+      "last_seen": "2026-10-01T12:57:15.817637",
       "is_active": true,
       "users_state": {
         "user_1": {
+          "name": "Lamis",
+          "phone": "+967771234567",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        },
+        "user_2": {
           "name": "Lamis",
           "phone": "+201120945094",
           "account_name": "Lamis",
           "authenticated": true,
           "connected": true,
-          "is_running": true,
-          "blocked": false,
-          "last_seen": "",
-          "monitoring_active": true
-        }
-      }
-    },
-    {
-      "install_id": "20d45673-f3fe-497f-8061-9d96e729c5a1",
-      "user_id": "user_1",
-      "ip": "9.246.39.125",
-      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
-      "cookies": "{\"__SECURE-aistudio_auth_token\": \"tTKJz7RfxxKYwdgM52aY4fMYNC5YV8Ga3MumICMVgEY=\"}",
-      "timestamp": "2026-10-02T12:56:02.738172",
-      "last_seen": "2026-10-02T12:56:02.738172",
-      "is_active": true,
-      "users_state": {
-        "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
-          "authenticated": true,
-          "connected": true,
-          "is_running": true,
-          "blocked": false,
-          "last_seen": "",
-          "monitoring_active": true
-        }
-      }
-    },
-    {
-      "install_id": "2bfa999f-cc55-4529-b709-4a33411dd89b",
-      "user_id": "user_1",
-      "ip": "9.246.39.125",
-      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
-      "cookies": "{\"__SECURE-aistudio_auth_token\": \"tTKJz7RfxxKYwdgM52aY4fMYNC5YV8Ga3MumICMVgEY=\"}",
-      "timestamp": "2026-10-02T12:49:45.823815",
-      "last_seen": "2026-10-02T12:49:45.823815",
-      "is_active": true,
-      "users_state": {
-        "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
-          "authenticated": true,
-          "connected": true,
-          "is_running": true,
-          "blocked": false,
-          "last_seen": "",
-          "monitoring_active": true
-        }
-      }
-    },
-    {
-      "install_id": "c981f57e-190a-4705-8ebc-e01b9c42ec46",
-      "user_id": "user_1",
-      "ip": "9.246.39.125",
-      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
-      "cookies": "{\"__SECURE-aistudio_auth_token\": \"tTKJz7RfxxKYwdgM52aY4fMYNC5YV8Ga3MumICMVgEY=\"}",
-      "timestamp": "2026-10-02T12:49:28.518868",
-      "last_seen": "2026-10-02T12:49:28.518868",
-      "is_active": true,
-      "users_state": {
-        "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
-          "authenticated": true,
-          "connected": true,
-          "is_running": true,
-          "blocked": false,
-          "last_seen": "",
-          "monitoring_active": true
-        }
-      }
-    },
-    {
-      "install_id": "a52a7686-157b-4122-8024-76dcb2248ad2",
-      "user_id": "user_1",
-      "ip": "9.246.39.125",
-      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
-      "cookies": "{\"__SECURE-aistudio_auth_token\": \"tTKJz7RfxxKYwdgM52aY4fMYNC5YV8Ga3MumICMVgEY=\"}",
-      "timestamp": "2026-10-02T12:42:31.992568",
-      "last_seen": "2026-10-02T12:42:31.992568",
-      "is_active": true,
-      "users_state": {
-        "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
-          "authenticated": false,
-          "connected": false,
           "is_running": false,
           "blocked": false,
           "last_seen": "",
@@ -139,42 +115,19 @@
       }
     },
     {
-      "install_id": "d8a955af-f3fe-4cd0-ae3f-3a45a18889d7",
-      "user_id": "user_1",
-      "ip": "9.246.39.125",
-      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
-      "cookies": "{\"__SECURE-aistudio_auth_token\": \"tTKJz7RfxxKYwdgM52aY4fMYNC5YV8Ga3MumICMVgEY=\"}",
-      "timestamp": "2026-10-02T12:39:14.806347",
-      "last_seen": "2026-10-02T12:39:14.806347",
-      "is_active": true,
-      "users_state": {
-        "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
-          "authenticated": false,
-          "connected": false,
-          "is_running": false,
-          "blocked": false,
-          "last_seen": "",
-          "monitoring_active": false
-        }
-      }
-    },
-    {
-      "install_id": "7b7e0d49-b1cf-4faf-821d-d100017ce56e",
+      "install_id": "ac10a5b4-10f4-41a1-baf6-74ad2fecc33d",
       "user_id": "user_1",
       "ip": "127.0.0.1",
       "user_agent": "curl/7.88.1",
       "cookies": "{}",
-      "timestamp": "2026-09-30T13:05:59.120280",
-      "last_seen": "2026-09-30T13:05:59.120280",
+      "timestamp": "2026-10-01T12:51:37.925749",
+      "last_seen": "2026-10-01T12:51:37.925749",
       "is_active": true,
       "users_state": {
         "user_1": {
           "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "phone": "+967771234567",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -185,19 +138,19 @@
       }
     },
     {
-      "install_id": "0b88fe25-6d70-425d-8d91-fddc66238b85",
+      "install_id": "5f42d8a8-74e0-4cc8-85f8-084b675df21c",
       "user_id": "user_1",
-      "ip": "127.0.0.1",
-      "user_agent": "curl/7.88.1",
-      "cookies": "{}",
-      "timestamp": "2026-09-30T13:05:35.275589",
-      "last_seen": "2026-09-30T13:05:35.275589",
+      "ip": "9.246.39.18",
+      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
+      "cookies": "{\"__SECURE-aistudio_auth_token\": \"FcEJFjgYp27_4B6wC_j_R-Sa5uzOExA82K7fkwBjgzM=\"}",
+      "timestamp": "2026-10-01T12:44:36.759826",
+      "last_seen": "2026-10-01T12:44:36.759826",
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "الحساب الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -208,19 +161,19 @@
       }
     },
     {
-      "install_id": "fefee73c-e5f9-464e-b99e-f0e7f54b0120",
+      "install_id": "0660323d-b2fa-4d86-843b-8dc30c6a7254",
       "user_id": "user_1",
-      "ip": "127.0.0.1",
-      "user_agent": "curl/7.88.1",
-      "cookies": "{}",
-      "timestamp": "2026-09-30T13:05:35.235744",
-      "last_seen": "2026-09-30T13:05:35.235744",
+      "ip": "9.246.39.18",
+      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
+      "cookies": "{\"__SECURE-aistudio_auth_token\": \"FcEJFjgYp27_4B6wC_j_R-Sa5uzOExA82K7fkwBjgzM=\"}",
+      "timestamp": "2026-10-01T12:40:20.390344",
+      "last_seen": "2026-10-01T12:40:20.390344",
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "الحساب الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -231,19 +184,19 @@
       }
     },
     {
-      "install_id": "e9c60be2-e8aa-4651-a8c8-0d77cece794f",
+      "install_id": "2cf8d903-223f-49e6-a84a-46596c954ce6",
       "user_id": "user_1",
-      "ip": "127.0.0.1",
-      "user_agent": "curl/7.88.1",
-      "cookies": "{}",
-      "timestamp": "2026-09-30T13:05:16.513282",
-      "last_seen": "2026-09-30T13:05:16.513282",
+      "ip": "9.246.39.18",
+      "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
+      "cookies": "{\"__SECURE-aistudio_auth_token\": \"FcEJFjgYp27_4B6wC_j_R-Sa5uzOExA82K7fkwBjgzM=\"}",
+      "timestamp": "2026-10-01T12:40:00.246580",
+      "last_seen": "2026-10-01T12:40:00.246580",
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "الحساب الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -254,19 +207,65 @@
       }
     },
     {
-      "install_id": "cee5b4ca-9e75-48e3-8791-93a90b9786c6",
+      "install_id": "9e231fcd-454b-490b-b872-169cbcc18215",
       "user_id": "user_1",
       "ip": "127.0.0.1",
       "user_agent": "curl/7.88.1",
       "cookies": "{}",
-      "timestamp": "2026-09-30T13:05:10.678894",
-      "last_seen": "2026-09-30T13:05:10.678894",
+      "timestamp": "2026-10-01T12:35:41.846147",
+      "last_seen": "2026-10-01T12:35:41.846147",
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "الحساب الأول",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "e3d1ede0-7bc0-4e55-ae5b-86b5ac3d0f3a",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-10-01T12:29:59.593089",
+      "last_seen": "2026-10-01T12:29:59.593089",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "الحساب الأول",
+          "phone": "",
+          "account_name": "",
+          "authenticated": false,
+          "connected": false,
+          "is_running": false,
+          "blocked": false,
+          "last_seen": "",
+          "monitoring_active": false
+        }
+      }
+    },
+    {
+      "install_id": "f3009b43-0d61-452d-9fef-1d14f72dda48",
+      "user_id": "user_1",
+      "ip": "127.0.0.1",
+      "user_agent": "curl/7.88.1",
+      "cookies": "{}",
+      "timestamp": "2026-10-01T12:09:03.444493",
+      "last_seen": "2026-10-01T12:09:03.444493",
+      "is_active": true,
+      "users_state": {
+        "user_1": {
+          "name": "الحساب الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -287,9 +286,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "الحساب الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -310,9 +309,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "الحساب الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -333,9 +332,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "الحساب الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -356,9 +355,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "الحساب الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -379,9 +378,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "الحساب الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -402,9 +401,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "الحساب الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -425,9 +424,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "الحساب الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -448,9 +447,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "الحساب الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -471,9 +470,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -538,9 +537,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -605,9 +604,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -672,9 +671,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -739,9 +738,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -806,9 +805,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -873,9 +872,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -940,9 +939,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -1007,9 +1006,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -1074,9 +1073,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+201274386864",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -1141,9 +1140,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -1208,9 +1207,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -1275,9 +1274,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -1342,9 +1341,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -1409,9 +1408,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": true,
           "is_running": false,
@@ -1476,9 +1475,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -1543,9 +1542,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -1610,9 +1609,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -1677,9 +1676,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": true,
           "is_running": false,
@@ -1744,9 +1743,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -1811,9 +1810,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -1878,9 +1877,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -1945,9 +1944,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -2012,9 +2011,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -2079,9 +2078,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -2146,9 +2145,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -2213,9 +2212,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -2280,9 +2279,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -2347,9 +2346,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -2414,9 +2413,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -2481,9 +2480,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -2548,9 +2547,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -2615,9 +2614,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -2682,9 +2681,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -2749,9 +2748,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -2816,9 +2815,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -2883,9 +2882,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -2950,9 +2949,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -3017,9 +3016,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -3084,9 +3083,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -3151,9 +3150,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -3218,9 +3217,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -3285,9 +3284,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -3352,9 +3351,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -3419,9 +3418,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -3486,9 +3485,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -3553,9 +3552,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -3620,9 +3619,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -3687,9 +3686,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -3754,9 +3753,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -3821,9 +3820,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -3888,9 +3887,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -3955,9 +3954,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -4022,9 +4021,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -4089,9 +4088,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -4156,9 +4155,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -4223,9 +4222,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -4290,9 +4289,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -4357,9 +4356,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -4424,9 +4423,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -4491,9 +4490,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -4558,9 +4557,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
+          "name": "المستخدم الأول",
           "phone": "+201120945094",
-          "account_name": "Lamis",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -4625,9 +4624,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+967658688668",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -4692,9 +4691,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+967658688668",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -4759,9 +4758,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+967658688668",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -4826,9 +4825,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+967658688668",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -4893,9 +4892,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+967658688668",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -4960,9 +4959,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+967658688668",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -5027,9 +5026,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+967658688668",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -5094,9 +5093,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "+967658688668",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -5161,9 +5160,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -5228,9 +5227,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -5295,9 +5294,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -5362,9 +5361,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -5429,9 +5428,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -5496,9 +5495,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -5563,9 +5562,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -5630,9 +5629,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -5697,9 +5696,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -5764,9 +5763,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -5831,9 +5830,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -5898,9 +5897,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -5965,9 +5964,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -6032,9 +6031,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -6099,9 +6098,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -6166,9 +6165,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -6233,9 +6232,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -6300,9 +6299,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -6367,9 +6366,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -6434,9 +6433,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,
@@ -6501,9 +6500,9 @@
       "is_active": true,
       "users_state": {
         "user_1": {
-          "name": "Lamis",
-          "phone": "+201120945094",
-          "account_name": "Lamis",
+          "name": "المستخدم الأول",
+          "phone": "",
+          "account_name": "",
           "authenticated": false,
           "connected": false,
           "is_running": false,

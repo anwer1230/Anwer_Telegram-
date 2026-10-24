@@ -9,7 +9,7 @@ import {
   getDoc,
   query,
   orderBy 
-} from 'firebase/firestore/lite';
+} from 'firebase/firestore';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -21,45 +21,29 @@ const firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
-const DEFAULT_PHONE_CONFIG = [
-  { phone: '+201120945094', label: 'Lamis', account_name: 'Lamis' },
-  { phone: '+573244867204', label: 'الحساب الأول', account_name: 'الحساب الأول' },
-  { phone: '+201221349790', label: 'الحساب الثاني', account_name: 'الحساب الثاني' },
-  { phone: '+201148863243', label: 'الحساب الثالث', account_name: 'الحساب الثالث' },
-  { phone: '+213797500921', label: 'الحساب الرابع', account_name: 'الحساب الرابع' },
-  { phone: '+201274386864', label: 'الحساب الخامس', account_name: 'الحساب الخامس' },
-  { phone: '+966539709737', label: 'الحساب السادس', account_name: 'الحساب السادس' }
+const DEFAULT_PHONE_NUMBERS = [
+  { phone: '+201120945094', name: 'Lamis' },
+  { phone: '+573244867204', name: 'الحساب الأول' },
+  { phone: '+201221349790', name: 'الحساب الثاني' },
+  { phone: '+201148863243', name: 'الحساب الثالث' },
+  { phone: '+213797500921', name: 'الحساب الرابع' },
+  { phone: '+201274386864', name: 'الحساب الخامس' },
+  { phone: '+966539709737', name: 'خدمة العملاء' }
 ];
 
-const DEFAULT_PHONE_NUMBERS = DEFAULT_PHONE_CONFIG.map(p => p.phone);
-
 async function ensureDefaultPhones() {
-  for (const item of DEFAULT_PHONE_CONFIG) {
+  for (const item of DEFAULT_PHONE_NUMBERS) {
     const docId = item.phone.replace(/[^0-9]/g, '');
     const docRef = doc(db, 'saved_phone_numbers', docId);
     const snap = await getDoc(docRef);
-    if (!snap.exists()) {
+    if (!snap.exists() || snap.data()?.label?.includes('أساسي') || !snap.data()?.account_name) {
       await setDoc(docRef, {
         phone_number: item.phone,
+        account_name: item.name,
         added_at: new Date().toISOString(),
         is_default: true,
-        label: item.label,
-        account_name: item.account_name
-      });
-    } else {
-      const data = snap.data() || {};
-      // إذا كان الرقم هو +201120945094 أو كان الاسم القديم "رقم أساسي" يتم تحديثه فوراً بالاسم الحقيقي
-      if (item.phone === '+201120945094' && data.label !== 'Lamis') {
-        data.label = 'Lamis';
-        data.account_name = 'Lamis';
-        data.updated_at = new Date().toISOString();
-        await setDoc(docRef, data, { merge: true });
-      } else if (data.label === 'رقم أساسي' || !data.label) {
-        data.label = item.label;
-        data.account_name = item.account_name;
-        data.updated_at = new Date().toISOString();
-        await setDoc(docRef, data, { merge: true });
-      }
+        label: item.name
+      }, { merge: true });
     }
   }
 }
@@ -80,19 +64,19 @@ async function getPhoneNumbers() {
   return list;
 }
 
-async function updatePhoneAccountName(phone, accountName) {
-  if (!phone || !accountName) return null;
+async function updatePhoneName(phone, name) {
+  if (!phone || !name) return null;
   const cleanPhone = phone.trim();
   const docId = cleanPhone.replace(/[^0-9]/g, '');
   if (!docId) return null;
   const docRef = doc(db, 'saved_phone_numbers', docId);
-  const snap = await getDoc(docRef);
-  const data = snap.exists() ? snap.data() : { phone_number: cleanPhone, added_at: new Date().toISOString(), is_default: DEFAULT_PHONE_NUMBERS.includes(cleanPhone) };
-  data.label = accountName.trim();
-  data.account_name = accountName.trim();
-  data.updated_at = new Date().toISOString();
-  await setDoc(docRef, data, { merge: true });
-  return data;
+  await setDoc(docRef, {
+    phone_number: cleanPhone,
+    account_name: name,
+    label: name,
+    updated_at: new Date().toISOString()
+  }, { merge: true });
+  return { phone_number: cleanPhone, account_name: name };
 }
 
 async function addPhoneNumber(phone, label = 'حساب محفوظ') {
@@ -103,13 +87,15 @@ async function addPhoneNumber(phone, label = 'حساب محفوظ') {
   const docRef = doc(db, 'saved_phone_numbers', docId);
   const snap = await getDoc(docRef);
   if (!snap.exists()) {
-    const matched = DEFAULT_PHONE_CONFIG.find(p => p.phone === cleanPhone);
+    const matched = DEFAULT_PHONE_NUMBERS.find(d => d.phone === cleanPhone);
+    const isDefault = !!matched;
+    const name = matched ? matched.name : label;
     const data = {
       phone_number: cleanPhone,
+      account_name: name,
       added_at: new Date().toISOString(),
-      is_default: !!matched,
-      label: matched ? matched.label : label,
-      account_name: matched ? matched.account_name : label
+      is_default: isDefault,
+      label: name
     };
     await setDoc(docRef, data);
     return data;
@@ -246,14 +232,14 @@ try {
   if (action === 'get_phones') {
     const phones = await getPhoneNumbers();
     console.log(JSON.stringify({ success: true, phones }));
-  } else if (action === 'add_phone') {
-    const phone = process.argv[3];
-    const res = await addPhoneNumber(phone);
-    console.log(JSON.stringify({ success: true, phone: res }));
   } else if (action === 'update_phone_name') {
     const phone = process.argv[3];
     const name = process.argv[4];
-    const res = await updatePhoneAccountName(phone, name);
+    const res = await updatePhoneName(phone, name);
+    console.log(JSON.stringify({ success: true, phone: res }));
+  } else if (action === 'add_phone') {
+    const phone = process.argv[3];
+    const res = await addPhoneNumber(phone);
     console.log(JSON.stringify({ success: true, phone: res }));
   } else if (action === 'get_links') {
     const links = await getSavedLinks();

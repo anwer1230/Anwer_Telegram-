@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "PORT=3000 python3 main.py",
     "start": "PORT=3000 python3 main.py",
-    "build": "python3 -m py_compile main.py app.py"
+    "build": "python3 build_artifacts.py"
   },
   "dependencies": {
     "firebase": "^12.19.0"
